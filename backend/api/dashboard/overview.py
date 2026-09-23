@@ -10,6 +10,9 @@ from database.models.transaction import Transaction, TransactionStatus, PaymentP
 from api.auth.deps import get_current_user
 from api.dashboard.aggregations import (
     _daily_revenue, _platform_dist, _hourly_sales,
+    _hourly_profit_breakdown, _country_distribution,
+    _utm_distribution, _top_products_distribution,
+    _payment_method_distribution, _conversion_flow,
 )
 from api.dashboard.meta_data import (
     fetch_meta_account_summary, fetch_meta_campaigns_for_dashboard,
@@ -116,11 +119,25 @@ async def dashboard_overview(
     top_campaigns = build_top_campaigns(base, meta_campaigns)
     hourly = _hourly_sales(base, db)
 
+    # Dados adicionais padrão NexoFy
+    hourly_profit = _hourly_profit_breakdown(base, db, meta_spend=float(kpis.get("total_spend", 0.0)))
+    countries = _country_distribution(base, db)
+    utm_origins = _utm_distribution(base, db)
+    top_products = _top_products_distribution(base, db)
+    payment_methods = _payment_method_distribution(base, db)
+    conversion_flow = _conversion_flow(base, meta_summary)
+
     return {
         "kpis": kpis,
         "daily_revenue": daily,
         "platform_distribution": platforms,
         "top_campaigns": top_campaigns,
         "hourly_sales": hourly,
+        "hourly_profit": hourly_profit,
+        "countries": countries,
+        "utm_origins": utm_origins,
+        "top_products": top_products,
+        "payment_methods": payment_methods,
+        "conversion_flow": conversion_flow,
         "meta_error": meta_error,
     }

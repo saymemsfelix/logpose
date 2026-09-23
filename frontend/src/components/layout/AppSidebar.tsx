@@ -6,8 +6,6 @@ import {
   RiShoppingCartLine,
   RiBox1Line,
   RiFilter2Line,
-  RiWalletLine,
-  RiMetaLine,
   RiPlayCircleLine,
   RiBuildingLine,
   RiRefundLine,

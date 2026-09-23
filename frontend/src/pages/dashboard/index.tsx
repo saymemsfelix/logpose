@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardHeader } from "./components/DashboardHeader";
-import { KpiGrid } from "./components/KpiGrid";
+import { NexoKpisGrid } from "./components/NexoKpisGrid";
+import { LogPoseFlow } from "./components/LogPoseFlow";
+import { CommercialCards } from "./components/CommercialCards";
+import { LogPoseCountry } from "./components/LogPoseCountry";
+import { CampaignsPerformanceTable } from "./components/CampaignsPerformanceTable";
+import { HourlyProfitChart } from "./components/HourlyProfitChart";
+import { GoalsCards } from "./components/GoalsCards";
 import { RevenueChart } from "./components/RevenueChart";
 import { PlatformChart } from "./components/PlatformChart";
-import { TopCampaigns } from "./components/TopCampaigns";
-import { HourlySalesChart } from "./components/HourlySalesChart";
 import { GlobalFilterBar } from "@/components/layout/GlobalFilterBar";
 import { useDashboard } from "@/hooks/use-dashboard";
 import { fetchCustomersFilterOptions } from "@/services/customers";
@@ -20,6 +24,7 @@ export default function DashboardPage() {
   const [upsells, setUpsells] = useState<UpsellOption[]>([]);
   const [platforms, setPlatforms] = useState<{ value: string; label: string }[]>([]);
   const [accounts, setAccounts] = useState<{ slug: string; name: string; platform: string }[]>([]);
+  const [hideValues, setHideValues] = useState<boolean>(false);
 
   useEffect(() => {
     if (data?.meta_error === "token_invalid") {
@@ -28,7 +33,7 @@ export default function DashboardPage() {
         duration: Infinity,
         action: {
           label: "Corrigir agora",
-          onClick: () => navigate("/facebook-ads"),
+          onClick: () => navigate("/integrations"),
         },
         id: "meta-token-invalid",
       });
@@ -45,8 +50,15 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <DashboardHeader onRefresh={reload} />
+    <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto w-full">
+      {/* 1. Header com Saudação, Status e Toggle de Ocultar Valores */}
+      <DashboardHeader
+        onRefresh={reload}
+        hideValues={hideValues}
+        onToggleHideValues={() => setHideValues((v) => !v)}
+      />
+
+      {/* 2. Filtros Globais (Período, Contas, Produtos, etc.) */}
       <GlobalFilterBar
         filters={filters}
         onFiltersChange={setFilters}
@@ -56,30 +68,68 @@ export default function DashboardPage() {
         platforms={platforms}
         accounts={accounts}
       />
+
       {loading || !data ? (
-        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 w-full" />
-          ))}
+        <div className="space-y-4">
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 w-full rounded-xl" />
+            ))}
+          </div>
+          <Skeleton className="h-32 w-full rounded-xl" />
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Skeleton className="h-44 w-full rounded-xl" />
+            <Skeleton className="h-44 w-full rounded-xl" />
+            <Skeleton className="h-44 w-full rounded-xl" />
+          </div>
         </div>
       ) : (
         <>
-          <KpiGrid
-            kpis={data.kpis}
-            taxEnabled={filters.taxEnabled}
-            taxRate={settings?.tax_rate ?? 0}
-            opCostsEnabled={filters.opCostsEnabled}
-            opCostsTotal={settings?.operational_costs.reduce((s, c) => s + c.amount, 0) ?? 0}
+          {/* 3. Grid dos 12 KPIs Principais */}
+          <NexoKpisGrid kpis={data.kpis} hideAllValues={hideValues} />
+
+          {/* 4. LogPose Flow: Funil de Conversão em Tempo Real */}
+          <LogPoseFlow flow={data.conversion_flow} />
+
+          {/* 5. Três Cards Comerciais (UTMs, Produtos, Pagamentos) */}
+          <CommercialCards
+            utmOrigins={data.utm_origins}
+            topProducts={data.top_products}
+            paymentMethods={data.payment_methods}
+            hideValues={hideValues}
           />
-          <div className="grid gap-6 lg:grid-cols-3">
+
+          {/* 6. Linha Dupla: LogPose Country (3D Globe) + Desempenho por Campanha */}
+          <div className="grid gap-6 grid-cols-1 lg:grid-cols-12 items-stretch">
+            <div className="lg:col-span-6 min-w-0">
+              <LogPoseCountry countries={data.countries} hideValues={hideValues} />
+            </div>
+            <div className="lg:col-span-6 min-w-0">
+              <CampaignsPerformanceTable
+                campaigns={data.top_campaigns}
+                hideValues={hideValues}
+              />
+            </div>
+          </div>
+
+          {/* 7. Gráfico Bidirecional de 24 Horas: Lucro por Horário */}
+          <HourlyProfitChart
+            data={data.hourly_profit}
+            hideValues={hideValues}
+          />
+
+          {/* 8. Metas de Faturamento (Mês, Semana, Dia) */}
+          <GoalsCards
+            currentMonthlyRevenue={data.kpis?.total_revenue ?? 0}
+            hideValues={hideValues}
+          />
+
+          {/* 9. Histórico de Evolução Diária & Distribuição por Plataforma */}
+          <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
             <div className="lg:col-span-2">
               <RevenueChart data={data.daily_revenue} />
             </div>
             <PlatformChart data={data.platform_distribution} />
-          </div>
-          <div className="grid gap-6 lg:grid-cols-2">
-            <TopCampaigns data={data.top_campaigns} />
-            <HourlySalesChart data={data.hourly_sales} />
           </div>
         </>
       )}

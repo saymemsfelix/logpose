@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { getStoredUser } from "@/services/auth";
-import { RefreshButton } from "@/components/RefreshButton";
+import { Eye, EyeOff, RefreshCw } from "lucide-react";
 
 function getGreeting(): string {
   const now = new Date();
@@ -16,75 +16,79 @@ function getGreeting(): string {
   return "Boa noite";
 }
 
-const WEEKDAY_ABBR: Record<string, string> = {
-  domingo: "Dom",
-  "segunda-feira": "Seg",
-  "terça-feira": "Ter",
-  "quarta-feira": "Qua",
-  "quinta-feira": "Qui",
-  "sexta-feira": "Sex",
-  sábado: "Sáb",
-};
-
-function formatClock(date: Date) {
-  const time = date.toLocaleTimeString("pt-BR", {
-    timeZone: "America/Sao_Paulo",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
-  const weekdayFull = date.toLocaleDateString("pt-BR", {
-    timeZone: "America/Sao_Paulo",
-    weekday: "long",
-  });
-
-  const weekday = WEEKDAY_ABBR[weekdayFull] || weekdayFull;
-
-  const dateStr = date.toLocaleDateString("pt-BR", {
-    timeZone: "America/Sao_Paulo",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-
-  return { time, label: `${weekday}, ${dateStr}` };
-}
-
 interface DashboardHeaderProps {
   onRefresh: () => Promise<void>;
+  hideValues: boolean;
+  onToggleHideValues: () => void;
+  syncTime?: string;
 }
 
-export function DashboardHeader({ onRefresh }: DashboardHeaderProps) {
+export function DashboardHeader({
+  onRefresh,
+  hideValues,
+  onToggleHideValues,
+  syncTime = "Sincronizado",
+}: DashboardHeaderProps) {
   const user = getStoredUser();
-  const firstName = user?.name?.split(" ")[0] || "CEO";
+  const firstName = user?.name?.split(" ")[0] || "Sayme";
   const greeting = getGreeting();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const [clock, setClock] = useState(() => formatClock(new Date()));
-
-  useEffect(() => {
-    const id = setInterval(() => setClock(formatClock(new Date())), 1000);
-    return () => clearInterval(id);
-  }, []);
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  };
 
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex flex-wrap items-center justify-between gap-4">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-          {greeting}, {firstName} 👋
+        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl text-zinc-900 dark:text-white flex items-center">
+          <span>{greeting}, {firstName} 👋</span>
+          <span className="ml-1 inline-block animate-pulse font-normal text-blue-500">|</span>
         </h1>
-        <p className="text-xs sm:text-sm text-muted-foreground">
-          Aqui está o resumo da sua operação
+        <p className="mt-1 text-[13px] text-zinc-500 dark:text-zinc-400">
+          Bora ver como estão seus números?
         </p>
       </div>
-      <div className="flex items-center gap-3">
-        <RefreshButton onRefresh={onRefresh} />
-        <div className="hidden sm:flex flex-col items-end">
-          <span className="text-3xl font-bold tracking-tight tabular-nums">
-            {clock.time}
+
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        {/* Botão Ocultar Valores */}
+        <button
+          type="button"
+          onClick={onToggleHideValues}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200/80 bg-white px-3 py-1.5 text-[12px] font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300 dark:hover:bg-zinc-800 transition-colors shadow-2xs cursor-pointer"
+        >
+          {hideValues ? (
+            <>
+              <Eye className="h-3.5 w-3.5 text-blue-500" />
+              <span>Mostrar valores</span>
+            </>
+          ) : (
+            <>
+              <EyeOff className="h-3.5 w-3.5" />
+              <span>Ocultar valores</span>
+            </>
+          )}
+        </button>
+
+        {/* Status de Sincronização + Botão Atualizar */}
+        <div className="flex items-center gap-2">
+          <span className="hidden sm:inline text-[11px] text-zinc-400 dark:text-zinc-500">
+            {syncTime}
           </span>
-          <span className="text-sm text-muted-foreground">
-            {clock.label}
-          </span>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-1.5 text-[13px] font-medium text-white hover:bg-blue-500 disabled:opacity-60 transition-colors shadow-xs cursor-pointer"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+            <span>Atualizar</span>
+          </button>
         </div>
       </div>
     </div>
