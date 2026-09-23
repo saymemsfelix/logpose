@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <defs>
+    <linearGradient id="hotmartGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF6B35"/>
+      <stop offset="100%" stop-color="#F04E23"/>
+    </linearGradient>
+  </defs>
+  <rect width="48" height="48" rx="10" fill="url(#hotmartGrad)"/>
+  <path d="M24 8C20 14 17 18 17 23C17 26.866 20.134 30 24 30C27.866 30 31 26.866 31 23C31 18 28 14 24 8ZM24 38C16.268 38 10 31.732 10 24C10 19.5 12.5 15.5 16 13.5C15 16.5 15 20 17 23C19 26 21.5 28 24 28C26.5 28 29 26 31 23C33 20 33 16.5 32 13.5C35.5 15.5 38 19.5 38 24C38 31.732 31.732 38 24 38Z" fill="#FFFFFF"/>
+</svg>
