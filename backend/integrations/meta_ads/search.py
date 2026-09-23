@@ -31,8 +31,6 @@ async def _get_business_id(access_token: str, ad_account_id: str) -> str | None:
         response = await http.get(url, params=params)
         if response.status_code != 200:
             logger.warning(f"Erro ao buscar business: {response.text}")
-            if "API access blocked" in response.text:
-                raise ValueError("API access blocked")
             return None
         data = response.json()
 
@@ -63,8 +61,6 @@ async def fetch_pages(access_token: str, ad_account_id: str) -> list[dict]:
             response = await http.get(url, params=params)
             if response.status_code != 200:
                 logger.warning(f"Erro {edge}: {response.text}")
-                if "API access blocked" in response.text:
-                    raise ValueError("API access blocked")
                 continue
             for p in response.json().get("data", []):
                 pages[p["id"]] = p
@@ -84,8 +80,6 @@ async def _fetch_pages_me(access_token: str) -> list[dict]:
         response = await http.get(url, params=params)
         if response.status_code != 200:
             logger.warning(f"Erro em /me/accounts: {response.text}")
-            if "API access blocked" in response.text:
-                raise ValueError("API access blocked")
             return []
         return response.json().get("data", [])
 
@@ -106,8 +100,6 @@ async def fetch_instagram_accounts(
         response = await http.get(url, params=params)
         if response.status_code != 200:
             logger.warning(f"Erro IG ad account {act_id}: {response.text}")
-            if "API access blocked" in response.text:
-                raise ValueError("API access blocked")
             return []
         data = response.json()
 
