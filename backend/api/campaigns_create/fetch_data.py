@@ -47,16 +47,10 @@ async def list_pixels(
     client = MetaAdsClient(account.access_token, account.account_id)
     try:
         pixels = await fetch_pixels(client)
-        if not pixels:
-            # Fallback com o Pixel associado à conta
-            clean_act = account.account_id.replace("act_", "")
-            pixels = [{"id": clean_act, "name": f"Pixel Principal ({account.label})"}]
-        return {"pixels": pixels}
+        return {"pixels": pixels or []}
     except Exception as e:
         logger.warning(f"Erro ao buscar pixels da conta {account_id}: {e}")
-        # Fallback seguro para o usuário não ficar travado
-        clean_act = account.account_id.replace("act_", "") if account.account_id else "949690764845924"
-        return {"pixels": [{"id": clean_act, "name": f"Pixel Principal ({account.label})"}]}
+        return {"pixels": []}
     finally:
         await client.close()
 
@@ -75,15 +69,10 @@ async def list_pages(
         ig_accounts = await fetch_instagram_accounts(
             account.access_token, account.account_id
         )
-        if not pages:
-            pages = [{"id": f"page_{account.id}", "name": f"Página Oficial ({account.label})"}]
-        return {"pages": pages, "instagram_accounts": ig_accounts}
+        return {"pages": pages or [], "instagram_accounts": ig_accounts or []}
     except Exception as e:
         logger.warning(f"Erro ao buscar páginas/ig da conta {account_id}: {e}")
-        return {
-            "pages": [{"id": f"page_{account.id}", "name": f"Página Oficial ({account.label})"}],
-            "instagram_accounts": [{"id": f"ig_{account.id}", "username": "perfil_oficial"}],
-        }
+        return {"pages": [], "instagram_accounts": []}
 
 
 @router.get("/interests")

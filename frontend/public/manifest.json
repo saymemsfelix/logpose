@@ -1,6 +1,6 @@
 {
-  "name": "SFOFY | Dashboard",
-  "short_name": "SFOFY",
+  "name": "SFY | Dashboard",
+  "short_name": "SFY",
   "description": "Dashboard Estratégico de Performance para Direct Response",
   "start_url": "/dashboard",
   "scope": "/",

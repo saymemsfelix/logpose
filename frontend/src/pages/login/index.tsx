@@ -34,8 +34,8 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="flex flex-col items-center gap-3">
           <img
-            src="/logo_dark.webp"
-            alt="SFOFY"
+            src="/logo_dark.webp?v=sfy_2026"
+            alt="SFY"
             className="h-16 w-auto object-contain drop-shadow-xl"
           />
           <p className="text-sm text-white/70">
