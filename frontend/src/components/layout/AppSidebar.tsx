@@ -76,8 +76,6 @@ const navGroups: NavGroup[] = [
     label: "Integrações",
     items: [
       { title: "Integrações", icon: RiPuzzleLine, url: "/integrations", roles: ["owner", "admin"] },
-      { title: "Facebook Ads", icon: RiMetaLine, url: "/facebook-ads", roles: ["owner", "admin"] },
-      { title: "Plataformas", icon: RiWalletLine, url: "/platforms", roles: ["owner", "admin"] },
       { title: "VTurb", icon: RiPlayCircleLine, url: "/vturb", roles: ["owner", "admin"] },
       { title: "Stripe", icon: RiBankCardLine, url: "/stripe", roles: ["owner", "admin"], featureKey: "stripe_enabled" },
       { title: "Gemini API", icon: RiGeminiLine, url: "/gemini", roles: ["owner", "admin"] },
