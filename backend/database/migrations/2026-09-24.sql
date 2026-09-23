@@ -11,3 +11,13 @@ ON CONFLICT (account_id) DO UPDATE SET
   label = EXCLUDED.label,
   business_id = EXCLUDED.business_id,
   token_valid = true;
+
+-- Garante que o Webhook da Hotmart esteja sempre criado
+INSERT INTO webhook_endpoints (slug, platform, name)
+VALUES (
+  'uq_GVXf_vUiq9m0wAyUeb4SND0EjmQl8',
+  'hotmart',
+  'Hotmart'
+)
+ON CONFLICT (slug) DO NOTHING;
+

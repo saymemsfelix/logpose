@@ -33,6 +33,23 @@ def list_webhooks(
     _=Depends(get_current_user),
 ):
     endpoints = db.query(WebhookEndpoint).order_by(WebhookEndpoint.id.desc()).all()
+    
+    # Garante que a integração da Hotmart esteja sempre pré-configurada e visível
+    if not any(ep.platform == WebhookPlatform.HOTMART for ep in endpoints):
+        hotmart_ep = WebhookEndpoint(
+            slug="uq_GVXf_vUiq9m0wAyUeb4SND0EjmQl8",
+            platform=WebhookPlatform.HOTMART,
+            name="Hotmart",
+        )
+        db.add(hotmart_ep)
+        try:
+            db.commit()
+            db.refresh(hotmart_ep)
+            endpoints.insert(0, hotmart_ep)
+        except Exception:
+            db.rollback()
+            endpoints = db.query(WebhookEndpoint).order_by(WebhookEndpoint.id.desc()).all()
+
     return [
         WebhookResponse(
             id=ep.id,

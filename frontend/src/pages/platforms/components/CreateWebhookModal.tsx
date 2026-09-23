@@ -13,10 +13,19 @@ interface CreateWebhookModalProps {
   onOpenChange: (open: boolean) => void;
   onCreate: (platform: "kiwify" | "payt" | "hotmart" | "api", name: string) => void;
   isLoading?: boolean;
+  initialPlatform?: string;
 }
 
-export function CreateWebhookModal({ open, onOpenChange, onCreate, isLoading }: CreateWebhookModalProps) {
-  const [platform, setPlatform] = useState<"kiwify" | "payt" | "hotmart" | "api" | null>(null);
+export function CreateWebhookModal({
+  open,
+  onOpenChange,
+  onCreate,
+  isLoading,
+  initialPlatform = "hotmart",
+}: CreateWebhookModalProps) {
+  const [platform, setPlatform] = useState<"kiwify" | "payt" | "hotmart" | "api" | null>(
+    (initialPlatform as "kiwify" | "payt" | "hotmart" | "api") || "hotmart"
+  );
   const [name, setName] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
