@@ -25,7 +25,7 @@ export function SidebarUser() {
   const navigate = useNavigate();
   const user = getStoredUser();
 
-  const [isDark, setIsDark] = useState(() => localStorage.getItem("theme") === "dark");
+  const [isDark, setIsDark] = useState(() => localStorage.getItem("theme") !== "light");
   const { showFull, toggle: toggleFull } = useValueDisplay();
 
   useEffect(() => {

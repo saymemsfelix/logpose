@@ -7,85 +7,85 @@
 
 :root {
     --radius: 0.65rem;
-    /* Warm parchment/cream background */
-    --background: oklch(0.965 0.012 75);
-    --foreground: oklch(0.22 0.025 55);
-    /* Warm cream cards */
-    --card: oklch(0.985 0.008 75);
-    --card-foreground: oklch(0.22 0.025 55);
-    --popover: oklch(0.985 0.008 75);
-    --popover-foreground: oklch(0.22 0.025 55);
-    /* Pirate orange-amber primary */
-    --primary: oklch(0.62 0.19 45);
-    --primary-foreground: oklch(0.98 0.01 75);
-    /* Sépia secondary */
-    --secondary: oklch(0.935 0.015 70);
-    --secondary-foreground: oklch(0.30 0.030 55);
-    /* Muted warm tones */
-    --muted: oklch(0.940 0.012 70);
-    --muted-foreground: oklch(0.50 0.035 55);
-    /* Warm accent */
-    --accent: oklch(0.940 0.012 70);
-    --accent-foreground: oklch(0.30 0.030 55);
+    /* Cool slate light background */
+    --background: oklch(0.98 0.005 250);
+    --foreground: oklch(0.18 0.03 255);
+    /* Crisp clean cards */
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.18 0.03 255);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.18 0.03 255);
+    /* NexoFy Electric Royal Blue primary */
+    --primary: oklch(0.56 0.22 255);
+    --primary-foreground: oklch(0.98 0.01 250);
+    /* Cool secondary */
+    --secondary: oklch(0.95 0.01 250);
+    --secondary-foreground: oklch(0.25 0.03 255);
+    /* Muted cool tones */
+    --muted: oklch(0.95 0.01 250);
+    --muted-foreground: oklch(0.50 0.03 250);
+    /* Cool accent */
+    --accent: oklch(0.93 0.02 250);
+    --accent-foreground: oklch(0.25 0.03 255);
     --destructive: oklch(0.577 0.245 27.325);
-    /* Warm borders */
-    --border: oklch(0.88 0.020 65);
-    --input: oklch(0.90 0.015 65);
-    --ring: oklch(0.68 0.16 50);
-    /* Charts - amber/sépia gradient */
-    --chart-1: oklch(0.82 0.13 65);
-    --chart-2: oklch(0.72 0.17 50);
-    --chart-3: oklch(0.62 0.19 45);
-    --chart-4: oklch(0.52 0.16 42);
-    --chart-5: oklch(0.42 0.12 40);
-    /* Sidebar - dark walnut wood */
-    --sidebar: oklch(0.25 0.04 45);
-    --sidebar-foreground: oklch(0.90 0.04 65);
-    --sidebar-primary: oklch(0.92 0.06 60);
-    --sidebar-primary-foreground: oklch(0.20 0.03 45);
-    --sidebar-accent: oklch(0.32 0.05 45);
-    --sidebar-accent-foreground: oklch(0.95 0.04 65);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(1 0 0 / 20%);
+    /* Cool borders */
+    --border: oklch(0.90 0.01 250);
+    --input: oklch(0.90 0.01 250);
+    --ring: oklch(0.56 0.22 255);
+    /* Charts - electric blue, cyan, indigo, emerald */
+    --chart-1: oklch(0.60 0.22 255);
+    --chart-2: oklch(0.70 0.18 210);
+    --chart-3: oklch(0.58 0.22 270);
+    --chart-4: oklch(0.72 0.19 150);
+    --chart-5: oklch(0.65 0.22 300);
+    /* Sidebar - dark sleek obsidian-navy */
+    --sidebar: oklch(0.10 0.022 255);
+    --sidebar-foreground: oklch(0.85 0.02 250);
+    --sidebar-primary: oklch(0.60 0.22 255);
+    --sidebar-primary-foreground: oklch(0.98 0.01 250);
+    --sidebar-accent: oklch(0.18 0.04 255);
+    --sidebar-accent-foreground: oklch(0.98 0.01 250);
+    --sidebar-border: oklch(1 1 1 / 8%);
+    --sidebar-ring: oklch(0.60 0.22 255 / 30%);
 }
 
 .dark {
-    /* Deep dark sea/wood background */
-    --background: oklch(0.15 0.015 50);
-    --foreground: oklch(0.90 0.02 65);
-    /* Dark wood cards */
-    --card: oklch(0.20 0.020 50);
-    --card-foreground: oklch(0.90 0.02 65);
-    --popover: oklch(0.20 0.020 50);
-    --popover-foreground: oklch(0.90 0.02 65);
-    /* Amber primary */
-    --primary: oklch(0.72 0.17 50);
-    --primary-foreground: oklch(0.15 0.02 50);
+    /* NexoFy Deep Midnight Navy background (#080b11 / #0a0e1a) */
+    --background: oklch(0.12 0.024 255);
+    --foreground: oklch(0.95 0.01 250);
+    /* NexoFy Dark Slate/Navy cards (#0f1626 / #111a2e) */
+    --card: oklch(0.165 0.028 255);
+    --card-foreground: oklch(0.95 0.01 250);
+    --popover: oklch(0.165 0.028 255);
+    --popover-foreground: oklch(0.95 0.01 250);
+    /* NexoFy Electric Royal Blue primary (#2563eb / #3b82f6) */
+    --primary: oklch(0.60 0.22 255);
+    --primary-foreground: oklch(0.98 0.01 250);
     /* Dark secondary */
-    --secondary: oklch(0.25 0.020 50);
-    --secondary-foreground: oklch(0.88 0.03 60);
-    --muted: oklch(0.25 0.020 50);
-    --muted-foreground: oklch(0.60 0.03 55);
-    --accent: oklch(0.25 0.020 50);
-    --accent-foreground: oklch(0.88 0.03 60);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 12%);
-    --ring: oklch(0.50 0.12 45);
-    --chart-1: oklch(0.82 0.13 65);
-    --chart-2: oklch(0.72 0.17 50);
-    --chart-3: oklch(0.62 0.19 45);
-    --chart-4: oklch(0.52 0.16 42);
-    --chart-5: oklch(0.42 0.12 40);
-    /* Sidebar dark - deep wood */
-    --sidebar: oklch(0.17 0.020 50);
-    --sidebar-foreground: oklch(0.85 0.04 60);
-    --sidebar-primary: oklch(0.85 0.10 55);
-    --sidebar-primary-foreground: oklch(0.17 0.020 50);
-    --sidebar-accent: oklch(0.24 0.025 50);
-    --sidebar-accent-foreground: oklch(0.90 0.06 55);
-    --sidebar-border: oklch(1 0 0 / 7%);
-    --sidebar-ring: oklch(1 0 0 / 12%);
+    --secondary: oklch(0.20 0.03 255);
+    --secondary-foreground: oklch(0.90 0.02 250);
+    --muted: oklch(0.18 0.026 255);
+    --muted-foreground: oklch(0.65 0.03 250);
+    --accent: oklch(0.22 0.04 255);
+    --accent-foreground: oklch(0.95 0.01 250);
+    --destructive: oklch(0.63 0.22 25);
+    --border: oklch(0.24 0.028 255 / 75%);
+    --input: oklch(0.24 0.028 255 / 75%);
+    --ring: oklch(0.60 0.22 255);
+    --chart-1: oklch(0.65 0.22 255);
+    --chart-2: oklch(0.70 0.18 210);
+    --chart-3: oklch(0.58 0.22 270);
+    --chart-4: oklch(0.72 0.19 150);
+    --chart-5: oklch(0.65 0.22 300);
+    /* Sidebar dark - NexoFy Obsidian Navy (#070a12) */
+    --sidebar: oklch(0.095 0.022 255);
+    --sidebar-foreground: oklch(0.85 0.02 250);
+    --sidebar-primary: oklch(0.60 0.22 255);
+    --sidebar-primary-foreground: oklch(0.98 0.01 250);
+    --sidebar-accent: oklch(0.18 0.04 255);
+    --sidebar-accent-foreground: oklch(0.98 0.01 250);
+    --sidebar-border: oklch(1 1 1 / 8%);
+    --sidebar-ring: oklch(0.60 0.22 255 / 30%);
 }
 
 @theme inline {
@@ -163,15 +163,15 @@
   }
 }
 
-/* Custom scrollbar — amber/wood tone */
+/* Custom scrollbar — cool blue tone */
 * {
   scrollbar-width: thin;
-  scrollbar-color: oklch(0.62 0.15 50 / 45%) transparent;
+  scrollbar-color: oklch(0.60 0.20 255 / 35%) transparent;
 }
 
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -179,33 +179,33 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: oklch(0.62 0.15 50 / 45%);
+  background: oklch(0.60 0.20 255 / 35%);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: oklch(0.62 0.15 50 / 75%);
+  background: oklch(0.60 0.20 255 / 65%);
 }
 
-/* Text selection — warm amber */
+/* Text selection — cool electric blue */
 ::selection {
-  background: oklch(0.72 0.14 55 / 30%);
-  color: oklch(0.20 0.02 50);
+  background: oklch(0.60 0.22 255 / 30%);
+  color: oklch(0.98 0.01 250);
 }
 
 ::-moz-selection {
-  background: oklch(0.72 0.14 55 / 30%);
-  color: oklch(0.20 0.02 50);
+  background: oklch(0.60 0.22 255 / 30%);
+  color: oklch(0.98 0.01 250);
 }
 
 .dark ::selection {
-  background: oklch(0.62 0.15 50 / 30%);
-  color: oklch(0.93 0 0);
+  background: oklch(0.60 0.22 255 / 35%);
+  color: #ffffff;
 }
 
 .dark ::-moz-selection {
-  background: oklch(0.62 0.15 50 / 30%);
-  color: oklch(0.93 0 0);
+  background: oklch(0.60 0.22 255 / 35%);
+  color: #ffffff;
 }
 
 /* Safe area padding for mobile bottom nav */
@@ -272,14 +272,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Fundo parchment/cream (idêntico ao --background do light mode) */
-  background-color: oklch(0.965 0.012 75);
+  /* Fundo dark navy NexoFy */
+  background-color: oklch(0.12 0.024 255);
   pointer-events: none;
 }
 
 .dark .intro-video-overlay {
   /* Fundo dark mode */
-  background-color: oklch(0.15 0.015 50);
+  background-color: oklch(0.12 0.024 255);
 }
 
 .intro-video-player {
@@ -302,11 +302,11 @@
   gap: 0.5rem;
   padding: 0.45rem 0.6rem 0.45rem 0.75rem;
   border-radius: 9999px;
-  background: oklch(0.22 0.04 50 / 92%);
-  border: 1px solid oklch(0.72 0.17 50 / 40%);
+  background: oklch(0.16 0.03 255 / 92%);
+  border: 1px solid oklch(0.60 0.22 255 / 40%);
   box-shadow:
-    0 4px 24px oklch(0 0 0 / 30%),
-    0 0 0 1px oklch(0.72 0.17 50 / 15%) inset;
+    0 4px 24px oklch(0 0 0 / 40%),
+    0 0 0 1px oklch(0.60 0.22 255 / 20%) inset;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   animation: mock-banner-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
@@ -333,7 +333,7 @@
 }
 
 .mock-mode-banner__icon {
-  color: oklch(0.82 0.18 60);
+  color: oklch(0.65 0.22 255);
   flex-shrink: 0;
 }
 
@@ -341,7 +341,7 @@
   font-size: 11.5px;
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: oklch(0.90 0.08 62);
+  color: oklch(0.95 0.02 250);
   white-space: nowrap;
 }
 
@@ -351,9 +351,9 @@
   gap: 0.25rem;
   padding: 0.25rem 0.6rem;
   border-radius: 9999px;
-  border: 1px solid oklch(0.72 0.17 50 / 40%);
-  background: oklch(0.72 0.17 50 / 18%);
-  color: oklch(0.85 0.12 60);
+  border: 1px solid oklch(0.60 0.22 255 / 40%);
+  background: oklch(0.60 0.22 255 / 20%);
+  color: oklch(0.90 0.08 250);
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
@@ -362,9 +362,9 @@
 }
 
 .mock-mode-banner__close:hover {
-  background: oklch(0.72 0.17 50 / 35%);
-  color: oklch(0.95 0.06 62);
-  border-color: oklch(0.72 0.17 50 / 60%);
+  background: oklch(0.60 0.22 255 / 35%);
+  color: #ffffff;
+  border-color: oklch(0.60 0.22 255 / 70%);
 }
 
 .mock-mode-banner__close:active {

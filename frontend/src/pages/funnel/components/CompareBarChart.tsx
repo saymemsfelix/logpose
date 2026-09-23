@@ -2,12 +2,12 @@ import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { FunnelProduct } from "@/services/funnel";
 
-// Theme madeira bar colors - distinct enough for comparison
+// NexoFy Blue theme bar colors - electric blue, cyan, indigo, slate blue
 const BAR_COLORS = [
-  "oklch(0.72 0.17 50)",   // amber primary
-  "oklch(0.62 0.19 45)",   // burnt orange
-  "oklch(0.82 0.13 65)",   // warm gold
-  "oklch(0.52 0.16 42)",   // walnut
+  "oklch(0.60 0.22 255)",   // electric royal blue
+  "oklch(0.70 0.18 210)",   // vibrant cyan
+  "oklch(0.58 0.22 270)",   // deep indigo
+  "oklch(0.48 0.18 250)",   // deep slate blue
 ];
 
 function formatNumber(v: number): string {

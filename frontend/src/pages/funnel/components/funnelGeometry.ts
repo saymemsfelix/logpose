@@ -11,18 +11,18 @@ export interface FunnelGeometry {
   stagePoints: { cx: number; topY: number; bottomY: number }[];
 }
 
-// Theme madeira - amber/wood gradient palette (left=bright → right=deep)
+// NexoFy Blue Theme - modern electric blue to deep cyan/indigo gradient (left=bright → right=deep)
 const FUNNEL_COLORS = [
-  "oklch(0.82 0.13 65)",
-  "oklch(0.75 0.16 58)",
-  "oklch(0.68 0.18 52)",
-  "oklch(0.62 0.19 47)",
-  "oklch(0.56 0.18 43)",
-  "oklch(0.50 0.16 40)",
-  "oklch(0.44 0.14 38)",
-  "oklch(0.38 0.12 36)",
-  "oklch(0.34 0.10 35)",
-  "oklch(0.30 0.08 34)",
+  "oklch(0.70 0.20 250)",
+  "oklch(0.66 0.21 252)",
+  "oklch(0.62 0.22 255)",
+  "oklch(0.58 0.21 258)",
+  "oklch(0.54 0.20 260)",
+  "oklch(0.50 0.18 262)",
+  "oklch(0.46 0.16 264)",
+  "oklch(0.42 0.14 266)",
+  "oklch(0.38 0.12 268)",
+  "oklch(0.34 0.10 270)",
 ];
 
 export const SVG_W = 900;
