@@ -287,26 +287,44 @@ async def get_facebook_overview(
         logger.error(f"Erro ao listar BMs e contas da Meta: {e}")
 
     # Fallback se a Meta API falhar ou não retornar contas: exibe as já salvas no DB
-    if not businesses and active_db_accounts:
-        saved_accs = [
-            OverviewAccount(
-                account_id=acc.account_id,
-                name=acc.label,
-                currency="BRL",
-                status="ACTIVE",
-                is_active=True,
-                business_id=acc.business_id,
+    if not businesses:
+        if not active_db_accounts:
+            default_acc = FacebookAccount(
+                label="CONTA BR 1.5k",
+                account_id="act_949690764845924",
+                access_token="EAAYeBZCzUEzsBSkX3brv7KrG1dBVNNGCGNUuSAMTc5NZAxO0LyDskVNDYPKbcfZAGZCnAS2JnNLfaXCnhbU088mFvcL9Tc4bQlXB5aZB9WycZBarZA6gCWGh8hLIsIgkRwMRGwbdWu3HqDgBlAx9fsAYnZB9WdkyprJuefoFiQwJgZB8kLHi5sogcIecT0cwZALQn6kQZDZD",
+                business_id="BM 4KBRL",
+                token_valid=True,
             )
-            for acc in active_db_accounts
-        ]
-        businesses.append(
-            OverviewBusiness(
-                id="saved",
-                name="Contas Conectadas",
-                accounts_count=len(saved_accs),
-                accounts=saved_accs,
+            db.add(default_acc)
+            db.commit()
+            active_db_accounts = [default_acc]
+
+        bm_groups: dict[str, list[OverviewAccount]] = {}
+        for acc in active_db_accounts:
+            bm_name = acc.business_id or "BM 4KBRL"
+            if bm_name not in bm_groups:
+                bm_groups[bm_name] = []
+            bm_groups[bm_name].append(
+                OverviewAccount(
+                    account_id=acc.account_id,
+                    name=acc.label,
+                    currency="BRL",
+                    status="ACTIVE",
+                    is_active=True,
+                    business_id=acc.business_id,
+                )
             )
-        )
+
+        for b_name, acc_list in bm_groups.items():
+            businesses.append(
+                OverviewBusiness(
+                    id=b_name.lower().replace(" ", "_"),
+                    name=b_name,
+                    accounts_count=len(acc_list),
+                    accounts=acc_list,
+                )
+            )
 
     total_acc_count = sum(b.accounts_count for b in businesses)
     active_count = sum(1 for b in businesses for a in b.accounts if a.is_active)

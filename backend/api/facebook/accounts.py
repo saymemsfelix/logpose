@@ -42,7 +42,20 @@ def list_accounts(
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    return db.query(FacebookAccount).order_by(FacebookAccount.id.desc()).all()
+    accounts = db.query(FacebookAccount).order_by(FacebookAccount.id.desc()).all()
+    if not accounts:
+        default_acc = FacebookAccount(
+            label="CONTA BR 1.5k",
+            account_id="act_949690764845924",
+            access_token="EAAYeBZCzUEzsBSkX3brv7KrG1dBVNNGCGNUuSAMTc5NZAxO0LyDskVNDYPKbcfZAGZCnAS2JnNLfaXCnhbU088mFvcL9Tc4bQlXB5aZB9WycZBarZA6gCWGh8hLIsIgkRwMRGwbdWu3HqDgBlAx9fsAYnZB9WdkyprJuefoFiQwJgZB8kLHi5sogcIecT0cwZALQn6kQZDZD",
+            business_id="BM 4KBRL",
+            token_valid=True,
+        )
+        db.add(default_acc)
+        db.commit()
+        db.refresh(default_acc)
+        return [default_acc]
+    return accounts
 
 
 @router.post("/accounts", response_model=FacebookAccountResponse, status_code=201)
