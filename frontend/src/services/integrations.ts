@@ -113,6 +113,68 @@ export async function syncFacebookAccounts(
   });
 }
 
+export interface FacebookUserProfile {
+  id: string;
+  name: string;
+  picture?: string | null;
+}
+
+export interface OverviewAccount {
+  account_id: string;
+  name: string;
+  currency: string;
+  status: string;
+  is_active: boolean;
+  business_id?: string | null;
+}
+
+export interface OverviewBusiness {
+  id: string;
+  name: string;
+  accounts_count: number;
+  accounts: OverviewAccount[];
+}
+
+export interface FacebookOverviewResponse {
+  connected: boolean;
+  access_token?: string | null;
+  user?: FacebookUserProfile | null;
+  last_synced?: string | null;
+  businesses: OverviewBusiness[];
+  total_accounts: number;
+  active_accounts: number;
+}
+
+export async function fetchFacebookOverview(accessToken?: string): Promise<FacebookOverviewResponse> {
+  return apiRequest<FacebookOverviewResponse>("/facebook/overview", {
+    method: "POST",
+    body: { access_token: accessToken || null },
+  });
+}
+
+export async function toggleFacebookAccount(data: {
+  account_id: string;
+  name: string;
+  access_token: string;
+  business_id?: string | null;
+  active: boolean;
+}): Promise<{ success: boolean; active: boolean; account_id: string }> {
+  return apiRequest<{ success: boolean; active: boolean; account_id: string }>("/facebook/accounts/toggle", {
+    method: "POST",
+    body: data,
+  });
+}
+
+export async function disconnectFacebook(): Promise<{ success: boolean; message: string }> {
+  return apiRequest<{ success: boolean; message: string }>("/facebook/disconnect", {
+    method: "POST",
+  });
+}
+
+export async function fetchOAuthUrl(): Promise<{ oauth_url: string; configured: boolean; app_id?: string | null }> {
+  return apiRequest<{ oauth_url: string; configured: boolean; app_id?: string | null }>("/facebook/oauth/url");
+}
+
 // ─── Platforms (Webhooks) ────────────────────────────────────────────
 
 export interface WebhookEndpointAPI {
