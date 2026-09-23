@@ -68,18 +68,29 @@ from api.advanced_settings.features import router as advanced_settings_router
 from api.advanced_settings.reset_sales import router as reset_sales_router
 
 from database.core.migrate_sql import run_sql_migrations
+import logging
+logger = logging.getLogger(__name__)
 
-# Migrate ENUM columns → VARCHAR (idempotent, runs on every boot)
-run_enum_migrations(engine)
+# Executa migrações de forma segura sem travar o boot
+try:
+    # Migrate ENUM columns → VARCHAR (idempotent, runs on every boot)
+    run_enum_migrations(engine)
+    # Create tables (must run before SQL migrations so tables exist)
+    Base.metadata.create_all(bind=engine)
+    # Run SQL migrations from database/migrations/
+    run_sql_migrations()
+except Exception as init_err:
+    logger.error(f"Erro durante inicialização de banco/migrações: {init_err}")
 
-# Create tables (must run before SQL migrations so tables exist)
-Base.metadata.create_all(bind=engine)
+app = FastAPI(title="SFOFY API")
 
-# Run SQL migrations from database/migrations/
-# (ALTER TABLE / ADD COLUMN statements that depend on existing tables)
-run_sql_migrations()
-
-app = FastAPI(title="ConvergeAI API")
+# Health check endpoints para o Render (suporta GET e HEAD)
+@app.get("/health")
+@app.head("/health")
+@app.get("/api/health")
+@app.head("/api/health")
+async def health_check():
+    return {"status": "ok", "app": "SFOFY"}
 
 # CORS for development
 app.add_middleware(
@@ -156,7 +167,7 @@ if os.path.isdir(_frontend_dir):
             if path.startswith("/api") or path.startswith("/assets"):
                 return await call_next(request)
 
-            if request.method != "GET":
+            if request.method not in ("GET", "HEAD"):
                 return await call_next(request)
 
             if path != "/":

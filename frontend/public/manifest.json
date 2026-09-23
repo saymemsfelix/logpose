@@ -1,6 +1,6 @@
 {
-  "name": "LOG POSE | Dashboard",
-  "short_name": "LOG POSE",
+  "name": "SFOFY | Dashboard",
+  "short_name": "SFOFY",
   "description": "Dashboard Estratégico de Performance para Direct Response",
   "start_url": "/dashboard",
   "scope": "/",

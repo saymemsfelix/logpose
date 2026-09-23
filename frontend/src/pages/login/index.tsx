@@ -35,8 +35,8 @@ export default function LoginPage() {
         <div className="flex flex-col items-center gap-3">
           <img
             src="/logo_dark.webp"
-            alt="LOG POSE"
-            className="h-14 w-auto object-contain drop-shadow-lg"
+            alt="SFOFY"
+            className="h-16 w-auto object-contain drop-shadow-xl"
           />
           <p className="text-sm text-white/70">
             Faça login para acessar o dashboard

@@ -119,11 +119,12 @@ export function AppSidebar() {
       collapsible="none"
       className="rounded-xl overflow-hidden h-full"
     >
-      <SidebarHeader className="px-3 pt-3 pb-1">
+      <SidebarHeader className="px-3 pt-3.5 pb-2 flex items-center justify-center">
         <img
           src="/logo_dark.webp"
-          alt="LOG POSE"
-          className="h-12 w-auto object-contain"
+          alt="SFOFY"
+          className="h-13 w-auto max-w-[195px] object-contain drop-shadow-md hover:scale-[1.02] transition-transform duration-200 cursor-pointer"
+          onClick={() => navigate("/dashboard")}
         />
       </SidebarHeader>
       <SidebarContent className="px-2 gap-0">
