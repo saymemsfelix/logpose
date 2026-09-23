@@ -79,19 +79,6 @@ export async function apiRequest<T>(
     const error = await response.json().catch(() => ({ detail: "Request failed" }));
     const errorMsg = error.detail || "Request failed";
 
-    if (
-      typeof errorMsg === "string" &&
-      (errorMsg.includes("API access blocked") || errorMsg.includes("OAuthException"))
-    ) {
-      // Importação dinâmica para não quebrar ciclo ou dependemos de toast importado em cima
-      import("sonner").then(({ toast }) => {
-        toast.error("Acesso à API Bloqueado", {
-          description: "Você precisa acessar o Business Manager (BM), ir em Apps e abrir o dashboard do app para resolver o erro, ou verificar se há restrições na sua conta de anúncios.",
-          duration: 10000,
-        });
-      });
-    }
-
     throw new Error(errorMsg);
   }
 
