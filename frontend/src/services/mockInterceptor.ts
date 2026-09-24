@@ -537,7 +537,7 @@ export async function getMockData(endpoint: string, _options?: any): Promise<any
     } else if (msg.includes("relatório") || msg.includes("resumo")) {
       response = `## 📋 Relatório Geral — Hoje\n\n**Desempenho Atual:**\n- Faturamento: **R$ 137.250**\n- Gastos: R$ 46.350\n- Lucro: **R$ 90.900** (margem 66%)\n- Vendas: 981\n- ROAS médio: **3,06x**\n\n**Destaques:**\n✅ Mentoria Premium com ROAS 4,0x — escale com prioridade\n⚠️ Curso Marketing com ROAS 2,86 — revisar criativos\n🔴 PLR Bundle Pack pausado — aguardando otimização\n\n**Recomendação do dia:** Aloque mais verba na Mentoria Premium e teste novos criativos UGC no Curso Marketing Digital.`;
     } else {
-      response = `Olá! Sou a **LOG POSE AI**, sua assistente de análise de campanhas. 🧭\n\nPosso te ajudar com:\n\n- 📊 **Análise de ROAS, CPA e métricas** das suas campanhas\n- 🎯 **Recomendações** de quais campanhas escalar ou pausar\n- 💡 **Insights sobre criativos** de melhor desempenho\n- 📋 **Relatórios resumidos** da operação\n- 🚀 **Estratégias de escala** segura\n\nMe pergunte algo como: *"Qual campanha tem melhor ROAS?"*, *"O que devo pausar?"* ou *"Como posso escalar?"*`;
+      response = `Olá! Sou a **SFY AI**, sua assistente de análise de campanhas. 🧭\n\nPosso te ajudar com:\n\n- 📊 **Análise de ROAS, CPA e métricas** das suas campanhas\n- 🎯 **Recomendações** de quais campanhas escalar ou pausar\n- 💡 **Insights sobre criativos** de melhor desempenho\n- 📋 **Relatórios resumidos** da operação\n- 🚀 **Estratégias de escala** segura\n\nMe pergunte algo como: *"Qual campanha tem melhor ROAS?"*, *"O que devo pausar?"* ou *"Como posso escalar?"*`;
     }
 
     return { response };
@@ -546,7 +546,7 @@ export async function getMockData(endpoint: string, _options?: any): Promise<any
   if (path === "/gemini/daily-report") {
     return {
       spend_today: 1580,
-      response: `## 🌅 Relatório Diário — Log Pose AI\n\n**Bom dia!** Aqui está o resumo de hoje:\n\n### 💰 Financeiro\n- **Faturamento:** R$ 4.890\n- **Gasto:** R$ 1.580\n- **Lucro estimado:** R$ 3.310\n- **ROAS do dia:** 3,09x\n\n### 🏆 Destaques\n1. **Mentoria Premium** — melhor ROAS do dia (4,1x) ✅\n2. **Lançamento VIP** — CPA de R$ 41 (abaixo da meta) ✅\n3. **Curso Marketing** — ROAS em queda (2,7x) ⚠️\n\n### 📌 Ações Recomendadas\n- Aumentar orçamento da **Mentoria Premium** em 20%\n- Revisar criativos do **Curso Marketing Digital**\n- Pausar conjunto "Broad 18-55" (ROAS 2,07x)\n\n> Quer que eu execute alguma dessas ações?`,
+      response: `## 🌅 Relatório Diário — SFY AI\n\n**Bom dia!** Aqui está o resumo de hoje:\n\n### 💰 Financeiro\n- **Faturamento:** R$ 4.890\n- **Gasto:** R$ 1.580\n- **Lucro estimado:** R$ 3.310\n- **ROAS do dia:** 3,09x\n\n### 🏆 Destaques\n1. **Mentoria Premium** — melhor ROAS do dia (4,1x) ✅\n2. **Lançamento VIP** — CPA de R$ 41 (abaixo da meta) ✅\n3. **Curso Marketing** — ROAS em queda (2,7x) ⚠️\n\n### 📌 Ações Recomendadas\n- Aumentar orçamento da **Mentoria Premium** em 20%\n- Revisar criativos do **Curso Marketing Digital**\n- Pausar conjunto "Broad 18-55" (ROAS 2,07x)\n\n> Quer que eu execute alguma dessas ações?`,
     };
   }
 

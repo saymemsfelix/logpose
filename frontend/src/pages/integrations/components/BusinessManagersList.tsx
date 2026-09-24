@@ -57,7 +57,7 @@ export function BusinessManagersList({
       setTogglingId(acc.account_id);
       await onToggleAccount(acc, newActive);
       if (newActive) {
-        toast.success(`Conta "${acc.name}" ativada no Log Pose!`);
+        toast.success(`Conta "${acc.name}" ativada no SFY!`);
       } else {
         toast.info(`Conta "${acc.name}" desativada.`);
       }

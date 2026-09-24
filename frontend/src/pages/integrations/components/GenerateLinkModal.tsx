@@ -82,7 +82,7 @@ export function GenerateLinkModal({
               Como funciona o link externo?
             </div>
             <p>
-              Ao abrir este link, o usuário é convidado a autorizar o acesso aos anúncios no Facebook. Assim que a autorização é finalizada, as contas de anúncio entram automaticamente neste seu Workspace do Log Pose!
+              Ao abrir este link, o usuário é convidado a autorizar o acesso aos anúncios no Facebook. Assim que a autorização é finalizada, as contas de anúncio entram automaticamente neste seu Workspace do SFY!
             </p>
           </div>
         </div>

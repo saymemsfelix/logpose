@@ -162,7 +162,7 @@ export function ConnectFacebookModal({
                   className="font-mono text-xs"
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  O Log Pose consulta a Meta API com esse token e agrupa todas as suas BMs e contas de anúncio automaticamente.
+                  O SFY consulta a Meta API com esse token e agrupa todas as suas BMs e contas de anúncio automaticamente.
                 </p>
               </div>
 

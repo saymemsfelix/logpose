@@ -131,7 +131,7 @@ export function LogPoseCountry({ countries = [], hideValues = false }: LogPoseCo
   return (
     <div className="rounded-xl border border-zinc-200/80 bg-white dark:border-zinc-800/80 dark:bg-[#0f172a]/60 backdrop-blur-sm flex h-full min-w-0 flex-col p-4 sm:p-5 shadow-xs">
       <div className="text-[17px] font-bold tracking-tight">
-        <span className="text-zinc-900 dark:text-white">LogPose </span>
+        <span className="text-zinc-900 dark:text-white">SFY </span>
         <span className="inline-block bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-400 bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(59,130,246,0.35)]">
           Country
         </span>

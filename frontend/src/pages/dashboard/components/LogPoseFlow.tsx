@@ -63,7 +63,7 @@ export function LogPoseFlow({ flow }: LogPoseFlowProps) {
       <div className="flex items-center justify-between">
         <div>
           <div className="text-[17px] font-bold tracking-tight">
-            <span className="text-zinc-900 dark:text-white">LogPose </span>
+            <span className="text-zinc-900 dark:text-white">SFY </span>
             <span className="inline-block bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-400 bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(59,130,246,0.35)]">
               Flow
             </span>

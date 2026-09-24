@@ -70,7 +70,7 @@ export function TutorialModal({ open, onOpenChange, onOpenConnect }: TutorialMod
             <ol className="list-decimal list-inside space-y-1 text-[12px] text-muted-foreground pl-1">
               <li>Acesse o <strong>Graph API Explorer</strong> no Meta for Developers.</li>
               <li>Selecione as permissões: <code className="rounded bg-muted px-1.5 py-0.5 text-blue-400">ads_read</code>, <code className="rounded bg-muted px-1.5 py-0.5 text-blue-400">read_insights</code> e <code className="rounded bg-muted px-1.5 py-0.5 text-blue-400">business_management</code>.</li>
-              <li>Gere o token e cole no botão &quot;Conectar via Token&quot;. O Log Pose listará todas as BMs e contas vinculadas àquele token automaticamente!</li>
+              <li>Gere o token e cole no botão &quot;Conectar via Token&quot;. O SFY listará todas as BMs e contas vinculadas àquele token automaticamente!</li>
             </ol>
             <div className="pt-2">
               <a
@@ -89,7 +89,7 @@ export function TutorialModal({ open, onOpenChange, onOpenConnect }: TutorialMod
           <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-[12px] text-amber-300/90">
             <RiShieldKeyholeLine className="size-4.5 shrink-0 text-amber-400 mt-0.5" />
             <p>
-              O Log Pose apenas lê métricas de desempenho (gasto, cliques, impressões, vendas). Nós nunca alteramos ou criamos cobranças em suas contas sem a sua ação explícita.
+              O SFY apenas lê métricas de desempenho (gasto, cliques, impressões, vendas). Nós nunca alteramos ou criamos cobranças em suas contas sem a sua ação explícita.
             </p>
           </div>
         </div>
