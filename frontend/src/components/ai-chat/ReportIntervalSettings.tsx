@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
-const INTERVAL_KEY = "logpose-report-interval";
+const INTERVAL_KEY = "sfy-report-interval";
 const DEFAULT_INTERVAL = 60; // minutes
 
 export function getReportIntervalMs(): number {

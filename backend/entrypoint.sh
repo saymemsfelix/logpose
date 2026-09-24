@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "=== Log Pose Starting ==="
+echo "=== SFY Starting ==="
 echo "Running database migrations..."
 
 # Execute the main command

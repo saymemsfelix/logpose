@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { geminiDailyReport } from "@/services/integrations";
 import { getReportIntervalMs } from "./ReportIntervalSettings";
 
-const REPORT_TIMESTAMP_KEY = "logpose-daily-report-ts";
-const REPORT_CACHE_KEY = "logpose-daily-report-cache";
+const REPORT_TIMESTAMP_KEY = "sfy-daily-report-ts";
+const REPORT_CACHE_KEY = "sfy-daily-report-cache";
 const MIN_SPEND = 50; // R$50 mínimo de gastos
 const MIN_HOUR = 8; // Só gera após 08:00
 

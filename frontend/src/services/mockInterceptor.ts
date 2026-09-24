@@ -154,8 +154,8 @@ export async function getMockData(endpoint: string, _options?: any): Promise<any
         products: [{ id: 1, name: "Produto Mock" }],
         platforms: [{ value: "kiwify", label: "Kiwify" }],
         accounts: [
-          { slug: "act_123456789", name: "Log Pose - Oficial", platform: "facebook" },
-          { slug: "act_987654321", name: "Log Pose - Secundária", platform: "facebook" }
+          { slug: "act_123456789", name: "SFY - Oficial", platform: "facebook" },
+          { slug: "act_987654321", name: "SFY - Secundária", platform: "facebook" }
         ],
         upsells: [],
         campaigns: ["Campanha Mock"]
@@ -195,8 +195,8 @@ export async function getMockData(endpoint: string, _options?: any): Promise<any
         products: [{ id: 1, name: "Produto Mock" }],
         platforms: [{ value: "kiwify", label: "Kiwify" }],
         accounts: [
-          { slug: "act_123456789", name: "Log Pose - Oficial", platform: "facebook" },
-          { slug: "act_987654321", name: "Log Pose - Secundária", platform: "facebook" }
+          { slug: "act_123456789", name: "SFY - Oficial", platform: "facebook" },
+          { slug: "act_987654321", name: "SFY - Secundária", platform: "facebook" }
         ],
         upsells: []
       };
@@ -407,15 +407,15 @@ export async function getMockData(endpoint: string, _options?: any): Promise<any
 
   if (path === "/facebook/accounts") {
     return [
-      { id: 1, label: "Log Pose - Oficial", account_id: "act_123456789", access_token: "mock_token_1", created_at: "2026-01-01T00:00:00" },
-      { id: 2, label: "Log Pose - Secundária", account_id: "act_987654321", access_token: "mock_token_2", created_at: "2026-02-01T00:00:00" },
+      { id: 1, label: "SFY - Oficial", account_id: "act_123456789", access_token: "mock_token_1", created_at: "2026-01-01T00:00:00" },
+      { id: 2, label: "SFY - Secundária", account_id: "act_987654321", access_token: "mock_token_2", created_at: "2026-02-01T00:00:00" },
     ];
   }
 
   if (path.startsWith("/users")) {
     return [
-      { id: 1, name: "Admin", email: "admin@logpose.com", role: "owner", status: "active", invite_token: null, created_at: "2026-01-01T00:00:00" },
-      { id: 2, name: "Gestor", email: "gestor@logpose.com", role: "admin", status: "active", invite_token: null, created_at: "2026-02-01T00:00:00" }
+      { id: 1, name: "Admin", email: "admin@sfy.com", role: "owner", status: "active", invite_token: null, created_at: "2026-01-01T00:00:00" },
+      { id: 2, name: "Gestor", email: "gestor@sfy.com", role: "admin", status: "active", invite_token: null, created_at: "2026-02-01T00:00:00" }
     ];
   }
 
@@ -434,7 +434,7 @@ export async function getMockData(endpoint: string, _options?: any): Promise<any
   if (path === "/campaigns/create/pixels") {
     return {
       pixels: [
-        { id: "px_1234567890", name: "Pixel Principal - Log Pose", last_fired_time: "2026-05-01T14:30:00" },
+        { id: "px_1234567890", name: "Pixel Principal - SFY", last_fired_time: "2026-05-01T14:30:00" },
         { id: "px_0987654321", name: "Pixel Secundário - Checkout", last_fired_time: "2026-04-30T22:10:00" },
       ],
     };
@@ -445,18 +445,18 @@ export async function getMockData(endpoint: string, _options?: any): Promise<any
       pages: [
         {
           id: "pg_111222333",
-          name: "Log Pose Oficial",
-          picture: { data: { url: "https://ui-avatars.com/api/?name=Log+Pose&background=6366f1&color=fff&size=64" } },
+          name: "SFY Oficial",
+          picture: { data: { url: "https://ui-avatars.com/api/?name=SFY&background=6366f1&color=fff&size=64" } },
         },
         {
           id: "pg_444555666",
-          name: "Log Pose - Marketing Digital",
+          name: "SFY - Marketing Digital",
           picture: { data: { url: "https://ui-avatars.com/api/?name=Marketing&background=10b981&color=fff&size=64" } },
         },
       ],
       instagram_accounts: [
-        { id: "ig_999888777", username: "logpose.oficial", profile_pic: "https://ui-avatars.com/api/?name=LP&background=e879f9&color=fff&size=64" },
-        { id: "ig_666555444", username: "logpose.marketing", profile_pic: "https://ui-avatars.com/api/?name=LM&background=f59e0b&color=fff&size=64" },
+        { id: "ig_999888777", username: "sfy.oficial", profile_pic: "https://ui-avatars.com/api/?name=SFY&background=e879f9&color=fff&size=64" },
+        { id: "ig_666555444", username: "sfy.marketing", profile_pic: "https://ui-avatars.com/api/?name=SM&background=f59e0b&color=fff&size=64" },
       ],
     };
   }
@@ -492,8 +492,8 @@ export async function getMockData(endpoint: string, _options?: any): Promise<any
       ads_created: 2,
       errors: [],
       account_results: [
-        { account_id: 1, account_label: "Log Pose - Oficial", success: true, campaigns_created: 1, ads_created: 1, errors: [] },
-        { account_id: 2, account_label: "Log Pose - Secundária", success: true, campaigns_created: 1, ads_created: 1, errors: [] },
+        { account_id: 1, account_label: "SFY - Oficial", success: true, campaigns_created: 1, ads_created: 1, errors: [] },
+        { account_id: 2, account_label: "SFY - Secundária", success: true, campaigns_created: 1, ads_created: 1, errors: [] },
       ],
     };
   }
@@ -510,7 +510,7 @@ export async function getMockData(endpoint: string, _options?: any): Promise<any
 
   if (path === "/gemini/accounts") {
     return [
-      { id: 1, name: "Log Pose AI", api_key: "AIza***mock***", model: "gemini-2.0-flash", created_at: "2026-01-10T00:00:00" },
+      { id: 1, name: "SFY AI", api_key: "AIza***mock***", model: "gemini-2.0-flash", created_at: "2026-01-10T00:00:00" },
     ];
   }
 

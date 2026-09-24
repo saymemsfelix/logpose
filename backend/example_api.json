@@ -5,7 +5,7 @@
     "status": "Status da transação: 'approved' | 'pending' | 'refunded' | 'chargeback' | 'trial'",
     "amount": "Valor recebido em reais (float). Ex: 197.00",
     "product_external_id": "ID do produto no seu sistema.",
-    "product_name": "Nome do produto (deve bater com os cadastrados no Log Pose para vínculo).",
+    "product_name": "Nome do produto (deve bater com os cadastrados no SFY para vínculo).",
     "customer_email": "E-mail do comprador (obrigatório).",
     "customer_name": "Nome completo do comprador (opcional).",
     "customer_cpf": "CPF do comprador, apenas números (opcional).",

@@ -1,7 +1,7 @@
 """
 Descobre e sincroniza contas de anúncio de Business Managers (BM) e perfis da Meta.
 - overview: retorna perfil do usuário, BMs e todas as contas de anúncio com status ativo/inativo
-- toggle: ativa ou desativa uma conta no Log Pose com um simples switch
+- toggle: ativa ou desativa uma conta no SFY com um simples switch
 - disconnect: remove contas conectadas
 - oauth: gera URL de conexão oficial de 1 clique
 """
@@ -124,7 +124,7 @@ async def get_facebook_overview(
 ):
     """
     Retorna o perfil conectado, todas as BMs e contas de anúncio,
-    com status de ativação no Log Pose idêntico ao NexoFy.
+    com status de ativação no SFY idêntico ao NexoFy.
     """
     active_db_accounts = db.query(FacebookAccount).all()
     active_map = {acc.account_id: acc for acc in active_db_accounts}

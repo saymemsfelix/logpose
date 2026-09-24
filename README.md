@@ -1,9 +1,9 @@
 <div align="center">
   <!-- Substitua pelo link da imagem do banner/logo do App -->
-  <img src="/frontend/public/logo_dark.webp" alt="Banner do Log Pose" width="200" />
+  <img src="/frontend/public/logo_dark.webp" alt="Banner do SFY" width="200" />
 
-  <h1>Log Pose</h1>
-  <p>O dashboard definitivo para CEOs de Direct Response. Navegue pelos seus dados de tráfego e vendas com a precisão de um pirata rumo a Laugh Tale.</p>
+  <h1>SFY</h1>
+  <p>O dashboard definitivo para CEOs de Direct Response. Navegue pelos seus dados de tráfego e vendas com máxima precisão e lucro.</p>
 
   <p>
     <a href="#instalação-em-1-clique-recomendado"><b>Deploy Automático</b></a> •
@@ -17,9 +17,9 @@
 
 ## Sobre o Projeto
 
-**Log Pose** é uma solução Open Source focada em entregar máxima clareza financeira para operações de Direct Response. 
+**SFY** é uma solução completa focada em entregar máxima clareza financeira para operações de Direct Response. 
 
-O nome "Log Pose" é inspirado no instrumento de navegação do anime One Piece, essencial para navegar pelas águas caóticas da Grand Line. Da mesma forma, nosso app é o instrumento que indica a direção correta (campanhas, conjuntos e anúncios) que os gestores e CEOs devem seguir para encontrar o lucro verdadeiro da sua operação.
+O SFY é a ferramenta que indica a direção correta (campanhas, conjuntos e anúncios) que os gestores e CEOs devem seguir para encontrar o lucro verdadeiro da sua operação.
 
 Em poucos segundos, um CEO consegue visualizar a saúde financeira da operação através de uma interface desenhada para destacar os KPIs essenciais de forma clara, objetiva e com uma UI/UX de alto padrão.
 
@@ -35,7 +35,7 @@ Em poucos segundos, um CEO consegue visualizar a saúde financeira da operação
 
 ## Instalação em 1 Clique (Recomendado)
 
-A maneira mais rápida e segura de colocar o **Log Pose** no ar. Essa opção configura automaticamente seu banco de dados, gera os certificados de segurança (SSL) e roteia o seu domínio personalizado em poucos segundos, colocando o app em ambiente de produção sem dor de cabeça.
+A maneira mais rápida e segura de colocar o **SFY** no ar. Essa opção configura automaticamente seu banco de dados, gera os certificados de segurança (SSL) e roteia o seu domínio personalizado em poucos segundos, colocando o app em ambiente de produção sem dor de cabeça.
 
 [➡️ Clique aqui para instalar em 1 clique](https://ilumin.app/?src=logpose)
 

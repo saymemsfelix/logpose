@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardHeader } from "./components/DashboardHeader";
 import { NexoKpisGrid } from "./components/NexoKpisGrid";
-import { LogPoseFlow } from "./components/LogPoseFlow";
+import { SfyFlow } from "./components/SfyFlow";
 import { CommercialCards } from "./components/CommercialCards";
-import { LogPoseCountry } from "./components/LogPoseCountry";
+import { SfyCountry } from "./components/SfyCountry";
 import { CampaignsPerformanceTable } from "./components/CampaignsPerformanceTable";
 import { HourlyProfitChart } from "./components/HourlyProfitChart";
 import { GoalsCards } from "./components/GoalsCards";
@@ -88,8 +88,8 @@ export default function DashboardPage() {
           {/* 3. Grid dos 12 KPIs Principais */}
           <NexoKpisGrid kpis={data.kpis} hideAllValues={hideValues} />
 
-          {/* 4. LogPose Flow: Funil de Conversão em Tempo Real */}
-          <LogPoseFlow flow={data.conversion_flow} />
+          {/* 4. SFY Flow: Funil de Conversão em Tempo Real */}
+          <SfyFlow flow={data.conversion_flow} />
 
           {/* 5. Três Cards Comerciais (UTMs, Produtos, Pagamentos) */}
           <CommercialCards
@@ -99,10 +99,10 @@ export default function DashboardPage() {
             hideValues={hideValues}
           />
 
-          {/* 6. Linha Dupla: LogPose Country (3D Globe) + Desempenho por Campanha */}
+          {/* 6. Linha Dupla: SFY Country (3D Globe) + Desempenho por Campanha */}
           <div className="grid gap-6 grid-cols-1 lg:grid-cols-12 items-stretch">
             <div className="lg:col-span-6 min-w-0">
-              <LogPoseCountry countries={data.countries} hideValues={hideValues} />
+              <SfyCountry countries={data.countries} hideValues={hideValues} />
             </div>
             <div className="lg:col-span-6 min-w-0">
               <CampaignsPerformanceTable

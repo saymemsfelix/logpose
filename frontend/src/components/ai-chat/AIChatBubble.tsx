@@ -7,7 +7,7 @@ import { ReportIntervalSettings } from "./ReportIntervalSettings";
 import { geminiChat, executeAiAction, type AiAction } from "@/services/integrations";
 import { usePageDataValue } from "@/contexts/PageDataContext";
 
-const STORAGE_KEY = "logpose-ai-chat";
+const STORAGE_KEY = "sfy-ai-chat";
 
 interface ChatMessage {
   role: "user" | "assistant";

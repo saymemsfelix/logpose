@@ -8,7 +8,7 @@ interface GoalsCardsProps {
 
 export function GoalsCards({ currentMonthlyRevenue = 0, hideValues = false }: GoalsCardsProps) {
   const [monthlyGoal, setMonthlyGoal] = useState<number>(() => {
-    const saved = localStorage.getItem("logpose_monthly_goal");
+    const saved = localStorage.getItem("sfy_monthly_goal") || localStorage.getItem("logpose_monthly_goal");
     return saved ? parseFloat(saved) : 0;
   });
 
@@ -17,7 +17,7 @@ export function GoalsCards({ currentMonthlyRevenue = 0, hideValues = false }: Go
 
   useEffect(() => {
     if (monthlyGoal > 0) {
-      localStorage.setItem("logpose_monthly_goal", String(monthlyGoal));
+      localStorage.setItem("sfy_monthly_goal", String(monthlyGoal));
     }
   }, [monthlyGoal]);
 

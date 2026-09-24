@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-const SESSION_KEY = "logpose_intro_shown";
+const SESSION_KEY = "sfy_intro_shown";
 
 export function IntroVideo() {
   const [visible, setVisible] = useState(false);

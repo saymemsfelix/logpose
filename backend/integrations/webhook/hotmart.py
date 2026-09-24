@@ -28,7 +28,7 @@ def _map_hotmart_status(event_name: str, purchase_status: str) -> TransactionSta
 def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebhookEvent]:
     """
     Parsea o payload do Webhook da Hotmart (formato 2.0 / Postback)
-    e retorna no formato StandardizedWebhookEvent do Log Pose.
+    e retorna no formato StandardizedWebhookEvent do SFY.
     """
     try:
         event_name = payload.get("event") or ""
