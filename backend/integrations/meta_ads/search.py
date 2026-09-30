@@ -164,6 +164,31 @@ async def fetch_pages(
     except Exception as e:
         logger.warning(f"Erro em /me/accounts: {e}")
 
+    # 2.5 Buscar páginas de todas as BMs vinculadas ao perfil (/me/businesses)
+    try:
+        url_biz = f"{GRAPH_API_BASE}/me/businesses"
+        async with httpx.AsyncClient(timeout=10.0) as http:
+            resp_biz = await http.get(url_biz, params={"access_token": access_token, "limit": "50"})
+            if resp_biz.status_code == 200:
+                for b in resp_biz.json().get("data", []):
+                    b_id = b.get("id")
+                    if b_id:
+                        for edge in ("owned_pages", "client_pages"):
+                            try:
+                                url_p = f"{GRAPH_API_BASE}/{b_id}/{edge}"
+                                resp_p = await http.get(
+                                    url_p,
+                                    params={"access_token": access_token, "fields": "id,name,picture{url}", "limit": "50"}
+                                )
+                                if resp_p.status_code == 200:
+                                    for p in resp_p.json().get("data", []):
+                                        if p.get("id"):
+                                            pages[str(p["id"])] = p
+                            except Exception:
+                                pass
+    except Exception as e:
+        logger.warning(f"Erro ao buscar /me/businesses: {e}")
+
     # 3. Páginas via Business Manager (owned + client)
     biz_id = business_id or await _get_business_id(access_token, ad_account_id)
     if biz_id:

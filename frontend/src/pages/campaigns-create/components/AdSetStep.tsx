@@ -103,6 +103,7 @@ export function AdSetStep({
               pixels={pixels} pages={pages} instagramAccounts={instagramAccounts}
               isLoading={isMetaLoading}
               onRefresh={onRefreshMeta}
+              accountId={form.accountIds[0]}
             />
           )}
 

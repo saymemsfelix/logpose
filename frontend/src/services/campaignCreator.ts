@@ -61,9 +61,24 @@ export interface PagesResponse {
   instagram_accounts: InstagramAccount[];
 }
 
-export async function fetchPages(accountId: number): Promise<PagesResponse> {
+export async function fetchPages(accountId: number, businessId?: string): Promise<PagesResponse> {
+  const query = businessId ? `&business_id=${encodeURIComponent(businessId)}` : "";
   return apiRequest<PagesResponse>(
-    `/campaigns/create/pages?account_id=${accountId}`
+    `/campaigns/create/pages?account_id=${accountId}${query}`
+  );
+}
+
+export interface SearchMetaResponse {
+  pages: PageData[];
+  pixels: PixelData[];
+}
+
+export async function searchMetaAssets(
+  accountId: number,
+  query: string
+): Promise<SearchMetaResponse> {
+  return apiRequest<SearchMetaResponse>(
+    `/campaigns/create/search-meta?account_id=${accountId}&query=${encodeURIComponent(query)}`
   );
 }
 

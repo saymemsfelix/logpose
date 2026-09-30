@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -11,15 +10,18 @@ import {
 } from "@/components/ui/select";
 import {
   RiRefreshLine,
-  RiEdit2Line,
-  RiListCheck3,
-  RiInformationLine,
   RiInstagramLine,
-  RiFacebookCircleLine,
+  RiFacebookCircleFill,
   RiFocus2Line,
+  RiExchangeLine,
+  RiCloseLine,
+  RiAddLine,
+  RiShieldCheckLine,
 } from "@remixicon/react";
 import type { CampaignFormState } from "../hooks/useCampaignForm";
 import type { PixelData, PageData, InstagramAccount } from "@/services/campaignCreator";
+import { PageSelectorModal } from "./PageSelectorModal";
+import { PixelSelectorModal } from "./PixelSelectorModal";
 
 interface SharedMetaSelectorsProps {
   form: CampaignFormState;
@@ -29,46 +31,46 @@ interface SharedMetaSelectorsProps {
   instagramAccounts: InstagramAccount[];
   isLoading?: boolean;
   onRefresh?: () => void;
+  accountId?: number;
 }
 
 export function SharedMetaSelectors({
   form,
   onUpdate,
-  pixels,
-  pages,
+  pixels: initialPixels,
+  pages: initialPages,
   instagramAccounts,
   isLoading = false,
   onRefresh,
+  accountId,
 }: SharedMetaSelectorsProps) {
-  const [manualPixel, setManualPixel] = useState(false);
-  const [manualPage, setManualPage] = useState(false);
-  const [manualIg, setManualIg] = useState(false);
+  const [pagesList, setPagesList] = useState<PageData[]>(initialPages);
+  const [pixelsList, setPixelsList] = useState<PixelData[]>(initialPixels);
+  const [isPageModalOpen, setIsPageModalOpen] = useState(false);
+  const [isPixelModalOpen, setIsPixelModalOpen] = useState(false);
 
-  // Auto-seleciona primeiro Pixel se disponível e form ainda não possui
   useEffect(() => {
-    if (!form.pixelId && pixels.length > 0 && !manualPixel) {
-      onUpdate("pixelId", pixels[0].id);
-    }
-  }, [pixels, form.pixelId, manualPixel, onUpdate]);
+    if (initialPages.length > 0) setPagesList(initialPages);
+  }, [initialPages]);
 
-  // Auto-seleciona primeira Página se disponível e form ainda não possui
   useEffect(() => {
-    if (!form.pageId && pages.length > 0 && !manualPage) {
-      onUpdate("pageId", pages[0].id);
-      onUpdate("pageLabel", pages[0].name);
-    }
-  }, [pages, form.pageId, manualPage, onUpdate]);
+    if (initialPixels.length > 0) setPixelsList(initialPixels);
+  }, [initialPixels]);
 
-  const hasPixels = pixels.length > 0;
-  const hasPages = pages.length > 0;
-  const isPixelManualActive = manualPixel || !hasPixels;
-  const isPageManualActive = manualPage || !hasPages;
+  // Busca o nome do pixel selecionado
+  const selectedPixel = pixelsList.find((p) => p.id === form.pixelId);
+  const pixelDisplayName = selectedPixel?.name || (form.pixelId ? `Pixel (${form.pixelId})` : "");
+
+  // Busca o nome e avatar da página selecionada
+  const selectedPage = pagesList.find((p) => p.id === form.pageId);
+  const pageDisplayName = form.pageLabel || selectedPage?.name || (form.pageId ? `Página (${form.pageId})` : "");
+  const pageAvatarUrl = selectedPage?.picture?.data?.url;
 
   return (
     <div className="space-y-3">
       {/* Top Header com Status e Botão Recarregar */}
       <div className="flex items-center justify-between text-xs text-muted-foreground pb-1">
-        <span className="flex items-center gap-1 font-medium text-foreground">
+        <span className="flex items-center gap-1.5 font-medium text-foreground">
           <RiFocus2Line className="size-3.5 text-primary" />
           Vínculos Meta (Pixel, Página e Instagram)
         </span>
@@ -88,240 +90,249 @@ export function SharedMetaSelectors({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* 1. Pixel */}
+        {/* 1. Pixel / Dataset */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <Label className="text-xs font-medium flex items-center gap-1">
+              <RiFocus2Line className="size-3.5 text-emerald-400" />
               Pixel / Dataset
             </Label>
-            {hasPixels && (
+            {form.pixelId && (
               <button
                 type="button"
-                onClick={() => setManualPixel(!manualPixel)}
-                className="text-[11px] text-primary hover:underline flex items-center gap-0.5"
+                onClick={() => setIsPixelModalOpen(true)}
+                className="text-[11px] text-emerald-400 hover:underline flex items-center gap-0.5 font-medium"
               >
-                {manualPixel ? (
-                  <>
-                    <RiListCheck3 className="size-3" /> Ver lista
-                  </>
-                ) : (
-                  <>
-                    <RiEdit2Line className="size-3" /> Digitar ID
-                  </>
-                )}
+                <RiExchangeLine className="size-3" /> Alterar
               </button>
             )}
           </div>
 
-          {isPixelManualActive ? (
-            <div className="space-y-1">
-              <Input
-                placeholder="Ex: 949690764845924"
-                value={form.pixelId}
-                onChange={(e) => onUpdate("pixelId", e.target.value.trim())}
-                className="font-mono text-xs h-9"
-              />
-              <p className="text-[10.5px] text-muted-foreground flex items-center gap-1">
-                <RiInformationLine className="size-3 shrink-0 text-amber-500" />
-                {!hasPixels
-                  ? "Nenhum pixel listado pela API. Digite o ID do Pixel/Dataset da Meta."
-                  : "Modo manual: ID informado será usado no conjunto."}
-              </p>
+          {form.pixelId ? (
+            /* Card do Pixel Selecionado */
+            <div className="p-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/5 flex items-center justify-between gap-2 shadow-sm">
+              <div className="flex items-center gap-2.5 overflow-hidden">
+                <div className="size-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                  <RiFocus2Line className="size-4 text-emerald-400" />
+                </div>
+                <div className="overflow-hidden">
+                  <p className="text-xs font-semibold text-white truncate">
+                    {pixelDisplayName}
+                  </p>
+                  <p className="text-[10px] font-mono text-emerald-400/80">
+                    ID: {form.pixelId}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  type="button"
+                  size="icon-xs"
+                  variant="ghost"
+                  onClick={() => setIsPixelModalOpen(true)}
+                  className="size-6 text-slate-400 hover:text-white"
+                  title="Alterar Pixel"
+                >
+                  <RiExchangeLine className="size-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  size="icon-xs"
+                  variant="ghost"
+                  onClick={() => onUpdate("pixelId", "")}
+                  className="size-6 text-slate-400 hover:text-red-400"
+                  title="Remover Pixel"
+                >
+                  <RiCloseLine className="size-3.5" />
+                </Button>
+              </div>
             </div>
           ) : (
-            <Select
-              value={form.pixelId}
-              onValueChange={(v) => {
-                if (v === "__manual__") {
-                  setManualPixel(true);
-                  onUpdate("pixelId", "");
-                } else {
-                  onUpdate("pixelId", v);
-                }
-              }}
+            /* Botão para abrir o Pop-up de Pixel */
+            <button
+              type="button"
+              onClick={() => setIsPixelModalOpen(true)}
+              className="w-full h-12 rounded-xl border border-dashed border-emerald-500/30 hover:border-emerald-500/60 bg-emerald-500/5 hover:bg-emerald-500/10 transition-colors flex items-center justify-center gap-2 px-3 text-left group"
             >
-              <SelectTrigger className="w-full text-xs h-9">
-                <SelectValue placeholder="Selecione o Pixel" />
-              </SelectTrigger>
-              <SelectContent>
-                {pixels.map((p) => (
-                  <SelectItem key={p.id} value={p.id} className="text-xs">
-                    {p.name} ({p.id})
-                  </SelectItem>
-                ))}
-                <SelectItem value="__manual__" className="text-xs text-primary font-medium">
-                  + Digitar outro ID de Pixel manualmente
-                </SelectItem>
-              </SelectContent>
-            </Select>
+              <div className="size-6 rounded-md bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shrink-0 text-emerald-400">
+                <RiAddLine className="size-4" />
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <p className="text-xs font-medium text-slate-200 group-hover:text-white transition-colors">
+                  Selecionar Pixel / Dataset
+                </p>
+                <p className="text-[10px] text-slate-400 truncate">
+                  Clique para abrir a lista ou buscar por BM
+                </p>
+              </div>
+            </button>
           )}
         </div>
 
-        {/* 2. Página do Facebook */}
+        {/* 2. Página do Facebook (com Pop-up estilo Meta Ads) */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <Label className="text-xs font-medium flex items-center gap-1">
-              <RiFacebookCircleLine className="size-3.5 text-[#1877F2]" />
+              <RiFacebookCircleFill className="size-3.5 text-[#1877F2]" />
               Página do Facebook
             </Label>
-            {hasPages && (
+            {form.pageId && (
               <button
                 type="button"
-                onClick={() => setManualPage(!manualPage)}
-                className="text-[11px] text-primary hover:underline flex items-center gap-0.5"
+                onClick={() => setIsPageModalOpen(true)}
+                className="text-[11px] text-[#1877F2] hover:underline flex items-center gap-0.5 font-medium"
               >
-                {manualPage ? (
-                  <>
-                    <RiListCheck3 className="size-3" /> Ver lista
-                  </>
-                ) : (
-                  <>
-                    <RiEdit2Line className="size-3" /> Digitar ID
-                  </>
-                )}
+                <RiExchangeLine className="size-3" /> Alterar
               </button>
             )}
           </div>
 
-          {isPageManualActive ? (
-            <div className="space-y-1">
-              <Input
-                placeholder="Ex: 102938475612345"
-                value={form.pageId}
-                onChange={(e) => {
-                  const val = e.target.value.trim();
-                  onUpdate("pageId", val);
-                  onUpdate("pageLabel", form.pageLabel || val);
-                }}
-                className="font-mono text-xs h-9"
-              />
-              <p className="text-[10.5px] text-muted-foreground flex items-center gap-1">
-                <RiInformationLine className="size-3 shrink-0 text-amber-500" />
-                {!hasPages
-                  ? "Nenhuma página listada pela API. Digite o ID numérico da sua Página."
-                  : "Modo manual: ID da página informado será usado nos anúncios."}
-              </p>
+          {form.pageId ? (
+            /* Card da Página Selecionada */
+            <div className="p-2.5 rounded-xl border border-[#1877F2]/40 bg-[#1877F2]/5 flex items-center justify-between gap-2 shadow-sm">
+              <div className="flex items-center gap-2.5 overflow-hidden">
+                {pageAvatarUrl ? (
+                  <img
+                    src={pageAvatarUrl}
+                    alt={pageDisplayName}
+                    className="size-7 rounded-full object-cover shrink-0 border border-white/10"
+                  />
+                ) : (
+                  <div className="size-7 rounded-full bg-[#1877F2]/10 border border-[#1877F2]/30 flex items-center justify-center shrink-0">
+                    <RiFacebookCircleFill className="size-4 text-[#1877F2]" />
+                  </div>
+                )}
+                <div className="overflow-hidden">
+                  <p className="text-xs font-semibold text-white truncate">
+                    {pageDisplayName}
+                  </p>
+                  <p className="text-[10px] font-mono text-[#1877F2]/90">
+                    ID: {form.pageId}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  type="button"
+                  size="icon-xs"
+                  variant="ghost"
+                  onClick={() => setIsPageModalOpen(true)}
+                  className="size-6 text-slate-400 hover:text-white"
+                  title="Alterar Página"
+                >
+                  <RiExchangeLine className="size-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  size="icon-xs"
+                  variant="ghost"
+                  onClick={() => {
+                    onUpdate("pageId", "");
+                    onUpdate("pageLabel", "");
+                  }}
+                  className="size-6 text-slate-400 hover:text-red-400"
+                  title="Remover Página"
+                >
+                  <RiCloseLine className="size-3.5" />
+                </Button>
+              </div>
             </div>
           ) : (
-            <Select
-              value={form.pageId}
-              onValueChange={(v) => {
-                if (v === "__manual__") {
-                  setManualPage(true);
-                  onUpdate("pageId", "");
-                } else {
-                  onUpdate("pageId", v);
-                  const page = pages.find((p) => p.id === v);
-                  onUpdate("pageLabel", page?.name ?? "");
-                }
-              }}
+            /* Botão para abrir o Pop-up de Página */
+            <button
+              type="button"
+              onClick={() => setIsPageModalOpen(true)}
+              className="w-full h-12 rounded-xl border border-dashed border-[#1877F2]/40 hover:border-[#1877F2]/70 bg-[#1877F2]/5 hover:bg-[#1877F2]/10 transition-colors flex items-center justify-center gap-2 px-3 text-left group"
             >
-              <SelectTrigger className="w-full text-xs h-9">
-                <SelectValue placeholder="Selecione a Página" />
-              </SelectTrigger>
-              <SelectContent>
-                {pages.map((p) => (
-                  <SelectItem key={p.id} value={p.id} className="text-xs">
-                    {p.name}
-                  </SelectItem>
-                ))}
-                <SelectItem value="__manual__" className="text-xs text-primary font-medium">
-                  + Digitar outro ID de Página manualmente
-                </SelectItem>
-              </SelectContent>
-            </Select>
+              <div className="size-6 rounded-md bg-[#1877F2]/10 border border-[#1877F2]/30 flex items-center justify-center shrink-0 text-[#1877F2]">
+                <RiAddLine className="size-4" />
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <p className="text-xs font-medium text-slate-200 group-hover:text-white transition-colors">
+                  Selecionar Página do Facebook
+                </p>
+                <p className="text-[10px] text-slate-400 truncate">
+                  Clique para abrir a lista ou buscar por BM
+                </p>
+              </div>
+            </button>
           )}
         </div>
 
         {/* 3. Instagram */}
         <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <Label className="text-xs font-medium flex items-center gap-1">
-              <RiInstagramLine className="size-3.5 text-pink-500" />
-              Instagram
-            </Label>
-            {manualIg && (
-              <button
-                type="button"
-                onClick={() => {
-                  setManualIg(false);
-                  onUpdate("instagramActorId", "page_backed");
-                  onUpdate("instagramLabel", "");
-                }}
-                className="text-[11px] text-primary hover:underline flex items-center gap-0.5"
-              >
-                <RiListCheck3 className="size-3" /> Ver opções
-              </button>
-            )}
-          </div>
+          <Label className="text-xs font-medium flex items-center gap-1">
+            <RiInstagramLine className="size-3.5 text-[#E4405F]" />
+            Instagram
+          </Label>
 
-          {manualIg ? (
-            <div className="space-y-1">
-              <Input
-                placeholder="ID numérico do perfil do Instagram"
-                value={form.instagramActorId === "page_backed" || form.instagramActorId === "no_instagram" ? "" : form.instagramActorId}
-                onChange={(e) => {
-                  const val = e.target.value.trim();
-                  onUpdate("instagramActorId", val);
-                  onUpdate("instagramLabel", val ? `@${val}` : "");
-                }}
-                className="font-mono text-xs h-9"
-              />
-              <p className="text-[10.5px] text-muted-foreground flex items-center gap-1">
-                <RiInformationLine className="size-3 shrink-0 text-amber-500" />
-                Digite o Instagram User ID (ex: 178414...)
-              </p>
-            </div>
-          ) : (
-            <Select
-              value={
-                form.instagramActorId === "no_instagram"
-                  ? "no_instagram"
-                  : form.instagramActorId && form.instagramActorId !== "none" && form.instagramActorId !== "page_backed"
-                  ? form.instagramActorId
-                  : "page_backed"
+          <Select
+            value={form.instagramActorId || "__use_page__"}
+            onValueChange={(v) => {
+              if (v === "__use_page__") {
+                onUpdate("instagramActorId", "");
+                onUpdate("instagramLabel", "Usar Página do Facebook");
+              } else if (v === "__none__") {
+                onUpdate("instagramActorId", "__none__");
+                onUpdate("instagramLabel", "Sem Instagram");
+              } else {
+                const ig = instagramAccounts.find((i) => i.id === v);
+                onUpdate("instagramActorId", v);
+                onUpdate("instagramLabel", ig ? `@${ig.username}` : `Instagram (${v})`);
               }
-              onValueChange={(v) => {
-                if (v === "__manual__") {
-                  setManualIg(true);
-                  onUpdate("instagramActorId", "");
-                  onUpdate("instagramLabel", "");
-                } else if (v === "no_instagram") {
-                  onUpdate("instagramActorId", "no_instagram");
-                  onUpdate("instagramLabel", "Sem Instagram (Apenas FB)");
-                } else if (v === "page_backed") {
-                  onUpdate("instagramActorId", "page_backed");
-                  onUpdate("instagramLabel", "Usar Página do Facebook");
-                } else {
-                  onUpdate("instagramActorId", v);
-                  const ig = instagramAccounts.find((a) => a.id === v);
-                  onUpdate("instagramLabel", ig ? `@${ig.username}` : "");
-                }
-              }}
-            >
-              <SelectTrigger className="w-full text-xs h-9">
-                <SelectValue placeholder="Selecione conta do Instagram" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="page_backed" className="text-xs">
-                  Usar Página do Facebook no Instagram (Recomendado)
+            }}
+          >
+            <SelectTrigger className="w-full text-xs h-12 rounded-xl bg-[#111827]/70 border-white/10">
+              <SelectValue placeholder="Selecione o Instagram" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#0c1220] border-white/10 text-white">
+              <SelectItem value="__use_page__" className="text-xs">
+                <div className="flex items-center gap-1.5">
+                  <RiShieldCheckLine className="size-3.5 text-emerald-400" />
+                  <span>Usar Página do Facebook no Instagram (Recomendado)</span>
+                </div>
+              </SelectItem>
+              {instagramAccounts.map((ig) => (
+                <SelectItem key={ig.id} value={ig.id} className="text-xs">
+                  @{ig.username} ({ig.id})
                 </SelectItem>
-                {instagramAccounts.map((ig) => (
-                  <SelectItem key={ig.id} value={ig.id} className="text-xs">
-                    @{ig.username} (Conta Conectada)
-                  </SelectItem>
-                ))}
-                <SelectItem value="no_instagram" className="text-xs text-muted-foreground">
-                  Não anunciar no Instagram (Apenas Facebook)
-                </SelectItem>
-                <SelectItem value="__manual__" className="text-xs text-primary font-medium">
-                  + Digitar ID de Instagram manualmente
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          )}
+              ))}
+              <SelectItem value="__none__" className="text-xs text-slate-400">
+                Não anunciar no Instagram (Apenas Facebook)
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
+
+      {/* Pop-up Modal de Seleção de Página do Facebook */}
+      <PageSelectorModal
+        open={isPageModalOpen}
+        onOpenChange={setIsPageModalOpen}
+        pages={pagesList}
+        selectedPageId={form.pageId}
+        accountId={accountId}
+        onSelectPage={(pageId, pageName) => {
+          onUpdate("pageId", pageId);
+          onUpdate("pageLabel", pageName);
+        }}
+        onPagesUpdated={(updatedPages) => setPagesList(updatedPages)}
+      />
+
+      {/* Pop-up Modal de Seleção de Pixel / Dataset */}
+      <PixelSelectorModal
+        open={isPixelModalOpen}
+        onOpenChange={setIsPixelModalOpen}
+        pixels={pixelsList}
+        selectedPixelId={form.pixelId}
+        accountId={accountId}
+        onSelectPixel={(pixelId) => {
+          onUpdate("pixelId", pixelId);
+        }}
+        onPixelsUpdated={(updatedPixels) => setPixelsList(updatedPixels)}
+      />
     </div>
   );
 }
