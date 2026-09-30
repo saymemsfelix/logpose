@@ -1,9 +1,12 @@
-const CACHE_NAME = 'ninjastracker-v1';
+const CACHE_NAME = 'ninjastracker-v2';
 
 const STATIC_ASSETS = [
   '/',
   '/dashboard',
   '/manifest.json',
+  '/logo_dark.webp',
+  '/logo_light.webp',
+  '/favicon.webp',
   '/icons/pwa-192.png',
   '/icons/pwa-512.png',
 ];
@@ -18,7 +21,7 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate: purge ALL old caches (including any logpose-* caches)
+// Activate: purge ALL old caches (including any logpose-* or sfy-* caches)
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -34,7 +37,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch: network-first para tudo para garantir que atualizações do SFY apareçam imediatamente
+// Fetch: network-first para tudo para garantir que atualizações apareçam imediatamente
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -54,10 +57,13 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(() => {
-        return caches.match(request).then((cached) => {
+        return caches.match(request, { ignoreSearch: true }).then((cached) => {
           if (cached) return cached;
           if (request.mode === 'navigate') {
             return caches.match('/') || caches.match('/dashboard');
+          }
+          if (url.pathname.match(/\.(png|jpg|jpeg|webp|svg|ico)$/)) {
+            return caches.match('/logo_dark.webp');
           }
           return new Response('Offline', { status: 503, statusText: 'Offline' });
         });

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginUser } from "@/services/auth";
 import { LoginForm } from "./form";
+import { AppLogo } from "@/components/layout/AppLogo";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -33,11 +34,7 @@ export default function LoginPage() {
       <div className="relative z-10 w-full max-w-md space-y-8">
         {/* Logo */}
         <div className="flex flex-col items-center gap-3">
-          <img
-            src="/logo_dark.webp?v=sfy_2026"
-            alt="NINJA'S TRACKER"
-            className="h-16 w-auto object-contain drop-shadow-xl"
-          />
+          <AppLogo size="lg" className="max-w-[260px] drop-shadow-xl" />
           <p className="text-sm text-white/70">
             Faça login para acessar o dashboard
           </p>

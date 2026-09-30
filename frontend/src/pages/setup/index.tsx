@@ -4,6 +4,7 @@ import { createAdmin } from "@/services/auth";
 import { getInviteInfo, completeInvite } from "@/services/users";
 import { SetupForm } from "./form";
 import { InviteSetupForm } from "./invite-form";
+import { AppLogo } from "@/components/layout/AppLogo";
 
 export default function SetupPage() {
   const navigate = useNavigate();
@@ -123,11 +124,7 @@ export default function SetupPage() {
       <div className="absolute inset-0 bg-black/10" />
       <div className="relative z-10 w-full max-w-md space-y-8">
         <div className="flex flex-col items-center gap-3">
-          <img
-            src="/logo_dark.webp?v=sfy_2026"
-            alt="NINJA'S TRACKER"
-            className="h-16 w-auto object-contain drop-shadow-xl"
-          />
+          <AppLogo size="lg" className="max-w-[260px] drop-shadow-xl" />
           <p className="text-sm text-white/70 text-center">
             {inviteToken
               ? "Configure sua conta para acessar o NINJA'S TRACKER"

@@ -25,6 +25,7 @@ import {
 import { SidebarNavGroup } from "./SidebarNavGroup";
 import { SidebarUser } from "./SidebarUser";
 import { AiTrainingProfile } from "./AiTrainingProfile";
+import { AppLogo } from "./AppLogo";
 import { getStoredUser } from "@/services/auth";
 import { useAdvancedFeatures } from "@/contexts/AdvancedFeaturesContext";
 import type { RemixiconComponentType } from "@remixicon/react";
@@ -120,10 +121,9 @@ export function AppSidebar() {
       className="rounded-xl overflow-hidden h-full"
     >
       <SidebarHeader className="px-3 pt-3.5 pb-2 flex items-center justify-center">
-        <img
-          src="/logo_dark.webp?v=sfy_2026"
-          alt="NINJA'S TRACKER"
-          className="h-13 w-auto max-w-[195px] object-contain drop-shadow-md hover:scale-[1.02] transition-transform duration-200 cursor-pointer"
+        <AppLogo
+          size="md"
+          className="max-w-[195px]"
           onClick={() => navigate("/dashboard")}
         />
       </SidebarHeader>
