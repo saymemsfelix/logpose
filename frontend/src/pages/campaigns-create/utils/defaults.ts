@@ -1,5 +1,5 @@
 /**
- * UTM parameters padrão para campanhas do SFY.
+ * UTM parameters padrão para campanhas do NINJA'S TRACKER.
  * Formato idêntico ao Facebook Ads — campo único.
  */
 export const DEFAULT_UTM_PARAMS =

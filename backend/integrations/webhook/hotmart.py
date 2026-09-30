@@ -29,7 +29,7 @@ def _map_hotmart_status(event_name: str, purchase_status: str) -> TransactionSta
 def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebhookEvent]:
     """
     Parsea o payload do Webhook da Hotmart (formato 2.0 / 1.0 Postback)
-    e retorna no formato StandardizedWebhookEvent do SFY.
+    e retorna no formato StandardizedWebhookEvent do NINJA'S TRACKER.
     """
     try:
         event_name = str(payload.get("event") or "").strip()

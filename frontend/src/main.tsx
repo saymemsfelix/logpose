@@ -4,11 +4,11 @@ import './index.css'
 import App from './App.tsx'
 import { registerServiceWorker } from './lib/pwa.ts'
 
-// Limpar caches antigos do service worker (LogPose -> SFY)
+// Limpar caches antigos do service worker (LogPose / SFY -> NINJA'S TRACKER)
 if (typeof window !== 'undefined' && 'caches' in window) {
   caches.keys().then((names) => {
     names.forEach((name) => {
-      if (name.includes('logpose') || name.startsWith('logpose')) {
+      if (name.includes('logpose') || name.startsWith('logpose') || name.includes('sfy') || name.startsWith('sfy')) {
         caches.delete(name);
       }
     });
