@@ -22,27 +22,28 @@ async def fetch_pixels(client: MetaAdsClient, business_id: str | None = None) ->
     """
     pixels: dict[str, dict] = {}
 
-    # 1. Ad Account pixels
-    try:
-        data = await client._get(
-            f"{client.account_id}/adspixels",
-            params={"fields": "id,name,last_fired_time"},
-        )
-        for p in data.get("data", []):
-            p_id = str(p.get("id", ""))
-            if p_id:
-                pixels[p_id] = {
-                    "id": p_id,
-                    "name": p.get("name") or f"Pixel {p_id}",
-                    "last_fired_time": p.get("last_fired_time"),
-                }
-    except Exception as e:
-        logger.warning(f"Erro ao buscar adspixels da conta {client.account_id}: {e}")
+    # 1. Ad Account pixels e datasets (novo padrão Meta)
+    for edge in ("adspixels", "datasets"):
+        try:
+            data = await client._get(
+                f"{client.account_id}/{edge}",
+                params={"fields": "id,name,last_fired_time"},
+            )
+            for p in data.get("data", []):
+                p_id = str(p.get("id", ""))
+                if p_id and p_id not in pixels:
+                    pixels[p_id] = {
+                        "id": p_id,
+                        "name": p.get("name") or f"Pixel/Dataset {p_id}",
+                        "last_fired_time": p.get("last_fired_time"),
+                    }
+        except Exception as e:
+            logger.warning(f"Erro ao buscar {edge} da conta {client.account_id}: {e}")
 
     # 2. Business Manager pixels / datasets
     biz_id = business_id or await _get_business_id(client.access_token, client.account_id)
     if biz_id:
-        for edge in ("adspixels", "owned_pixels", "client_pixels"):
+        for edge in ("adspixels", "owned_pixels", "client_pixels", "datasets", "owned_datasets"):
             url = f"{GRAPH_API_BASE}/{biz_id}/{edge}"
             params = {
                 "access_token": client.access_token,
@@ -58,7 +59,7 @@ async def fetch_pixels(client: MetaAdsClient, business_id: str | None = None) ->
                             if p_id and p_id not in pixels:
                                 pixels[p_id] = {
                                     "id": p_id,
-                                    "name": p.get("name") or f"Pixel {p_id}",
+                                    "name": p.get("name") or f"Pixel/Dataset {p_id}",
                                     "last_fired_time": p.get("last_fired_time"),
                                 }
             except Exception as e:
@@ -79,6 +80,25 @@ async def fetch_pixels(client: MetaAdsClient, business_id: str | None = None) ->
                 }
     except Exception:
         pass
+
+    # 4. Fallback: extrair pixels usados em anúncios recentes da conta
+    if not pixels:
+        try:
+            ads_data = await client._get(
+                f"{client.account_id}/ads",
+                params={"fields": "tracking_specs", "limit": "25"},
+            )
+            for ad in ads_data.get("data", []):
+                for spec in ad.get("tracking_specs", []):
+                    for px in spec.get("fb_pixel", []):
+                        px_str = str(px)
+                        if px_str and px_str not in pixels:
+                            pixels[px_str] = {
+                                "id": px_str,
+                                "name": f"Pixel Ativo {px_str}",
+                            }
+        except Exception as e:
+            logger.warning(f"Erro ao extrair pixels de anúncios anteriores: {e}")
 
     return list(pixels.values())
 
@@ -163,6 +183,32 @@ async def fetch_pages(
                                 pages[str(p["id"])] = p
             except Exception as e:
                 logger.warning(f"Erro {edge} do business {biz_id}: {e}")
+
+    # 4. Fallback: extrair páginas usadas em criativos recentes da conta de anúncio
+    if not pages:
+        try:
+            url = f"{GRAPH_API_BASE}/{act_id}/adcreatives"
+            params = {
+                "access_token": access_token,
+                "fields": "id,name,object_story_spec,asset_feed_spec",
+                "limit": "25",
+            }
+            async with httpx.AsyncClient(timeout=15.0) as http:
+                resp = await http.get(url, params=params)
+                if resp.status_code == 200:
+                    for c in resp.json().get("data", []):
+                        page_id = (
+                            c.get("object_story_spec", {}).get("page_id")
+                            or c.get("asset_feed_spec", {}).get("page_id")
+                        )
+                        if page_id and str(page_id) not in pages:
+                            page_id_str = str(page_id)
+                            pages[page_id_str] = {
+                                "id": page_id_str,
+                                "name": f"Página Ativa ({page_id_str})",
+                            }
+        except Exception as e:
+            logger.warning(f"Erro ao buscar páginas de adcreatives para {act_id}: {e}")
 
     return list(pages.values())
 
@@ -288,6 +334,33 @@ async def fetch_instagram_accounts(
                         }
     except Exception:
         pass
+
+    # 5. Fallback: extrair instagram de criativos recentes
+    if not ig_map:
+        try:
+            url = f"{GRAPH_API_BASE}/{act_id}/adcreatives"
+            params = {
+                "access_token": access_token,
+                "fields": "id,instagram_actor_id,object_story_spec",
+                "limit": "25",
+            }
+            async with httpx.AsyncClient(timeout=10.0) as http:
+                resp = await http.get(url, params=params)
+                if resp.status_code == 200:
+                    for c in resp.json().get("data", []):
+                        ig_id = (
+                            c.get("instagram_actor_id")
+                            or c.get("object_story_spec", {}).get("instagram_actor_id")
+                        )
+                        if ig_id and str(ig_id) not in ig_map:
+                            ig_str = str(ig_id)
+                            ig_map[ig_str] = {
+                                "id": ig_str,
+                                "username": f"Instagram ({ig_str})",
+                                "profile_pic": "",
+                            }
+        except Exception:
+            pass
 
     return list(ig_map.values())
 
