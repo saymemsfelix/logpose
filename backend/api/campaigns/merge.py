@@ -8,14 +8,14 @@ from typing import Any
 from database.models.transaction import Transaction
 from integrations.meta_ads.schemas import CampaignInsights, AdSetInsights, AdInsights
 from api.campaigns.helpers import (
-    parse_utm_campaign, parse_utm_medium, parse_utm_content, safe_division,
+    parse_utm_campaign, parse_utm_medium, parse_utm_content, parse_utm_term, safe_division,
 )
 
 
 def _group_transactions_by_level(transactions: list[Transaction]) -> dict:
     """
     Agrupa transações por campaign_id, adset_id e ad_id.
-    Usa o formato name|id para extrair IDs.
+    Usa o formato name|id para extrair IDs com suporte flexível a variações de UTMs e src.
     """
     by_campaign_id: dict[str, list[Transaction]] = defaultdict(list)
     by_campaign_name: dict[str, list[Transaction]] = defaultdict(list)
@@ -34,6 +34,10 @@ def _group_transactions_by_level(transactions: list[Transaction]) -> dict:
 
         # AdSet level
         adset_name, adset_id = parse_utm_medium(tx.utm_medium)
+        # Fallback: se utm_medium não foi preenchido mas utm_content e utm_term foram
+        if not adset_id and not adset_name and tx.utm_content and tx.utm_term:
+            adset_name, adset_id = parse_utm_content(tx.utm_content)
+
         if adset_id:
             by_adset_id[adset_id].append(tx)
         elif adset_name:
@@ -41,10 +45,24 @@ def _group_transactions_by_level(transactions: list[Transaction]) -> dict:
 
         # Ad level
         ad_name, ad_id = parse_utm_content(tx.utm_content)
+        # Se utm_term tiver o ad ou ad_id
+        if tx.utm_term:
+            term_name, term_id = parse_utm_term(tx.utm_term)
+            if term_id:
+                ad_id = term_id
+            elif term_name:
+                ad_name = term_name
+
         if ad_id:
             by_ad_id[ad_id].append(tx)
         elif ad_name:
             by_ad_name[ad_name.lower()].append(tx)
+
+        # Suporte a SRC direto com o ID do anúncio
+        if tx.src:
+            clean_src = tx.src.strip()
+            if clean_src.isdigit():
+                by_ad_id[clean_src].append(tx)
 
     return {
         "campaign_id": dict(by_campaign_id),

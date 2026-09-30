@@ -8,14 +8,20 @@ from typing import Optional
 def parse_utm_field(raw: Optional[str]) -> tuple[Optional[str], Optional[str]]:
     """
     Parseia campo UTM no formato 'name|id'.
-    Retorna (name, id). Se não tem pipe, retorna (raw, None).
+    Retorna (name, id). Se for apenas dígitos, retorna (None, id).
+    Se não tem pipe, retorna (raw, None).
     """
     if not raw:
         return None, None
-    if "|" in raw:
-        parts = raw.rsplit("|", 1)
-        return parts[0].strip(), parts[1].strip()
-    return raw.strip(), None
+    clean = raw.strip()
+    if "|" in clean:
+        parts = clean.rsplit("|", 1)
+        name = parts[0].strip() or None
+        uid = parts[1].strip() or None
+        return name, uid
+    if clean.isdigit():
+        return None, clean
+    return clean, None
 
 
 def parse_utm_campaign(utm_campaign: Optional[str]) -> tuple[Optional[str], Optional[str]]:
@@ -31,6 +37,11 @@ def parse_utm_medium(utm_medium: Optional[str]) -> tuple[Optional[str], Optional
 def parse_utm_content(utm_content: Optional[str]) -> tuple[Optional[str], Optional[str]]:
     """Extrai (ad_name, ad_id) do utm_content."""
     return parse_utm_field(utm_content)
+
+
+def parse_utm_term(utm_term: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+    """Extrai (ad_name, ad_id) do utm_term."""
+    return parse_utm_field(utm_term)
 
 
 def safe_division(numerator: float, denominator: float, default: float = 0.0) -> float:

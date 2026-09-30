@@ -5,11 +5,17 @@ import {
   RiFileCopyLine,
   RiCheckLine,
   RiDeleteBinLine,
+  RiFlashlightLine,
+  RiRefreshLine,
+  RiShieldCheckLine,
 } from "@remixicon/react";
 import { CreateWebhookModal } from "@/pages/platforms/components/CreateWebhookModal";
 import { ConfirmDeleteModal } from "@/components/ConfirmDeleteModal";
 import { useWebhooks } from "@/hooks/useWebhooks";
-import type { WebhookEndpointAPI } from "@/services/integrations";
+import {
+  type WebhookEndpointAPI,
+  simulateWebhookTest,
+} from "@/services/integrations";
 import { toast } from "sonner";
 
 const AVAILABLE_PLATFORMS = [
@@ -27,7 +33,7 @@ const AVAILABLE_PLATFORMS = [
 ];
 
 export function WebhooksTab() {
-  const { endpoints, isLoading, addWebhook, removeWebhook } = useWebhooks();
+  const { endpoints, isLoading, addWebhook, removeWebhook, reload } = useWebhooks();
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState<string>("hotmart");
   const [deleteTarget, setDeleteTarget] = useState<WebhookEndpointAPI | null>(null);
@@ -35,6 +41,8 @@ export function WebhooksTab() {
   const [isCreating, setIsCreating] = useState(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [pausedMap, setPausedMap] = useState<Record<number, boolean>>({});
+  const [validatingId, setValidatingId] = useState<number | null>(null);
+  const [simulatingId, setSimulatingId] = useState<number | null>(null);
 
   const handleOpenPlatform = (platformId: string) => {
     setSelectedPlatform(platformId);
@@ -85,8 +93,37 @@ export function WebhooksTab() {
     });
   };
 
-  const handleValidate = () => {
-    toast.success("Endpoint validado! Aguardando o primeiro evento da plataforma.");
+  const handleValidate = async (ep: WebhookEndpointAPI) => {
+    try {
+      setValidatingId(ep.id);
+      const res = await fetch(`/api/webhook/${ep.platform}/${ep.slug}`, {
+        method: "GET",
+      });
+      if (res.ok) {
+        toast.success(`Endpoint ${ep.platform.toUpperCase()} está 100% online e pronto para receber webhooks! (HTTP 200 OK)`);
+      } else {
+        toast.warning(`Endpoint respondeu com status ${res.status}.`);
+      }
+      await reload();
+    } catch {
+      toast.error("Falha ao comunicar com o servidor de webhook.");
+    } finally {
+      setValidatingId(null);
+    }
+  };
+
+  const handleSimulate = async (ep: WebhookEndpointAPI) => {
+    try {
+      setSimulatingId(ep.id);
+      const res = await simulateWebhookTest(ep.slug, ep.platform);
+      toast.success(res.message || "Venda de teste gerada e registrada com sucesso!");
+      await reload();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Erro ao simular evento de teste";
+      toast.error(msg);
+    } finally {
+      setSimulatingId(null);
+    }
   };
 
   // Se por ventura a lista vier vazia, renderizamos um item padrão Hotmart para nunca sumir
@@ -153,6 +190,8 @@ export function WebhooksTab() {
             const origin = window.location.origin;
             const webhookUrl = `${origin}/api/webhook/${ep.platform}/${ep.slug}`;
             const isPaused = !!pausedMap[ep.id];
+            const hasEvents = !!ep.has_events || (typeof ep.events_count === "number" && ep.events_count > 0);
+            const eventsCount = ep.events_count || 0;
 
             return (
               <div
@@ -169,33 +208,58 @@ export function WebhooksTab() {
                     <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 capitalize">
                       {ep.platform}
                     </span>
-                    <span
-                      className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium ${
-                        isPaused
-                          ? "bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400"
-                          : "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"
-                      }`}
-                    >
-                      {isPaused ? "Pausado" : "Aguardando evento"}
-                    </span>
+                    {isPaused ? (
+                      <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400">
+                        Pausado
+                      </span>
+                    ) : hasEvents ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Ativo • Conectado ({eventsCount} {eventsCount === 1 ? "venda" : "vendas"})
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                        <span className="size-1.5 rounded-full bg-amber-500" />
+                        Aguardando evento
+                      </span>
+                    )}
                   </div>
 
                   {/* Ações */}
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[12px]">
                     <button
                       type="button"
-                      onClick={handleValidate}
-                      className="text-zinc-500 hover:text-blue-500 transition-colors cursor-pointer"
+                      disabled={validatingId === ep.id}
+                      onClick={() => handleValidate(ep)}
+                      className="inline-flex items-center gap-1 text-zinc-600 hover:text-blue-500 dark:text-zinc-300 dark:hover:text-blue-400 transition-colors cursor-pointer font-medium"
                     >
-                      Validar
+                      <RiShieldCheckLine className="size-3.5" />
+                      <span>{validatingId === ep.id ? "Validando..." : "Validar"}</span>
                     </button>
+
                     <button
                       type="button"
-                      onClick={() => toast.success("Sincronização atualizada!")}
-                      className="text-zinc-500 hover:text-blue-500 transition-colors cursor-pointer"
+                      disabled={simulatingId === ep.id}
+                      onClick={() => handleSimulate(ep)}
+                      className="inline-flex items-center gap-1 text-emerald-600 hover:text-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors cursor-pointer font-medium bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20"
+                      title="Dispara uma venda de teste Hotmart para validar o fluxo de ponta a ponta no dashboard"
                     >
-                      Atualizar
+                      <RiFlashlightLine className="size-3.5" />
+                      <span>{simulatingId === ep.id ? "Simulando..." : "Simular Venda Teste"}</span>
                     </button>
+
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await reload();
+                        toast.success("Sincronização atualizada!");
+                      }}
+                      className="inline-flex items-center gap-1 text-zinc-500 hover:text-blue-500 transition-colors cursor-pointer"
+                    >
+                      <RiRefreshLine className="size-3.5" />
+                      <span>Atualizar</span>
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => togglePause(ep.id)}
@@ -203,6 +267,7 @@ export function WebhooksTab() {
                     >
                       {isPaused ? "Retomar" : "Pausar"}
                     </button>
+
                     <button
                       type="button"
                       onClick={() => setDeleteTarget(ep)}

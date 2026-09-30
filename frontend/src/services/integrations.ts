@@ -183,6 +183,8 @@ export interface WebhookEndpointAPI {
   platform: string;
   name: string;
   created_at: string | null;
+  has_events?: boolean;
+  events_count?: number;
 }
 
 export async function fetchWebhooks(): Promise<WebhookEndpointAPI[]> {
@@ -201,6 +203,16 @@ export async function createWebhook(
 
 export async function deleteWebhook(id: number): Promise<void> {
   await apiRequest(`/platforms/webhooks/${id}`, { method: "DELETE" });
+}
+
+export async function simulateWebhookTest(
+  slug: string,
+  platform: string = "hotmart"
+): Promise<{ status: string; message: string; transaction_id: number }> {
+  return apiRequest("/platforms/webhooks/simulate-test", {
+    method: "POST",
+    body: { slug, platform },
+  });
 }
 
 // ─── Gemini AI ───────────────────────────────────────────────────────

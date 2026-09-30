@@ -46,7 +46,7 @@ async def list_pixels(
     account = _get_fb_account(db, account_id)
     client = MetaAdsClient(account.access_token, account.account_id)
     try:
-        pixels = await fetch_pixels(client)
+        pixels = await fetch_pixels(client, business_id=account.business_id)
         return {"pixels": pixels or []}
     except Exception as e:
         logger.warning(f"Erro ao buscar pixels da conta {account_id}: {e}")
@@ -65,9 +65,16 @@ async def list_pages(
     account = _get_fb_account(db, account_id)
 
     try:
-        pages = await fetch_pages(account.access_token, account.account_id)
+        pages = await fetch_pages(
+            account.access_token,
+            account.account_id,
+            business_id=account.business_id,
+        )
         ig_accounts = await fetch_instagram_accounts(
-            account.access_token, account.account_id
+            account.access_token,
+            account.account_id,
+            business_id=account.business_id,
+            pages=pages,
         )
         return {"pages": pages or [], "instagram_accounts": ig_accounts or []}
     except Exception as e:

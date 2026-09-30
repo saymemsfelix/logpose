@@ -57,7 +57,7 @@ export function BusinessManagersList({
       setTogglingId(acc.account_id);
       await onToggleAccount(acc, newActive);
       if (newActive) {
-        toast.success(`Conta "${acc.name}" ativada no SFY!`);
+        toast.success(`Conta "${acc.name}" ativada no NINJA'S TRACKER!`);
       } else {
         toast.info(`Conta "${acc.name}" desativada.`);
       }

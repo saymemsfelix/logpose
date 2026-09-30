@@ -1,7 +1,7 @@
 {
-  "name": "SFY | Dashboard",
-  "short_name": "SFY",
-  "description": "Dashboard Estratégico de Performance para Direct Response",
+  "name": "NINJA'S TRACKER | Dashboard",
+  "short_name": "NINJA'S TRACKER",
+  "description": "NINJA'S TRACKER - Dashboard Estratégico de Performance para Direct Response",
   "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",

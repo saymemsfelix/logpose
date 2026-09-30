@@ -24,13 +24,21 @@ export default function CampaignsCreatePage() {
     form, currentStep, updateField, addAd, updateAd, removeAd,
     updateBulkData, updateAccountConfig, resetForm, nextStep, prevStep, goToStep,
   } = useCampaignForm();
-  const { pixels, load: loadPixels } = usePixels();
-  const { pages, instagramAccounts, load: loadPages } = usePages();
+  const { pixels, loading: pixelsLoading, load: loadPixels } = usePixels();
+  const { pages, instagramAccounts, loading: pagesLoading, load: loadPages } = usePages();
   const { results: interests, search: searchInterest } = useInterestSearch();
   const { dataMap: multiAccountData, loadForAccounts } = useMultiAccountMeta();
   const { isPublishing, handlePublish } = usePublishCampaign(form, resetForm);
 
   const primaryAccountId = form.accountIds[0] ?? null;
+
+  const handleRefreshMeta = useCallback(() => {
+    if (primaryAccountId) {
+      loadPixels(primaryAccountId);
+      loadPages(primaryAccountId);
+      toast.info("Sincronizando pixels, páginas e Instagram da Meta...");
+    }
+  }, [primaryAccountId, loadPixels, loadPages]);
 
   // Carrega meta data da conta principal (shared mode)
   useEffect(() => {
@@ -135,7 +143,9 @@ export default function CampaignsCreatePage() {
           <AdSetStep form={form} onUpdate={updateField} onUpdateAccountConfig={updateAccountConfig}
             pixels={pixels} pages={pages} instagramAccounts={instagramAccounts}
             interestResults={interests} onSearchInterest={(q) => primaryAccountId && searchInterest(primaryAccountId, q)}
-            accounts={accounts} multiAccountData={multiAccountData} />
+            accounts={accounts} multiAccountData={multiAccountData}
+            isMetaLoading={pixelsLoading || pagesLoading}
+            onRefreshMeta={handleRefreshMeta} />
         )}
         {currentStep === 3 && (
           <AdsStep form={form} onUpdate={updateField} onAddAd={addAd} onUpdateAd={updateAd} onRemoveAd={removeAd} onUpdateBulk={updateBulkData} />

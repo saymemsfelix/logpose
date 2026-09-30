@@ -25,6 +25,15 @@ interface RefundsTableProps {
 const platformColors: Record<string, string> = {
   kiwify: "bg-chart-1/15 text-chart-1 border-chart-1/20",
   payt: "bg-chart-2/15 text-chart-2 border-chart-2/20",
+  hotmart: "bg-orange-500/15 text-orange-500 border-orange-500/20",
+  api: "bg-blue-500/15 text-blue-500 border-blue-500/20",
+};
+
+const platformLabels: Record<string, string> = {
+  kiwify: "Kiwify",
+  payt: "PayT",
+  hotmart: "Hotmart",
+  api: "API",
 };
 
 export function RefundsTable({
@@ -99,8 +108,8 @@ function RefundRow({ item, onAddReason }: { item: RefundItem; onAddReason: (i: R
         {item.product_name || "—"}
       </TableCell>
       <TableCell>
-        <Badge variant="outline" className={`text-[10px] font-medium border ${platform}`}>
-          {item.platform === "kiwify" ? "Kiwify" : "PayT"}
+        <Badge variant="outline" className={`text-[10px] font-medium border capitalize ${platform}`}>
+          {platformLabels[item.platform] || item.platform}
         </Badge>
       </TableCell>
       <TableCell>

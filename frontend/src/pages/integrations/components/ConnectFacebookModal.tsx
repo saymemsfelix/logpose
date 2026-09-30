@@ -162,7 +162,7 @@ export function ConnectFacebookModal({
                   className="font-mono text-xs"
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  O SFY consulta a Meta API com esse token e agrupa todas as suas BMs e contas de anúncio automaticamente.
+                  O NINJA'S TRACKER consulta a Meta API com esse token e agrupa todas as suas BMs e contas de anúncio automaticamente.
                 </p>
               </div>
 

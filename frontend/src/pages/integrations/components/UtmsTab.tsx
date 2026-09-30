@@ -7,20 +7,22 @@ import {
   RiCheckDoubleLine,
 } from "@remixicon/react";
 import { toast } from "sonner";
+import { useWebhooks } from "@/hooks/useWebhooks";
 
 export function UtmsTab() {
+  const { endpoints } = useWebhooks();
   const [copiedMeta, setCopiedMeta] = useState(false);
   const [copiedScript, setCopiedScript] = useState(false);
   const [copiedWebhook, setCopiedWebhook] = useState(false);
 
   // Parâmetros dinâmicos oficiais para o campo de Rastreamento da Meta
   const metaUrlParams =
-    "utm_source=FB&utm_campaign={{campaign.name}}|{{campaign.id}}&utm_content={{adset.name}}|{{adset.id}}&utm_term={{ad.name}}|{{ad.id}}&src={{ad.id}}";
+    "utm_source=FB&utm_campaign={{campaign.name}}|{{campaign.id}}&utm_medium={{adset.name}}|{{adset.id}}&utm_content={{ad.name}}|{{ad.id}}&utm_term={{ad.id}}&src={{ad.id}}";
 
   // Script de repasse automático de UTMs para páginas de vendas / presell
   const utmScriptCode = `<script>
 /**
- * SFY Tracking Script - Repasse Automático de UTMs ao Checkout
+ * NINJA'S TRACKER Script - Repasse Automático de UTMs ao Checkout
  * Cole antes do fechamento da tag </head> da sua página de vendas
  */
 (function() {
@@ -70,8 +72,13 @@ export function UtmsTab() {
 })();
 </script>`;
 
-  const hotmartWebhookUrl =
-    "https://logpose-1zuu.onrender.com/api/webhook/hotmart/uq_GVXf_vUiq9m0wAyUeb4SND0EjmQl8";
+  const hotmartEp = endpoints.find((e) => e.platform.toLowerCase() === "hotmart");
+  const origin = typeof window !== "undefined" && window.location.origin
+    ? window.location.origin
+    : "https://logpose-1zuu.onrender.com";
+  const hotmartWebhookUrl = hotmartEp
+    ? `${origin}/api/webhook/hotmart/${hotmartEp.slug}`
+    : `${origin}/api/webhook/hotmart/uq_GVXf_vUiq9m0wAyUeb4SND0EjmQl8`;
 
   const copyMetaParams = () => {
     navigator.clipboard.writeText(metaUrlParams);
@@ -104,7 +111,7 @@ export function UtmsTab() {
           </div>
           <div>
             <h2 className="text-[15px] font-semibold text-zinc-900 dark:text-white">
-              Como funciona o Traqueamento de Vendas e Anúncios no SFY
+              Como funciona o Traqueamento de Vendas e Anúncios no NINJA'S TRACKER
             </h2>
             <p className="mt-1 text-[13px] text-zinc-600 dark:text-zinc-300 leading-relaxed">
               Para você saber no Dashboard <strong>qual anúncio exato gerou cada venda</strong>, quanto gastou e qual o seu <strong>ROAS real</strong>, siga os 3 passos simples abaixo. Copie cada código e cole no local indicado.
@@ -271,7 +278,7 @@ export function UtmsTab() {
                 Cadastre o Webhook na sua conta Hotmart
               </h3>
               <p className="text-[12px] text-zinc-500 dark:text-zinc-400">
-                Envia instantaneamente cada venda aprovada para o SFY calcular seu lucro e ROAS
+                Envia instantaneamente cada venda aprovada para o NINJA'S TRACKER calcular seu lucro e ROAS
               </p>
             </div>
           </div>
@@ -336,7 +343,7 @@ export function UtmsTab() {
           <span>Tudo pronto para traquear 100%!</span>
         </div>
         <p className="mt-1 text-[12.5px] text-zinc-600 dark:text-zinc-300 leading-relaxed">
-          Com os parâmetros no anúncio (Passo 1), o script na sua página (Passo 2) e o webhook na Hotmart (Passo 3), qualquer venda gerada será automaticamente atribuída ao seu anúncio e plotada com gráfico de lucros e ROAS real no Dashboard do <strong>SFY</strong>!
+          Com os parâmetros no anúncio (Passo 1), o script na sua página (Passo 2) e o webhook na Hotmart (Passo 3), qualquer venda gerada será automaticamente atribuída ao seu anúncio e plotada com gráfico de lucros e ROAS real no Dashboard do <strong>NINJA'S TRACKER</strong>!
         </p>
       </div>
     </div>

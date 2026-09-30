@@ -122,7 +122,7 @@ export function AppSidebar() {
       <SidebarHeader className="px-3 pt-3.5 pb-2 flex items-center justify-center">
         <img
           src="/logo_dark.webp?v=sfy_2026"
-          alt="SFY"
+          alt="NINJA'S TRACKER"
           className="h-13 w-auto max-w-[195px] object-contain drop-shadow-md hover:scale-[1.02] transition-transform duration-200 cursor-pointer"
           onClick={() => navigate("/dashboard")}
         />

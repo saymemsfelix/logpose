@@ -108,7 +108,7 @@ def get_oauth_url():
         f"https://www.facebook.com/{GRAPH_API_VERSION}/dialog/oauth?"
         f"client_id={app_id}&"
         f"redirect_uri={redirect_uri}&"
-        f"scope=ads_read,read_insights,business_management&"
+        f"scope=ads_management,ads_read,read_insights,business_management,pages_show_list,pages_read_engagement,instagram_basic&"
         f"response_type=code"
     )
     return OAuthUrlResponse(oauth_url=url, configured=True, app_id=app_id)

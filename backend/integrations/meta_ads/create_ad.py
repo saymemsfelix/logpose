@@ -37,11 +37,13 @@ async def create_ad_creative(
     # NOTA: instagram_actor_id foi DEPRECATED na v22.0+, usar instagram_user_id
     story_spec: dict = {"page_id": page_id}
 
-    if instagram_actor_id in ("", "none"):
-        # Explicitamente selecionado "Sem Instagram"
-        logger.info("Criando ad sem Instagram (page-backed)")
+    if instagram_actor_id in ("", "none", "page_backed"):
+        # Página do Facebook usada como identidade no Instagram (page-backed)
+        logger.info("Criando ad com identidade da Página no Instagram (page-backed)")
+    elif instagram_actor_id in ("no_instagram", "none_no_ig"):
+        logger.info("Criando ad sem veiculação no Instagram")
     elif instagram_actor_id and str(instagram_actor_id).isdigit():
-        story_spec["instagram_user_id"] = instagram_actor_id
+        story_spec["instagram_user_id"] = str(instagram_actor_id)
         logger.info(f"Usando instagram_user_id fornecido: {instagram_actor_id}")
     elif instagram_actor_id is None:
         # Fallback apenas se não foi enviado no payload (retrocompatibilidade)
@@ -111,32 +113,62 @@ async def _resolve_instagram_user_id(
     access_token: str, page_id: str, account_id: str = ""
 ) -> str | None:
     """
-    Fallback: busca o primeiro Instagram account vinculado à conta de anúncio.
-    Usa /act_{id}/instagram_accounts (permissão ads_management).
+    Fallback: busca o primeiro Instagram account vinculado à conta de anúncio ou à página.
     """
     if not account_id:
         logger.warning("Sem account_id para fallback de Instagram — creative sem IG")
         return None
 
-    try:
-        act_id = account_id if account_id.startswith("act_") else f"act_{account_id}"
-        url = f"{GRAPH_API_BASE}/{act_id}/instagram_accounts"
-        params = {"access_token": access_token, "fields": "id,username", "limit": "1"}
+    act_id = account_id if account_id.startswith("act_") else f"act_{account_id}"
 
+    # 1. connected_instagram_accounts
+    try:
+        url = f"{GRAPH_API_BASE}/{act_id}/connected_instagram_accounts"
+        params = {"access_token": access_token, "fields": "id,username", "limit": "1"}
         async with httpx.AsyncClient(timeout=10.0) as http:
             resp = await http.get(url, params=params)
             if resp.status_code == 200:
                 ig_list = resp.json().get("data", [])
-                if ig_list:
-                    ig_id = ig_list[0].get("id", "")
+                if ig_list and ig_list[0].get("id"):
+                    ig_id = str(ig_list[0]["id"])
                     ig_user = ig_list[0].get("username", "?")
-                    logger.info(f"Fallback IG account: {ig_user} ({ig_id})")
+                    logger.info(f"Fallback connected IG: {ig_user} ({ig_id})")
                     return ig_id
-                logger.info("Nenhuma conta Instagram vinculada à conta de anúncio")
-            else:
-                logger.warning(f"Falha ao buscar IG accounts: {resp.status_code} {resp.text}")
     except Exception as e:
-        logger.warning(f"Erro ao buscar Instagram accounts: {e}")
+        logger.warning(f"Erro ao buscar connected_instagram_accounts: {e}")
+
+    # 2. Instagram da Página do Facebook
+    if page_id:
+        try:
+            url = f"{GRAPH_API_BASE}/{page_id}"
+            params = {
+                "access_token": access_token,
+                "fields": "instagram_business_account{id,username}",
+            }
+            async with httpx.AsyncClient(timeout=10.0) as http:
+                resp = await http.get(url, params=params)
+                if resp.status_code == 200:
+                    ig = resp.json().get("instagram_business_account")
+                    if ig and ig.get("id"):
+                        ig_id = str(ig["id"])
+                        logger.info(f"Fallback Page IG account: {ig.get('username', '?')} ({ig_id})")
+                        return ig_id
+        except Exception:
+            pass
+
+    # 3. Fallback legado act_{id}/instagram_accounts
+    try:
+        url = f"{GRAPH_API_BASE}/{act_id}/instagram_accounts"
+        params = {"access_token": access_token, "fields": "id,username", "limit": "1"}
+        async with httpx.AsyncClient(timeout=10.0) as http:
+            resp = await http.get(url, params=params)
+            if resp.status_code == 200:
+                ig_list = resp.json().get("data", [])
+                if ig_list and ig_list[0].get("id"):
+                    return str(ig_list[0]["id"])
+    except Exception:
+        pass
+
     return None
 
 

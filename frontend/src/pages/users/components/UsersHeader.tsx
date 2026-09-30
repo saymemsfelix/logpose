@@ -16,7 +16,7 @@ export function UsersHeader({ onInvite, canInvite }: UsersHeaderProps) {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Usuários</h1>
           <p className="text-sm text-muted-foreground">
-            Gerencie os acessos ao SFY
+            Gerencie os acessos ao NINJA'S TRACKER
           </p>
         </div>
       </div>

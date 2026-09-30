@@ -12,13 +12,75 @@ from integrations.meta_ads.client import MetaAdsClient, GRAPH_API_BASE
 logger = logging.getLogger(__name__)
 
 
-async def fetch_pixels(client: MetaAdsClient) -> list[dict]:
-    """Busca todos os pixels da conta de anúncio."""
-    data = await client._get(
-        f"{client.account_id}/adspixels",
-        params={"fields": "id,name,last_fired_time"},
-    )
-    return data.get("data", [])
+async def fetch_pixels(client: MetaAdsClient, business_id: str | None = None) -> list[dict]:
+    """
+    Busca pixels da conta de anúncio e do Business Manager.
+    Combina:
+    1. /{act_id}/adspixels
+    2. /{business_id}/adspixels, owned_pixels, client_pixels
+    3. /{act_id}/customconversions
+    """
+    pixels: dict[str, dict] = {}
+
+    # 1. Ad Account pixels
+    try:
+        data = await client._get(
+            f"{client.account_id}/adspixels",
+            params={"fields": "id,name,last_fired_time"},
+        )
+        for p in data.get("data", []):
+            p_id = str(p.get("id", ""))
+            if p_id:
+                pixels[p_id] = {
+                    "id": p_id,
+                    "name": p.get("name") or f"Pixel {p_id}",
+                    "last_fired_time": p.get("last_fired_time"),
+                }
+    except Exception as e:
+        logger.warning(f"Erro ao buscar adspixels da conta {client.account_id}: {e}")
+
+    # 2. Business Manager pixels / datasets
+    biz_id = business_id or await _get_business_id(client.access_token, client.account_id)
+    if biz_id:
+        for edge in ("adspixels", "owned_pixels", "client_pixels"):
+            url = f"{GRAPH_API_BASE}/{biz_id}/{edge}"
+            params = {
+                "access_token": client.access_token,
+                "fields": "id,name,last_fired_time",
+                "limit": "100",
+            }
+            try:
+                async with httpx.AsyncClient(timeout=15.0) as http:
+                    resp = await http.get(url, params=params)
+                    if resp.status_code == 200:
+                        for p in resp.json().get("data", []):
+                            p_id = str(p.get("id", ""))
+                            if p_id and p_id not in pixels:
+                                pixels[p_id] = {
+                                    "id": p_id,
+                                    "name": p.get("name") or f"Pixel {p_id}",
+                                    "last_fired_time": p.get("last_fired_time"),
+                                }
+            except Exception as e:
+                logger.warning(f"Erro ao buscar {edge} do business {biz_id}: {e}")
+
+    # 3. Custom conversions
+    try:
+        data = await client._get(
+            f"{client.account_id}/customconversions",
+            params={"fields": "id,name"},
+        )
+        for p in data.get("data", []):
+            p_id = str(p.get("id", ""))
+            if p_id and p_id not in pixels:
+                pixels[p_id] = {
+                    "id": p_id,
+                    "name": p.get("name") or f"Conversão {p_id}",
+                }
+    except Exception:
+        pass
+
+    return list(pixels.values())
 
 
 async def _get_business_id(access_token: str, ad_account_id: str) -> str | None:
@@ -27,43 +89,80 @@ async def _get_business_id(access_token: str, ad_account_id: str) -> str | None:
     url = f"{GRAPH_API_BASE}/{act_id}"
     params = {"access_token": access_token, "fields": "business"}
 
-    async with httpx.AsyncClient(timeout=15.0) as http:
-        response = await http.get(url, params=params)
-        if response.status_code != 200:
-            logger.warning(f"Erro ao buscar business: {response.text}")
-            return None
-        data = response.json()
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as http:
+            response = await http.get(url, params=params)
+            if response.status_code != 200:
+                logger.warning(f"Erro ao buscar business: {response.text}")
+                return None
+            data = response.json()
 
-    biz = data.get("business")
-    return biz.get("id") if biz else None
+        biz = data.get("business")
+        return biz.get("id") if biz else None
+    except Exception as e:
+        logger.warning(f"Exceção ao buscar business de {act_id}: {e}")
+        return None
 
 
-async def fetch_pages(access_token: str, ad_account_id: str) -> list[dict]:
+async def fetch_pages(
+    access_token: str,
+    ad_account_id: str,
+    business_id: str | None = None,
+) -> list[dict]:
     """
-    Busca páginas do Facebook via Business vinculado à conta.
-    Combina owned_pages + client_pages.
+    Busca páginas do Facebook por múltiplas fontes:
+    1. /act_{id}/promoted_pages (páginas promovidas pela conta de anúncio)
+    2. /me/accounts (páginas que o usuário administra)
+    3. /{biz_id}/owned_pages e client_pages (páginas vinculadas à BM)
     """
-    biz_id = await _get_business_id(access_token, ad_account_id)
-    if not biz_id:
-        logger.warning("Business não encontrado, tentando /me/accounts")
-        return await _fetch_pages_me(access_token)
+    act_id = ad_account_id if ad_account_id.startswith("act_") else f"act_{ad_account_id}"
+    pages: dict[str, dict] = {}
 
-    pages: dict[str, dict] = {}  # dedup por id
-
-    for edge in ("owned_pages", "client_pages"):
-        url = f"{GRAPH_API_BASE}/{biz_id}/{edge}"
+    # 1. Páginas promovidas pela conta de anúncio
+    try:
+        url = f"{GRAPH_API_BASE}/{act_id}/promoted_pages"
         params = {
             "access_token": access_token,
             "fields": "id,name,picture{url}",
             "limit": "100",
         }
         async with httpx.AsyncClient(timeout=15.0) as http:
-            response = await http.get(url, params=params)
-            if response.status_code != 200:
-                logger.warning(f"Erro {edge}: {response.text}")
-                continue
-            for p in response.json().get("data", []):
-                pages[p["id"]] = p
+            resp = await http.get(url, params=params)
+            if resp.status_code == 200:
+                for p in resp.json().get("data", []):
+                    if p.get("id"):
+                        pages[str(p["id"])] = p
+    except Exception as e:
+        logger.warning(f"Erro em promoted_pages para {act_id}: {e}")
+
+    # 2. Páginas via /me/accounts
+    try:
+        me_pages = await _fetch_pages_me(access_token)
+        for p in me_pages:
+            if p.get("id"):
+                pages[str(p["id"])] = p
+    except Exception as e:
+        logger.warning(f"Erro em /me/accounts: {e}")
+
+    # 3. Páginas via Business Manager (owned + client)
+    biz_id = business_id or await _get_business_id(access_token, ad_account_id)
+    if biz_id:
+        for edge in ("owned_pages", "client_pages"):
+            try:
+                url = f"{GRAPH_API_BASE}/{biz_id}/{edge}"
+                params = {
+                    "access_token": access_token,
+                    "fields": "id,name,picture{url}",
+                    "limit": "100",
+                }
+                async with httpx.AsyncClient(timeout=15.0) as http:
+                    resp = await http.get(url, params=params)
+                    if resp.status_code == 200:
+                        for p in resp.json().get("data", []):
+                            if p.get("id"):
+                                pages[str(p["id"])] = p
+            except Exception as e:
+                logger.warning(f"Erro {edge} do business {biz_id}: {e}")
 
     return list(pages.values())
 
@@ -87,30 +186,110 @@ async def _fetch_pages_me(access_token: str) -> list[dict]:
 async def fetch_instagram_accounts(
     access_token: str,
     ad_account_id: str,
+    business_id: str | None = None,
+    pages: list[dict] | None = None,
 ) -> list[dict]:
-    """Busca contas Instagram vinculadas à conta de anúncio via Ads API."""
+    """
+    Busca contas Instagram vinculadas:
+    1. /act_{id}/connected_instagram_accounts (oficial para Ads)
+    2. Via páginas do Facebook vinculadas (instagram_business_account)
+    3. /{biz_id}/instagram_accounts
+    4. Fallback legado act_{id}/instagram_accounts
+    """
     act_id = ad_account_id if ad_account_id.startswith("act_") else f"act_{ad_account_id}"
-    url = f"{GRAPH_API_BASE}/{act_id}/instagram_accounts"
-    params = {
-        "access_token": access_token,
-        "fields": "id,username,profile_picture_url",
-        "limit": "100",
-    }
-    async with httpx.AsyncClient(timeout=15.0) as http:
-        response = await http.get(url, params=params)
-        if response.status_code != 200:
-            logger.warning(f"Erro IG ad account {act_id}: {response.text}")
-            return []
-        data = response.json()
+    ig_map: dict[str, dict] = {}
 
-    return [
-        {
-            "id": ig.get("id", ""),
-            "username": ig.get("username", ""),
-            "profile_pic": ig.get("profile_picture_url", ""),
+    # 1. connected_instagram_accounts (oficial para Ads)
+    try:
+        url = f"{GRAPH_API_BASE}/{act_id}/connected_instagram_accounts"
+        params = {
+            "access_token": access_token,
+            "fields": "id,username,profile_picture_url",
+            "limit": "100",
         }
-        for ig in data.get("data", [])
-    ]
+        async with httpx.AsyncClient(timeout=15.0) as http:
+            resp = await http.get(url, params=params)
+            if resp.status_code == 200:
+                for ig in resp.json().get("data", []):
+                    if ig.get("id"):
+                        ig_map[str(ig["id"])] = {
+                            "id": str(ig["id"]),
+                            "username": ig.get("username", ""),
+                            "profile_pic": ig.get("profile_picture_url", ""),
+                        }
+    except Exception as e:
+        logger.warning(f"Erro em connected_instagram_accounts para {act_id}: {e}")
+
+    # 2. Instagram vinculado às páginas de Facebook encontradas
+    if pages:
+        for page in pages:
+            page_id = page.get("id")
+            if not page_id:
+                continue
+            try:
+                url = f"{GRAPH_API_BASE}/{page_id}"
+                params = {
+                    "access_token": access_token,
+                    "fields": "instagram_business_account{id,username,profile_picture_url}",
+                }
+                async with httpx.AsyncClient(timeout=10.0) as http:
+                    resp = await http.get(url, params=params)
+                    if resp.status_code == 200:
+                        ig = resp.json().get("instagram_business_account")
+                        if ig and ig.get("id") and str(ig["id"]) not in ig_map:
+                            ig_map[str(ig["id"])] = {
+                                "id": str(ig["id"]),
+                                "username": ig.get("username", ""),
+                                "profile_pic": ig.get("profile_picture_url", ""),
+                            }
+            except Exception:
+                pass
+
+    # 3. Instagram via Business Manager
+    biz_id = business_id or await _get_business_id(access_token, ad_account_id)
+    if biz_id:
+        try:
+            url = f"{GRAPH_API_BASE}/{biz_id}/instagram_accounts"
+            params = {
+                "access_token": access_token,
+                "fields": "id,username,profile_picture_url",
+                "limit": "100",
+            }
+            async with httpx.AsyncClient(timeout=15.0) as http:
+                resp = await http.get(url, params=params)
+                if resp.status_code == 200:
+                    for ig in resp.json().get("data", []):
+                        if ig.get("id") and str(ig["id"]) not in ig_map:
+                            ig_map[str(ig["id"])] = {
+                                "id": str(ig["id"]),
+                                "username": ig.get("username", ""),
+                                "profile_pic": ig.get("profile_picture_url", ""),
+                            }
+        except Exception as e:
+            logger.warning(f"Erro em instagram_accounts do business {biz_id}: {e}")
+
+    # 4. Fallback legado act_{id}/instagram_accounts
+    try:
+        url = f"{GRAPH_API_BASE}/{act_id}/instagram_accounts"
+        params = {
+            "access_token": access_token,
+            "fields": "id,username,profile_picture_url",
+            "limit": "100",
+        }
+        async with httpx.AsyncClient(timeout=10.0) as http:
+            resp = await http.get(url, params=params)
+            if resp.status_code == 200:
+                for ig in resp.json().get("data", []):
+                    if ig.get("id") and str(ig["id"]) not in ig_map:
+                        ig_map[str(ig["id"])] = {
+                            "id": str(ig["id"]),
+                            "username": ig.get("username", ""),
+                            "profile_pic": ig.get("profile_picture_url", ""),
+                        }
+    except Exception:
+        pass
+
+    return list(ig_map.values())
 
 
 async def search_interests(

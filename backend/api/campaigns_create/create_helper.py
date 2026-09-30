@@ -127,7 +127,7 @@ async def _create_adset_with_ads(
     targeting = dict(data.get("targeting", {}))
     ig_actor_id = data.get("instagram_actor_id")
 
-    if not ig_actor_id or ig_actor_id == "none":
+    if ig_actor_id in ("no_instagram", "none_no_ig"):
         targeting["publisher_platforms"] = ["facebook", "audience_network", "messenger"]
 
     adset_result = await create_adset(

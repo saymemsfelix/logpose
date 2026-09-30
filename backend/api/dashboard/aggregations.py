@@ -61,8 +61,18 @@ def _platform_dist(base, db):
         .group_by(Transaction.platform)
         .all()
     )
-    colors = {"kiwify": "var(--color-chart-1)", "payt": "var(--color-chart-2)", "api": "var(--color-chart-3)"}
-    labels = {"kiwify": "Kiwify", "payt": "PayT", "api": "API"}
+    colors = {
+        "kiwify": "var(--color-chart-1)",
+        "payt": "var(--color-chart-2)",
+        "hotmart": "#FF5722",
+        "api": "var(--color-chart-3)",
+    }
+    labels = {
+        "kiwify": "Kiwify",
+        "payt": "PayT",
+        "hotmart": "Hotmart",
+        "api": "API",
+    }
     return [
         {
             "name": labels.get(r.platform.value, r.platform.value),

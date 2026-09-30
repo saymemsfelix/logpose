@@ -24,11 +24,14 @@ interface AdSetStepProps {
   onSearchInterest: (query: string) => void;
   accounts: FacebookAccountAPI[];
   multiAccountData: Record<number, AccountMetaData>;
+  isMetaLoading?: boolean;
+  onRefreshMeta?: () => void;
 }
 
 export function AdSetStep({
   form, onUpdate, onUpdateAccountConfig, pixels, pages, instagramAccounts,
   interestResults, onSearchInterest, accounts, multiAccountData,
+  isMetaLoading = false, onRefreshMeta,
 }: AdSetStepProps) {
   const suggestedName = generateAdSetName(
     form.campaignName.split(" | ")[1] || form.campaignName,
@@ -98,6 +101,8 @@ export function AdSetStep({
             <SharedMetaSelectors
               form={form} onUpdate={onUpdate}
               pixels={pixels} pages={pages} instagramAccounts={instagramAccounts}
+              isLoading={isMetaLoading}
+              onRefresh={onRefreshMeta}
             />
           )}
 
