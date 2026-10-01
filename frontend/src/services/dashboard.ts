@@ -31,8 +31,7 @@ export async function fetchManualSpend(): Promise<{ spend: number; clicks: numbe
 export async function updateManualSpend(spend: number, clicks?: number, spendDate?: string): Promise<{ status: string }> {
   return apiRequest<{ status: string }>("/dashboard/manual-spend", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ spend, clicks: clicks || 0, spend_date: spendDate }),
+    body: { spend, clicks: clicks || 0, spend_date: spendDate },
   });
 }
 

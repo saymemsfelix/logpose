@@ -199,6 +199,11 @@ def get_current_manual_spend(db: Session = Depends(get_db), _=Depends(get_curren
 
 @router.post("/manual-spend")
 def set_manual_spend(req: ManualSpendInput, db: Session = Depends(get_db), _=Depends(get_current_user)):
+    try:
+        DailyAdSpend.__table__.create(db.get_bind(), checkfirst=True)
+    except Exception:
+        pass
+
     target_date = now_sp().date()
     if req.spend_date:
         try:
@@ -206,27 +211,31 @@ def set_manual_spend(req: ManualSpendInput, db: Session = Depends(get_db), _=Dep
         except ValueError:
             pass
 
-    row = db.query(DailyAdSpend).filter(DailyAdSpend.spend_date == target_date).first()
-    if not row:
-        row = DailyAdSpend(
-            spend_date=target_date,
-            spend=req.spend,
-            clicks=req.clicks or 0,
-            impressions=req.impressions or 0,
-        )
-        db.add(row)
-    else:
-        row.spend = req.spend
-        if req.clicks is not None:
-            row.clicks = req.clicks
-        if req.impressions is not None:
-            row.impressions = req.impressions
-    db.commit()
-    db.refresh(row)
-    return {
-        "status": "ok",
-        "spend": row.spend,
-        "clicks": row.clicks,
-        "impressions": row.impressions,
-        "spend_date": str(row.spend_date),
-    }
+    try:
+        row = db.query(DailyAdSpend).filter(DailyAdSpend.spend_date == target_date).first()
+        if not row:
+            row = DailyAdSpend(
+                spend_date=target_date,
+                spend=float(req.spend),
+                clicks=int(req.clicks or 0),
+                impressions=int(req.impressions or 0),
+            )
+            db.add(row)
+        else:
+            row.spend = float(req.spend)
+            if req.clicks is not None:
+                row.clicks = int(req.clicks)
+            if req.impressions is not None:
+                row.impressions = int(req.impressions)
+        db.commit()
+        db.refresh(row)
+        return {
+            "status": "ok",
+            "spend": row.spend,
+            "clicks": row.clicks,
+            "impressions": row.impressions,
+            "spend_date": str(row.spend_date),
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao salvar gasto: {str(e)}")

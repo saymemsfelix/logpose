@@ -67,6 +67,7 @@ from api.subscriptions.metrics import router as subscriptions_metrics_router
 from api.advanced_settings.features import router as advanced_settings_router
 from api.advanced_settings.reset_sales import router as reset_sales_router
 
+import database.models.daily_ad_spend
 from database.core.migrate_sql import run_sql_migrations
 import logging
 logger = logging.getLogger(__name__)
