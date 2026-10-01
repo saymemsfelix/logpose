@@ -1,5 +1,5 @@
 # ── Stage 1: Build do Frontend ──
-FROM node:20-alpine AS frontend-build
+FROM node:20-slim AS frontend-build
 
 WORKDIR /frontend
 
@@ -7,6 +7,7 @@ COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci --no-audit --no-fund --legacy-peer-deps
 
 COPY frontend/ ./
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 RUN npm run build
 
 
@@ -22,7 +23,7 @@ COPY backend/ .
 
 COPY --from=frontend-build /frontend/dist /app/frontend_dist
 
-RUN chmod +x entrypoint.sh
+RUN sed -i 's/\r$//' entrypoint.sh && chmod +x entrypoint.sh
 
 ENTRYPOINT ["./entrypoint.sh"]
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]

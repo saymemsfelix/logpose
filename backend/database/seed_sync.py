@@ -167,9 +167,10 @@ def seed_sync_data(engine):
                 )
                 db.add(abandon)
 
-            # 6. Remover transações antigas de teste do Brasil para a tabela ficar 100% limpa com as 12 vendas
+            # 6. Purgar qualquer transação de teste antiga que não seja uma das 12 vendas oficiais de hoje
+            valid_external_ids = [s[0] for s in real_sales] + ["HT_ABANDON_COSIMO"]
             db.query(Transaction).filter(
-                Transaction.external_id.in_(["TEST_1", "TEST_2", "TX_TEST_1", "TX_TEST_2"])
+                Transaction.external_id.notin_(valid_external_ids)
             ).delete(synchronize_session=False)
 
             # 7. Corrigir qualquer transação remanescente de produto italiano
