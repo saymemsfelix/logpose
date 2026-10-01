@@ -45,9 +45,9 @@ def list_accounts(
     accounts = db.query(FacebookAccount).order_by(FacebookAccount.id.desc()).all()
     if not accounts:
         default_acc = FacebookAccount(
-            label="CONTA BR 1.5k",
+            label="CONTA BR 3k",
             account_id="act_949690764845924",
-            access_token="EAAYeBZCzUEzsBSkX3brv7KrG1dBVNNGCGNUuSAMTc5NZAxO0LyDskVNDYPKbcfZAGZCnAS2JnNLfaXCnhbU088mFvcL9Tc4bQlXB5aZB9WycZBarZA6gCWGh8hLIsIgkRwMRGwbdWu3HqDgBlAx9fsAYnZB9WdkyprJuefoFiQwJgZB8kLHi5sogcIecT0cwZALQn6kQZDZD",
+            access_token="EAAQNi9yZBwRUBSrDuVbjcMGeIs8jAGv0i3oR5KjGiKwdKzR6lngSCQW075XamzQDBmsESsAqilbfhoYZCSmZBBYQ5eRhkvGZBpEM2BJgO0YctpQ772KZARnbjVZBgZCuT8g3cqQAxCQMFKXq8AYJwQfG3V9osqJJ14ZCYJ2AgTjEOWgmQ0r89w4uSrWwqbud3toxIAZDZD",
             business_id="BM 4KBRL",
             token_valid=True,
         )

@@ -8,8 +8,8 @@ CREATE TABLE IF NOT EXISTS daily_ad_spends (
     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
 );
 
--- Seed de R$ 43,89 e 21 cliques para a data atual
+-- Seed com gastos reais Meta Ads (R$ 158,24, 92 cliques, 1315 impressões)
 INSERT INTO daily_ad_spends (spend_date, spend, clicks, impressions)
-VALUES (CURRENT_DATE, 43.89, 21, 150)
+VALUES (CURRENT_DATE, 158.24, 92, 1315)
 ON CONFLICT (spend_date) DO UPDATE 
-SET spend = EXCLUDED.spend, clicks = EXCLUDED.clicks;
+SET spend = EXCLUDED.spend, clicks = EXCLUDED.clicks, impressions = EXCLUDED.impressions;

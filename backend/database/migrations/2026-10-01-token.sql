@@ -1,4 +1,4 @@
--- Migration segura e idempotente para garantir CONTA BR 1.5k e Hotmart Webhook
+-- Migration 2026-10-01-token: Atualiza token oficial de System User e ativa CONTA BR 3k
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -21,19 +21,3 @@ BEGIN
     WHERE account_id = 'act_949690764845924';
   END IF;
 END $$;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM webhook_endpoints WHERE slug = 'uq_GVXf_vUiq9m0wAyUeb4SND0EjmQl8'
-  ) THEN
-    INSERT INTO webhook_endpoints (slug, platform, name)
-    VALUES (
-      'uq_GVXf_vUiq9m0wAyUeb4SND0EjmQl8',
-      'hotmart',
-      'Hotmart'
-    );
-  END IF;
-END $$;
-
-
