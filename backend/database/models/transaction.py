@@ -63,6 +63,9 @@ class Transaction(Base):
     checkout_url = Column(String(1024), nullable=True)
     order_bumps = Column(JSON, nullable=True)
 
+    # País detectado (ex: IT, BR, PT, US)
+    country = Column(String(50), nullable=True, index=True)
+
     created_at = Column(DateTime, server_default=CREATED_AT_DEFAULT)
     updated_at = Column(
         DateTime,

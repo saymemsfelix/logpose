@@ -96,6 +96,7 @@ async def dashboard_overview(
     product_id: Optional[int] = Query(None),
     upsell_id: Optional[int] = Query(None),
     account_slug: Optional[str] = Query(None),
+    account_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
@@ -106,8 +107,8 @@ async def dashboard_overview(
     ds, de = _date_range_strings(preset, start_date, end_date)
 
     # Buscar dados da Meta Ads em paralelo
-    meta_summary, meta_error = await fetch_meta_account_summary(db, ds, de)
-    meta_campaigns = await fetch_meta_campaigns_for_dashboard(db, ds, de)
+    meta_summary, meta_error = await fetch_meta_account_summary(db, ds, de, account_id=account_id)
+    meta_campaigns = await fetch_meta_campaigns_for_dashboard(db, ds, de, account_id=account_id)
 
     # KPIs com dados da Meta
     kpis = calc_kpis(base, meta_summary)

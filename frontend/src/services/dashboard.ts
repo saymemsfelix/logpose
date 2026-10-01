@@ -9,6 +9,7 @@ interface DashboardParams {
   product_id?: number;
   upsell_id?: number;
   account_slug?: string;
+  account_id?: number;
 }
 
 function buildQuery(params: DashboardParams): string {

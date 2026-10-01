@@ -37,6 +37,16 @@ export default function DashboardPage() {
         },
         id: "meta-token-invalid",
       });
+    } else if (data?.meta_error === "missing_permissions") {
+      toast.error("Permissões insuficientes no Facebook Ads", {
+        description: "O token da conta Meta Ads não possui a permissão 'ads_read' ou 'ads_management'. Atualize o token nas Integrações para sincronizar gastos e ROAS.",
+        duration: Infinity,
+        action: {
+          label: "Corrigir nas Integrações",
+          onClick: () => navigate("/integrations"),
+        },
+        id: "meta-token-missing-perms",
+      });
     }
   }, [data?.meta_error, navigate]);
 

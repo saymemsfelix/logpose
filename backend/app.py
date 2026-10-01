@@ -135,6 +135,7 @@ app.include_router(campaigns_conversion_router, prefix="/api")
 app.include_router(campaigns_ai_action_router, prefix="/api")
 app.include_router(campaigns_export_details_router, prefix="/api")
 app.include_router(webhook_receiver_router, prefix="/api")
+app.include_router(webhook_receiver_router, prefix="")
 app.include_router(import_preview_router, prefix="/api")
 app.include_router(import_execute_router, prefix="/api")
 app.include_router(refunds_list_router, prefix="/api")
@@ -164,7 +165,7 @@ if os.path.isdir(_frontend_dir):
         async def dispatch(self, request: Request, call_next):
             path = request.url.path
 
-            if path.startswith("/api") or path.startswith("/assets"):
+            if path.startswith("/api") or path.startswith("/webhook") or path.startswith("/assets"):
                 return await call_next(request)
 
             if request.method not in ("GET", "HEAD"):

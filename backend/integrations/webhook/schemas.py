@@ -27,6 +27,7 @@ class StandardizedWebhookEvent(BaseModel):
     customer_name: Optional[str] = None
     customer_cpf: Optional[str] = None
     customer_phone: Optional[str] = None
+    customer_country: Optional[str] = None
     
     # Rastreamento / UTMs
     utm_source: Optional[str] = None

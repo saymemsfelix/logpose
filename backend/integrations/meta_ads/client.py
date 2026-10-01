@@ -28,6 +28,9 @@ FATAL_AUTH_CODES = {
     190,  # Invalid OAuth 2.0 Access Token (token inválido, expirado, app deletado)
     102,  # Session key invalid or no longer valid
     2500, # Error parsing OAuth token (general)
+    200,  # Missing permissions (ex: ads_management ou ads_read ausente)
+    10,   # Permission denied
+    294,  # Managing advertisements requires ads_management permission
 }
 
 # Versão da Graph API via ENV (padrão v25.0)
@@ -103,10 +106,11 @@ class MetaAdsClient:
                 body = response.json()
                 error = body.get("error", {})
                 code = error.get("code", 0)
+                err_type = str(error.get("type", "")).strip()
                 message = error.get("message", "Token inválido")
-                if code in FATAL_AUTH_CODES:
+                if code in FATAL_AUTH_CODES or err_type == "OAuthException":
                     logger.error(
-                        f"Erro fatal de autenticação Meta (code={code}): {message}"
+                        f"Erro fatal de autenticação/permissão Meta (code={code}, type={err_type}): {message}"
                     )
                     return MetaAuthError(message, error_code=code)
             except Exception:

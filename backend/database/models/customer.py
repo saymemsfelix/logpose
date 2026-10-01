@@ -16,6 +16,7 @@ class Customer(Base):
     name = Column(String(255), nullable=True)
     phone = Column(String(50), nullable=True)
     cpf = Column(String(20), nullable=True)
+    country = Column(String(50), nullable=True)
     total_spent = Column(Float, default=0.0)
     total_orders = Column(Integer, default=0)
     first_purchase_at = Column(DateTime, nullable=True)

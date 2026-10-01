@@ -42,6 +42,7 @@ def process_webhook_event(db: Session, event: StandardizedWebhookEvent):
             name=event.customer_name,
             cpf=event.customer_cpf,
             phone=event.customer_phone,
+            country=event.customer_country,
             total_spent=0.0,
             total_orders=0
         )
@@ -56,6 +57,8 @@ def process_webhook_event(db: Session, event: StandardizedWebhookEvent):
             customer.cpf = event.customer_cpf
         if event.customer_phone and not customer.phone:
             customer.phone = event.customer_phone
+        if event.customer_country and not getattr(customer, "country", None):
+            customer.country = event.customer_country
 
     # -------------------------------------------------------------
     # 2. SE A TRANSAÇÃO JÁ EXISTIR
@@ -67,10 +70,35 @@ def process_webhook_event(db: Session, event: StandardizedWebhookEvent):
         is_newly_approved = existing_tx.status != TransactionStatus.APPROVED and event.status == TransactionStatus.APPROVED
         is_newly_refunded = existing_tx.status == TransactionStatus.APPROVED and event.status in [TransactionStatus.REFUNDED, TransactionStatus.CHARGEBACK]
         
+        # Se o valor mudou (ex: order bump confirmado ou ajuste de comissão)
+        if event.amount > 0 and abs(existing_tx.amount - event.amount) > 0.01:
+            diff = event.amount - existing_tx.amount
+            existing_tx.amount = event.amount
+            if existing_tx.status == TransactionStatus.APPROVED:
+                customer.total_spent += diff
+
+        # Se a transação anterior não tinha UTMs e agora tem, atualiza
+        if not existing_tx.utm_campaign and event.utm_campaign:
+            existing_tx.utm_campaign = event.utm_campaign
+        if not existing_tx.utm_source and event.utm_source:
+            existing_tx.utm_source = event.utm_source
+        if not existing_tx.utm_medium and event.utm_medium:
+            existing_tx.utm_medium = event.utm_medium
+        if not existing_tx.utm_content and event.utm_content:
+            existing_tx.utm_content = event.utm_content
+        if not existing_tx.utm_term and event.utm_term:
+            existing_tx.utm_term = event.utm_term
+        if not existing_tx.src and event.src:
+            existing_tx.src = event.src
+        if event.customer_country and not getattr(existing_tx, "country", None):
+            existing_tx.country = event.customer_country
+        if event.order_bumps and not existing_tx.order_bumps:
+            existing_tx.order_bumps = event.order_bumps
+
         existing_tx.status = event.status
         
         if is_newly_approved:
-            customer.total_spent += event.amount
+            customer.total_spent += existing_tx.amount
             customer.total_orders += 1
             customer.last_purchase_at = get_saopaulo_time()
             if not customer.first_purchase_at:
@@ -133,7 +161,8 @@ def process_webhook_event(db: Session, event: StandardizedWebhookEvent):
         src=event.src,
         webhook_slug=event.webhook_slug,
         checkout_url=event.checkout_url,
-        order_bumps=event.order_bumps
+        order_bumps=event.order_bumps,
+        country=event.customer_country,
     )
     db.add(new_tx)
     

@@ -13,7 +13,7 @@ def _map_hotmart_status(event_name: str, purchase_status: str) -> TransactionSta
     ev = (event_name or "").upper().strip()
     st = (purchase_status or "").upper().strip()
 
-    if ev in ["PURCHASE_APPROVED", "PURCHASE_COMPLETE"] or st in ["APPROVED", "COMPLETE", "APROVADO", "COMPLETO"]:
+    if ev in ["PURCHASE_APPROVED", "PURCHASE_COMPLETE", "ORDER_APPROVED"] or st in ["APPROVED", "COMPLETE", "COMPLETED", "APROVADO", "COMPLETO", "PAID", "PAGO"]:
         return TransactionStatus.APPROVED
     elif ev in ["PURCHASE_REFUNDED"] or st in ["REFUNDED", "REFUND", "REEMBOLSADO"]:
         return TransactionStatus.REFUNDED
@@ -92,21 +92,35 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
 
         # 3. Valor monetário (amount = comissão do produtor ou preço da compra)
         amount = 0.0
-        commissions = data.get("commissions") or payload.get("commissions") or []
+        commissions = (
+            data.get("commissions")
+            or purchase.get("commissions")
+            or purchase.get("commission")
+            or payload.get("commissions")
+            or []
+        )
+        if isinstance(commissions, dict):
+            commissions = [commissions]
+
         if isinstance(commissions, list):
             for comm in commissions:
-                if isinstance(comm, dict) and str(comm.get("source", "")).upper() in ["PRODUCER", "COPRODUCER"]:
-                    try:
-                        amount = float(comm.get("value") or 0.0)
-                        break
-                    except Exception:
-                        pass
+                if isinstance(comm, dict):
+                    src_type = str(comm.get("source", "")).upper()
+                    if src_type in ["PRODUCER", "COPRODUCER", "COMMISSION", "VENDOR", ""] or len(commissions) == 1:
+                        try:
+                            val_str = str(comm.get("value") or 0.0).replace(",", ".")
+                            val_flt = float(val_str)
+                            if val_flt > 0:
+                                amount = val_flt
+                                break
+                        except Exception:
+                            pass
 
         price_obj = purchase.get("price") or data.get("price") or payload.get("price") or {}
         price_val = 0.0
         if isinstance(price_obj, dict):
             try:
-                price_val = float(price_obj.get("value") or 0.0)
+                price_val = float(str(price_obj.get("value") or 0.0).replace(",", "."))
             except Exception:
                 price_val = 0.0
         elif isinstance(price_obj, (int, float, str)):
@@ -207,6 +221,58 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
             or ""
         ).lower()
 
+        # 7. Detecção Avançada de País
+        buyer_addr = buyer.get("address") if isinstance(buyer.get("address"), dict) else {}
+        data_addr = data.get("address") if isinstance(data.get("address"), dict) else {}
+        
+        country_candidate = str(
+            buyer_addr.get("country_iso")
+            or buyer_addr.get("country")
+            or data_addr.get("country_iso")
+            or data_addr.get("country")
+            or payload.get("address_country")
+            or payload.get("country")
+            or ""
+        ).strip().upper()
+
+        currency = str(
+            (price_obj.get("currency_code") if isinstance(price_obj, dict) else None)
+            or (price_obj.get("currency_value") if isinstance(price_obj, dict) else None)
+            or data.get("currency")
+            or payload.get("currency")
+            or ""
+        ).strip().upper()
+
+        clean_phone = str(phone or "").replace("+", "").replace(" ", "").replace("-", "").strip()
+
+        customer_country = "BR"
+        if country_candidate in ["IT", "ITA", "ITALY", "ITÁLIA", "ITALIA"] or clean_phone.startswith("39") or (currency == "EUR" and not clean_phone.startswith("351") and not clean_phone.startswith("34")):
+            customer_country = "IT"
+        elif country_candidate in ["PT", "PRT", "PORTUGAL"] or clean_phone.startswith("351"):
+            customer_country = "PT"
+        elif country_candidate in ["ES", "ESP", "SPAIN", "ESPANHA", "ESPAÑA"] or clean_phone.startswith("34"):
+            customer_country = "ES"
+        elif country_candidate in ["US", "USA", "ESTADOS UNIDOS", "UNITED STATES"] or (clean_phone.startswith("1") and len(clean_phone) >= 11):
+            customer_country = "US"
+        elif country_candidate in ["GB", "GBR", "REINO UNIDO", "UNITED KINGDOM"] or clean_phone.startswith("44"):
+            customer_country = "GB"
+        elif country_candidate in ["FR", "FRA", "FRANÇA", "FRANCE"] or clean_phone.startswith("33"):
+            customer_country = "FR"
+        elif country_candidate in ["DE", "DEU", "ALEMANHA", "GERMANY"] or clean_phone.startswith("49"):
+            customer_country = "DE"
+        elif country_candidate in ["MX", "MEX", "MÉXICO", "MEXICO"] or clean_phone.startswith("52"):
+            customer_country = "MX"
+        elif country_candidate in ["AR", "ARG", "ARGENTINA"] or clean_phone.startswith("54"):
+            customer_country = "AR"
+        elif country_candidate in ["BR", "BRA", "BRASIL", "BRAZIL"] or clean_phone.startswith("55"):
+            customer_country = "BR"
+        elif country_candidate:
+            customer_country = country_candidate[:2]
+
+        # Se o produto tem nome italiano (ex: Diagnosi Visive) e moeda EUR
+        if any(w in prod_name.lower() for w in ["diagnosi", "guida", "visive", "hardware e software", "solda"]) and (currency == "EUR" or clean_phone.startswith("39")):
+            customer_country = "IT"
+
         return StandardizedWebhookEvent(
             external_id=str(external_id),
             platform=PaymentPlatform.HOTMART,
@@ -222,6 +288,7 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
             customer_name=name,
             customer_cpf=cpf,
             customer_phone=phone,
+            customer_country=customer_country,
             utm_source=utm_source,
             utm_medium=utm_medium,
             utm_campaign=utm_campaign,

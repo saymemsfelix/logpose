@@ -169,29 +169,72 @@ def _country_distribution(base, db):
         .all()
     )
     
+    COUNTRY_MAP = {
+        "IT": ("IT", "Itália"),
+        "PT": ("PT", "Portugal"),
+        "ES": ("ES", "Espanha"),
+        "US": ("US", "Estados Unidos"),
+        "GB": ("GB", "Reino Unido"),
+        "FR": ("FR", "França"),
+        "DE": ("DE", "Alemanha"),
+        "MX": ("MX", "México"),
+        "AR": ("AR", "Argentina"),
+        "CL": ("CL", "Chile"),
+        "CO": ("CO", "Colômbia"),
+        "PE": ("PE", "Peru"),
+        "UY": ("UY", "Uruguai"),
+        "BR": ("BR", "Brasil"),
+    }
+
     country_counts = {}
     total_rev = 0.0
 
     for tx in approved_txs:
         c_code = "BR"
         c_name = "Brasil"
-        phone = ""
-        if tx.customer_id:
-            cust = db.query(Customer).filter(Customer.id == tx.customer_id).first()
-            if cust and cust.phone:
-                phone = cust.phone.replace("+", "").strip()
 
-        if phone:
-            if phone.startswith("351"):
-                c_code, c_name = "PT", "Portugal"
-            elif phone.startswith("1") and len(phone) >= 11:
-                c_code, c_name = "US", "Estados Unidos"
-            elif phone.startswith("34"):
-                c_code, c_name = "ES", "Espanha"
-            elif phone.startswith("44"):
-                c_code, c_name = "GB", "Reino Unido"
-            elif phone.startswith("33"):
-                c_code, c_name = "FR", "França"
+        # 1. Se a transação já tem country salvo no DB
+        raw_c = str(getattr(tx, "country", "") or "").strip().upper()
+        if raw_c in COUNTRY_MAP:
+            c_code, c_name = COUNTRY_MAP[raw_c]
+        else:
+            phone = ""
+            cust_country = ""
+            if tx.customer_id:
+                cust = db.query(Customer).filter(Customer.id == tx.customer_id).first()
+                if cust:
+                    cust_country = str(getattr(cust, "country", "") or "").strip().upper()
+                    if cust.phone:
+                        phone = cust.phone.replace("+", "").replace(" ", "").replace("-", "").strip()
+
+            if cust_country in COUNTRY_MAP:
+                c_code, c_name = COUNTRY_MAP[cust_country]
+            elif phone:
+                if phone.startswith("39"):
+                    c_code, c_name = COUNTRY_MAP["IT"]
+                elif phone.startswith("351"):
+                    c_code, c_name = COUNTRY_MAP["PT"]
+                elif phone.startswith("34"):
+                    c_code, c_name = COUNTRY_MAP["ES"]
+                elif phone.startswith("1") and len(phone) >= 11:
+                    c_code, c_name = COUNTRY_MAP["US"]
+                elif phone.startswith("44"):
+                    c_code, c_name = COUNTRY_MAP["GB"]
+                elif phone.startswith("33"):
+                    c_code, c_name = COUNTRY_MAP["FR"]
+                elif phone.startswith("49"):
+                    c_code, c_name = COUNTRY_MAP["DE"]
+                elif phone.startswith("52"):
+                    c_code, c_name = COUNTRY_MAP["MX"]
+                elif phone.startswith("54"):
+                    c_code, c_name = COUNTRY_MAP["AR"]
+                elif phone.startswith("55"):
+                    c_code, c_name = COUNTRY_MAP["BR"]
+            
+            # Se for produto internacional italiano e não tiver caído em outro DDI específico
+            p_name = (tx.product_name or "").lower()
+            if any(k in p_name for k in ["diagnosi", "visive", "hardware e software", "solda"]) and not phone.startswith("55"):
+                c_code, c_name = COUNTRY_MAP["IT"]
 
         if c_code not in country_counts:
             country_counts[c_code] = {"code": c_code, "name": c_name, "sales": 0, "revenue": 0.0}
@@ -292,22 +335,20 @@ def _conversion_flow(base, meta_summary):
     """
     Funil de conversão em tempo real (NexoFlow):
     Cliques -> Vis. Página -> ICs (Initiate Checkouts) -> Vendas Inic. -> Vendas Apr.
+    Usa métricas reais do Meta Ads (clicks, landing_page_views, omni_initiated_checkout)
+    e transações reais do banco de dados.
     """
     all_rows = base.all()
     approved = [t for t in all_rows if t.status == TransactionStatus.APPROVED]
     
-    clicks = meta_summary.clicks if meta_summary and meta_summary.clicks > 0 else (10 if len(all_rows) > 0 or (meta_summary and meta_summary.spend > 0) else 0)
-    
-    # Page views: estimada ou vinda do Meta Pixel
-    pageviews = int(clicks * 0.85) if clicks > 0 else 0
-    
-    # Initiate checkouts: 
-    ics = max(len(all_rows), int(pageviews * 0.15)) if pageviews > 0 else len(all_rows)
-    
-    # Vendas iniciadas (carrinhos gerados)
+    clicks = meta_summary.clicks if meta_summary else 0
+    pageviews = meta_summary.landing_page_views if meta_summary else 0
+    ics = (
+        meta_summary.initiate_checkout
+        if meta_summary and meta_summary.initiate_checkout > 0
+        else len(all_rows)
+    )
     sales_init = len(all_rows)
-    
-    # Vendas aprovadas
     sales_app = len(approved)
 
     # Taxas de conversão

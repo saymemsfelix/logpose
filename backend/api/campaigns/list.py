@@ -35,38 +35,50 @@ async def get_campaigns_data(
     Cruza campanhas com vendas pelo utm_campaign (name|id).
     Retorna hierarquia: campaigns -> adsets -> ads, cada um com métricas.
     """
-    # 1. Selecionar conta Facebook
-    fb_account = _get_fb_account(db, account_id)
-    if not fb_account:
-        return {"campaigns": [], "unidentified": _build_unidentified(db, date_start, date_end)}
+    # 1. Selecionar conta(s) Facebook
+    fb_accounts = _get_fb_accounts(db, account_id)
+    if not fb_accounts:
+        has_any = db.query(FacebookAccount).first()
+        return {
+            "campaigns": [],
+            "unidentified": _build_unidentified(db, date_start, date_end),
+            "error": "token_invalid" if has_any else None,
+        }
 
-    # 2. Buscar dados do Meta Ads
-    service = MetaAdsService(fb_account.access_token, fb_account.account_id)
-    try:
-        meta_campaigns, meta_adsets, meta_ads = await service.get_all_levels(
-            date_start, date_end,
-        )
-    except MetaAuthError:
-        # Token inválido: marcar no banco para suprimir futuras chamadas
-        fb_account.token_valid = False
-        db.commit()
-        await service.close()
+    # 2. Buscar dados do Meta Ads de todas as contas válidas selecionadas
+    meta_campaigns = []
+    meta_adsets = []
+    meta_ads = []
+    errors = []
+
+    for fb_account in fb_accounts:
+        service = MetaAdsService(fb_account.access_token, fb_account.account_id)
+        try:
+            c, a, ad = await service.get_all_levels(date_start, date_end)
+            if c:
+                meta_campaigns.extend(c)
+            if a:
+                meta_adsets.extend(a)
+            if ad:
+                meta_ads.extend(ad)
+        except MetaAuthError:
+            fb_account.token_valid = False
+            db.commit()
+            errors.append("token_invalid")
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Erro ao buscar dados do Meta Ads ({fb_account.label}): {e}")
+            errors.append(str(e))
+        finally:
+            await service.close()
+
+    # Se não obteve nada e teve erro de token
+    if not meta_campaigns and "token_invalid" in errors and len(fb_accounts) == 1:
         return {
             "campaigns": [],
             "unidentified": _build_unidentified(db, date_start, date_end),
             "error": "token_invalid",
         }
-    except Exception as e:
-        import logging
-        logging.getLogger(__name__).error(f"Erro ao buscar dados do Meta Ads: {e}")
-        await service.close()
-        return {
-            "campaigns": [],
-            "unidentified": _build_unidentified(db, date_start, date_end),
-            "error": str(e),
-        }
-    finally:
-        await service.close()
 
     # 3. Buscar transações aprovadas no período com utm_source=FB
     transactions = _get_fb_transactions(db, date_start, date_end)
@@ -99,16 +111,17 @@ async def get_campaigns_data(
     return {"campaigns": campaigns, "unidentified": unidentified}
 
 
-def _get_fb_account(db: Session, account_id: Optional[int]) -> Optional[FacebookAccount]:
-    """Retorna a conta FB selecionada ou a primeira com token válido."""
+def _get_fb_accounts(db: Session, account_id: Optional[int]) -> list[FacebookAccount]:
+    """Retorna a conta FB selecionada ou todas as contas com token válido."""
     if account_id:
-        return db.query(FacebookAccount).filter(
+        acc = db.query(FacebookAccount).filter(
             FacebookAccount.id == account_id,
             FacebookAccount.token_valid.is_(True),
         ).first()
+        return [acc] if acc else []
     return db.query(FacebookAccount).filter(
         FacebookAccount.token_valid.is_(True)
-    ).first()
+    ).all()
 
 
 def _get_fb_transactions(db: Session, date_start: str, date_end: str) -> list[Transaction]:
