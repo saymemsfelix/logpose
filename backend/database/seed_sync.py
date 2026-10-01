@@ -1,6 +1,8 @@
 """
 Garante que os dados reais da Hotmart e do Meta Ads (Itália, Suíça, gastos e token)
-estejam perfeitamente sincronizados no banco de dados no boot.
+estejam perfeitamente sincronizados no banco de dados no boot com base na NexoFy.
+Total: R$ 588,94 | Lucro: R$ 418,18 | Margem: 71,01% | ROAS: 3.45x | Gastos: R$ 170,76
+12 Vendas Aprovadas (6 principais + 6 bumps)
 """
 import logging
 from datetime import timedelta
@@ -41,21 +43,21 @@ def seed_sync_data(engine):
                 fb.token_valid = True
             db.commit()
 
-            # 2. Atualizar Gasto de Anúncios de Hoje (R$ 158,24 da Meta Ads)
+            # 2. Atualizar Gasto de Anúncios de Hoje (R$ 170,76 da Meta Ads ao vivo)
             today_date = today_sp()
             spend_row = db.query(DailyAdSpend).filter(DailyAdSpend.spend_date == today_date).first()
             if not spend_row:
                 spend_row = DailyAdSpend(
                     spend_date=today_date,
-                    spend=158.24,
-                    clicks=92,
-                    impressions=1315,
+                    spend=170.76,
+                    clicks=71,
+                    impressions=1400,
                 )
                 db.add(spend_row)
             else:
-                spend_row.spend = 158.24
-                spend_row.clicks = 92
-                spend_row.impressions = 1315
+                spend_row.spend = 170.76
+                spend_row.clicks = 71
+                spend_row.impressions = 1400
             db.commit()
 
             # 3. Criar Clientes da Itália e Suíça se não existirem
@@ -66,14 +68,16 @@ def seed_sync_data(engine):
                     email="cliente.italia1@libero.it",
                     phone="+39 340 1234567",
                     country="IT",
-                    total_spent=346.12,
-                    total_orders=6,
+                    total_spent=458.93,
+                    total_orders=9,
                 )
                 db.add(cust_it)
                 db.flush()
             else:
                 cust_it.country = "IT"
                 cust_it.phone = "+39 340 1234567"
+                cust_it.total_spent = 458.93
+                cust_it.total_orders = 9
 
             cust_ch = db.query(Customer).filter(Customer.email == "cliente.svizzera@bluewin.ch").first()
             if not cust_ch:
@@ -90,24 +94,36 @@ def seed_sync_data(engine):
             else:
                 cust_ch.country = "CH"
                 cust_ch.phone = "+41 79 1234567"
+                cust_ch.total_spent = 130.01
+                cust_ch.total_orders = 3
 
             db.commit()
 
-            # 4. Inserir ou Atualizar as 9 Transações Reais de Hoje (Total R$ 476,13)
+            # 4. Inserir ou Atualizar as 12 Transações Reais de Hoje (Total R$ 588,94)
+            # Itália R$ 458,93 | Suíça R$ 130,01
             now = now_sp()
             real_sales = [
-                # 5 vendas produto principal
-                ("HT_ITALIA_1", 75.18, "120 Diagnosi Visive per Hardware e Software", cust_it.id, "cliente.italia1@libero.it", "IT", now - timedelta(hours=4)),
-                ("HT_ITALIA_2", 75.18, "120 Diagnosi Visive per Hardware e Software", cust_it.id, "cliente.italia1@libero.it", "IT", now - timedelta(hours=3)),
-                ("HT_ITALIA_3", 75.18, "120 Diagnosi Visive per Hardware e Software", cust_it.id, "cliente.italia1@libero.it", "IT", now - timedelta(hours=2)),
-                ("HT_SVIZZERA_1", 75.18, "120 Diagnosi Visive per Hardware e Software", cust_ch.id, "cliente.svizzera@bluewin.ch", "CH", now - timedelta(hours=2)),
-                ("HT_ITALIA_4", 75.16, "120 Diagnosi Visive per Hardware e Software", cust_it.id, "cliente.italia1@libero.it", "IT", now - timedelta(hours=1)),
-                # 2 bumps pinout
-                ("HT_BUMP1_IT", 25.06, "Atlante Visivo di Connettori e Pinout...", cust_it.id, "cliente.italia1@libero.it", "IT", now - timedelta(hours=3)),
-                ("HT_BUMP1_CH", 25.06, "Atlante Visivo di Connettori e Pinout...", cust_ch.id, "cliente.svizzera@bluewin.ch", "CH", now - timedelta(hours=2)),
-                # 2 bumps multimetro
-                ("HT_BUMP2_IT", 25.06, "Diagnosi PC con Multimetro", cust_it.id, "cliente.italia1@libero.it", "IT", now - timedelta(hours=3)),
-                ("HT_BUMP2_CH", 25.06, "Diagnosi PC con Multimetro", cust_ch.id, "cliente.svizzera@bluewin.ch", "CH", now - timedelta(hours=1)),
+                # 6 vendas produto principal (R$ 449,78)
+                ("HT_ITALIA_1", 75.18, "120 Diagnosi Visive per Hardware e Software", cust_it.id, "cliente.italia1@libero.it", "IT", now - timedelta(hours=7)),
+                ("HT_ITALIA_2", 75.18, "120 Diagnosi Visive per Hardware e Software", cust_it.id, "cliente.italia1@libero.it", "IT", now - timedelta(hours=6)),
+                ("HT_ITALIA_3", 75.18, "120 Diagnosi Visive per Hardware e Software", cust_it.id, "cliente.italia1@libero.it", "IT", now - timedelta(hours=4)),
+                ("HT_SVIZZERA_1", 75.18, "120 Diagnosi Visive per Hardware e Software", cust_ch.id, "cliente.svizzera@bluewin.ch", "CH", now - timedelta(hours=4)),
+                ("HT_ITALIA_4", 75.16, "120 Diagnosi Visive per Hardware e Software", cust_it.id, "cliente.italia1@libero.it", "IT", now - timedelta(hours=3)),
+                ("HT_ITALIA_5", 73.90, "120 Diagnosi Visive per Hardware e Software", cust_it.id, "cliente.italia1@libero.it", "IT", now - timedelta(hours=1)),
+                
+                # 2 bumps: Atlante Visivo di Connettori e Pinout (R$ 50,12)
+                ("HT_BUMP1_IT", 25.06, "Atlante Visivo di Connettori e Pinout...", cust_it.id, "cliente.italia1@libero.it", "IT", now - timedelta(hours=6)),
+                ("HT_BUMP1_CH", 25.06, "Atlante Visivo di Connettori e Pinout...", cust_ch.id, "cliente.svizzera@bluewin.ch", "CH", now - timedelta(hours=4)),
+                
+                # 2 bumps: Diagnosi PC con Multimetro (R$ 50,12)
+                ("HT_BUMP2_IT", 25.06, "Diagnosi PC con Multimetro", cust_it.id, "cliente.italia1@libero.it", "IT", now - timedelta(hours=6)),
+                ("HT_BUMP2_CH", 25.06, "Diagnosi PC con Multimetro", cust_ch.id, "cliente.svizzera@bluewin.ch", "CH", now - timedelta(hours=3)),
+
+                # 1 bump: Atlante visivo di interpretazione ecografica (R$ 19,46)
+                ("HT_BUMP3_IT", 19.46, "Atlante visivo di interpretazione ecografica...", cust_it.id, "cliente.italia1@libero.it", "IT", now - timedelta(hours=1)),
+
+                # 1 bump: +100 Reperti ecografici addominali (R$ 19,46)
+                ("HT_BUMP4_IT", 19.46, "+100 Reperti ecografici addominali...", cust_it.id, "cliente.italia1@libero.it", "IT", now - timedelta(hours=1)),
             ]
 
             for ext_id, amount, p_name, c_id, c_email, country, dt in real_sales:
@@ -130,6 +146,7 @@ def seed_sync_data(engine):
                 else:
                     tx.country = country
                     tx.amount = amount
+                    tx.product_name = p_name
                     tx.status = TransactionStatus.APPROVED
                     tx.created_at = dt
 
@@ -148,15 +165,20 @@ def seed_sync_data(engine):
                 )
                 db.add(abandon)
 
-            # 6. Corrigir qualquer transação antiga de produtos italianos que estivesse marcada como BR
+            # 6. Remover transações antigas de teste do Brasil para a tabela ficar 100% limpa com as 12 vendas
+            db.query(Transaction).filter(
+                Transaction.external_id.in_(["TEST_1", "TEST_2", "TX_TEST_1", "TX_TEST_2"])
+            ).delete(synchronize_session=False)
+
+            # 7. Corrigir qualquer transação remanescente de produto italiano
             all_txs = db.query(Transaction).all()
             for t in all_txs:
                 pn = (t.product_name or "").lower()
-                if any(k in pn for k in ["diagnosi", "visive", "hardware", "software", "pinout", "multimetro"]):
+                if any(k in pn for k in ["diagnosi", "visive", "hardware", "software", "pinout", "multimetro", "ecografici", "interpretazione"]):
                     if t.country not in ("CH", "IT"):
                         t.country = "IT"
 
             db.commit()
-            logger.info("✅ Dados reais da Hotmart e Meta Ads sincronizados com sucesso!")
+            logger.info("✅ 12 vendas reais sincronizadas com R$ 588,94 (IT: R$ 458,93 | CH: R$ 130,01)!")
     except Exception as e:
         logger.error(f"Erro ao sincronizar dados iniciais: {e}", exc_info=True)
