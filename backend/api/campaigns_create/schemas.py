@@ -25,6 +25,7 @@ class TargetingPayload(BaseModel):
     age_max: int = 65
     genders: int = 0  # 0=all, 1=male, 2=female
     country: str = "BR"  # ISO 3166-1 alpha-2, ou "WORLDWIDE"
+    excluded_countries: list[str] = []  # ISO 3166-1 alpha-2 para excluir (SG, VE, etc.)
     locales: list[int] = []  # Meta adlocale keys; vazio = todos os idiomas
     interests: list[dict] = []  # [{"id": "123", "name": "..."}]
 

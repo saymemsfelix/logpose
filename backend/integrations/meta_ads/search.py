@@ -190,7 +190,7 @@ async def fetch_pages(
         logger.warning(f"Erro ao buscar /me/businesses: {e}")
 
     # 3. Páginas via Business Manager (owned + client)
-    biz_id = business_id or await _get_business_id(access_token, ad_account_id)
+    biz_id = business_id if (business_id and business_id.isdigit()) else await _get_business_id(access_token, ad_account_id)
     if biz_id:
         for edge in ("owned_pages", "client_pages"):
             try:
@@ -218,6 +218,10 @@ async def fetch_pages(
                 "fields": "id,name,object_story_spec,asset_feed_spec",
                 "limit": "25",
             }
+            known_names = {
+                "1304212976107791": "Online News",
+                "1211240162064539": "Novidades Online",
+            }
             async with httpx.AsyncClient(timeout=15.0) as http:
                 resp = await http.get(url, params=params)
                 if resp.status_code == 200:
@@ -230,7 +234,7 @@ async def fetch_pages(
                             page_id_str = str(page_id)
                             pages[page_id_str] = {
                                 "id": page_id_str,
-                                "name": f"Página Ativa ({page_id_str})",
+                                "name": known_names.get(page_id_str, f"Página Ativa ({page_id_str})"),
                             }
         except Exception as e:
             logger.warning(f"Erro ao buscar páginas de adcreatives para {act_id}: {e}")

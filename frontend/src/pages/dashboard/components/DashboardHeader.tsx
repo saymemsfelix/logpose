@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { getStoredUser } from "@/services/auth";
-import { Eye, EyeOff, RefreshCw } from "lucide-react";
+import { Eye, EyeOff, RefreshCw, Bell } from "lucide-react";
 
 function getGreeting(): string {
   const now = new Date();
@@ -21,6 +21,9 @@ interface DashboardHeaderProps {
   hideValues: boolean;
   onToggleHideValues: () => void;
   syncTime?: string;
+  notificationsEnabled?: boolean;
+  onToggleNotifications?: () => void;
+  onTestSound?: () => void;
 }
 
 export function DashboardHeader({
@@ -28,6 +31,9 @@ export function DashboardHeader({
   hideValues,
   onToggleHideValues,
   syncTime = "Sincronizado",
+  notificationsEnabled = false,
+  onToggleNotifications,
+  onTestSound,
 }: DashboardHeaderProps) {
   const user = getStoredUser();
   const firstName = user?.name?.split(" ")[0] || "Sayme";
@@ -56,6 +62,34 @@ export function DashboardHeader({
       </div>
 
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        {/* Notificações e Som de Vendas */}
+        {onToggleNotifications && (
+          <button
+            type="button"
+            onClick={onToggleNotifications}
+            title={notificationsEnabled ? "Notificações e som ativados" : "Ativar notificações de vendas e som"}
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[12px] font-medium transition-colors shadow-2xs cursor-pointer ${
+              notificationsEnabled
+                ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-500 dark:text-emerald-400"
+                : "border-zinc-200/80 bg-white text-zinc-600 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            }`}
+          >
+            <Bell className={`h-3.5 w-3.5 ${notificationsEnabled ? "fill-emerald-500 text-emerald-500" : ""}`} />
+            <span className="hidden md:inline">{notificationsEnabled ? "Som Ativo" : "Ativar Som"}</span>
+          </button>
+        )}
+        {onTestSound && (
+          <button
+            type="button"
+            onClick={onTestSound}
+            title="Ouvir som de venda (Ka-ching! 🪙)"
+            className="inline-flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[11px] font-medium text-amber-500 hover:bg-amber-500/20 transition-colors cursor-pointer"
+          >
+            <span>🪙</span>
+            <span className="hidden lg:inline">Testar som</span>
+          </button>
+        )}
+
         {/* Botão Ocultar Valores */}
         <button
           type="button"

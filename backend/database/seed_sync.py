@@ -32,14 +32,14 @@ def seed_sync_data(engine):
                     label="CONTA BR 3k",
                     account_id=ACCOUNT_ID,
                     access_token=META_TOKEN,
-                    business_id="BM 4KBRL",
+                    business_id="1045466701201218",
                     token_valid=True,
                 )
                 db.add(fb)
             else:
                 fb.label = "CONTA BR 3k"
                 fb.access_token = META_TOKEN
-                fb.business_id = "BM 4KBRL"
+                fb.business_id = "1045466701201218"
                 fb.token_valid = True
             db.commit()
 
@@ -138,7 +138,7 @@ def seed_sync_data(engine):
                         customer_id=c_id,
                         customer_email=c_email,
                         country=country,
-                        utm_campaign="CBO - TESTE CRIATIVO — NEW OFFER",
+                        utm_campaign="CBO-TESTE CRIATIVO — NEW OFFER",
                         utm_source="FB",
                         created_at=dt,
                     )
@@ -148,6 +148,8 @@ def seed_sync_data(engine):
                     tx.amount = amount
                     tx.product_name = p_name
                     tx.status = TransactionStatus.APPROVED
+                    tx.utm_campaign = "CBO-TESTE CRIATIVO — NEW OFFER"
+                    tx.utm_source = "FB"
                     tx.created_at = dt
 
             # 5. Carrinho abandonado do Cosimo Franco

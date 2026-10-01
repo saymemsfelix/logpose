@@ -31,6 +31,9 @@ def _group_transactions_by_level(transactions: list[Transaction]) -> dict:
             by_campaign_id[camp_id].append(tx)
         elif camp_name:
             by_campaign_name[camp_name.lower()].append(tx)
+            norm = _normalize_key(camp_name)
+            if norm and norm != camp_name.lower():
+                by_campaign_name[norm].append(tx)
 
         # AdSet level
         adset_name, adset_id = parse_utm_medium(tx.utm_medium)
@@ -81,6 +84,11 @@ def _calc_sales_metrics(txs: list[Transaction]) -> dict:
     return {"sales": sales, "revenue": revenue}
 
 
+def _normalize_key(s: str) -> str:
+    import re
+    return re.sub(r'[\s\-_—–]+', '', s.lower()) if s else ""
+
+
 def _match_transactions(
     entity_id: str,
     entity_name: str,
@@ -89,7 +97,7 @@ def _match_transactions(
     name_key: str,
 ) -> tuple[list[Transaction], int]:
     """
-    Tenta match por ID primeiro, depois por nome.
+    Tenta match por ID primeiro, depois por nome e nome normalizado.
     Retorna (transactions, unmatched_by_id_count).
     """
     # Match por ID (confiável)
@@ -97,6 +105,8 @@ def _match_transactions(
 
     # Match por nome (fallback)
     by_name = grouped[name_key].get(entity_name.lower(), [])
+    if not by_name:
+        by_name = grouped[name_key].get(_normalize_key(entity_name), [])
 
     # Se tem match por ID, usa ele e conta as vendas por nome-only
     if by_id:
@@ -163,6 +173,19 @@ def merge_campaigns(
             "play_rate": 0,
             "adsets": adsets_merged,
         })
+
+    # Atribuição inteligente se só existe 1 campanha ativa/com gasto
+    camps_with_sales = sum(1 for c in results if c["sales"] > 0)
+    camps_with_spend = [c for c in results if c["spend"] > 0 or c["status"] == "active"]
+    if camps_with_sales == 0 and len(camps_with_spend) == 1 and transactions:
+        target_camp = camps_with_spend[0]
+        s_data = _calc_sales_metrics(transactions)
+        target_camp["sales"] = s_data["sales"]
+        target_camp["revenue"] = s_data["revenue"]
+        target_camp["profit"] = s_data["revenue"] - target_camp["spend"]
+        target_camp["roas"] = safe_division(s_data["revenue"], target_camp["spend"])
+        target_camp["cpa"] = safe_division(target_camp["spend"], s_data["sales"]) if s_data["sales"] > 0 else 0
+        target_camp["no_id_sales"] = s_data["sales"]
 
     return results
 

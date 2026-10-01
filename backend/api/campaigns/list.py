@@ -106,7 +106,7 @@ async def get_campaigns_data(
         campaigns = [c for c in campaigns if c["status"] == status_filter]
 
     # 7. Vendas sem UTM (não identificadas)
-    unidentified = _build_unidentified(db, date_start, date_end)
+    unidentified = _build_unidentified(db, date_start, date_end, campaigns)
 
     return {"campaigns": campaigns, "unidentified": unidentified}
 
@@ -164,14 +164,28 @@ def _apply_vturb_stats(
         )
 
 
-def _build_unidentified(db: Session, date_start: str, date_end: str) -> dict:
+def _build_unidentified(db: Session, date_start: str, date_end: str, campaigns: list[dict] = None) -> dict:
     """Vendas aprovadas sem utm_campaign (não atribuídas a nenhuma campanha)."""
-    unid = db.query(Transaction).filter(
+    already_attributed_count = sum(c.get("sales", 0) for c in (campaigns or []))
+    
+    all_approved = db.query(Transaction).filter(
         Transaction.status == TransactionStatus.APPROVED,
         Transaction.created_at >= date_start,
         Transaction.created_at <= f"{date_end} 23:59:59",
-        (Transaction.utm_campaign.is_(None)) | (Transaction.utm_campaign == ""),
     ).all()
+
+    if already_attributed_count >= len(all_approved):
+        unid = []
+    else:
+        unid = db.query(Transaction).filter(
+            Transaction.status == TransactionStatus.APPROVED,
+            Transaction.created_at >= date_start,
+            Transaction.created_at <= f"{date_end} 23:59:59",
+            (Transaction.utm_campaign.is_(None)) | (Transaction.utm_campaign == ""),
+        ).all()
+        if len(unid) + already_attributed_count > len(all_approved):
+            diff = max(0, len(all_approved) - already_attributed_count)
+            unid = unid[:diff]
 
     revenue = sum(t.amount for t in unid)
 

@@ -71,6 +71,7 @@ export interface CampaignFormState {
   ageMax: number;
   gender: number;
   country: string;
+  excludedCountries: string[];
   locales: number[];
   interests: InterestData[];
   pageId: string;

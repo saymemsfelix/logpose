@@ -128,6 +128,9 @@ export function ReviewStep({ form, onUpdate, accounts }: ReviewStepProps) {
           )}
           <ReviewRow label="Programação" value={formatScheduleDisplay(form.startTime)} />
           <ReviewRow label="País" value={getCountryLabel(form.country)} />
+          {form.excludedCountries && form.excludedCountries.length > 0 && (
+            <ReviewRow label="Exclusões" value={`🚫 ${form.excludedCountries.join(", ")}`} />
+          )}
           <ReviewRow label="Idioma" value={getLocaleLabels(form.locales)} />
           <ReviewRow label="Idade" value={`${form.ageMin} — ${form.ageMax === 65 ? "65+" : form.ageMax}`} />
           <ReviewRow label="Gênero" value={genderLabel} />

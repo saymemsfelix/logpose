@@ -247,3 +247,34 @@ def _serialize(t: Transaction) -> dict:
         "order_bumps": t.order_bumps,
         "created_at": t.created_at.isoformat() if t.created_at else None,
     }
+
+
+@router.get("/latest")
+def get_latest_sales(
+    since_id: Optional[int] = Query(None),
+    limit: int = Query(10, ge=1, le=50),
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    """Retorna as vendas aprovadas mais recentes para notificações em tempo real."""
+    query = (
+        db.query(Transaction)
+        .filter(Transaction.status == TransactionStatus.APPROVED)
+    )
+    if since_id is not None:
+        query = query.filter(Transaction.id > since_id)
+
+    rows = query.order_by(Transaction.id.desc()).limit(limit).all()
+    return [
+        {
+            "id": t.id,
+            "external_id": t.external_id,
+            "amount": t.amount,
+            "product_name": t.product_name,
+            "customer_email": t.customer_email,
+            "country": getattr(t, "country", None) or ("IT" if any(k in (t.product_name or "").lower() for k in ["diagnosi", "visive", "hardware"]) else "BR"),
+            "created_at": t.created_at.isoformat() if t.created_at else None,
+        }
+        for t in rows
+    ]
+

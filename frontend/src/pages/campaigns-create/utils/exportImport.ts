@@ -24,6 +24,7 @@ export function buildExportPayload(form: CampaignFormState): Record<string, unkn
       age_min: form.ageMin, age_max: form.ageMax,
       genders: form.gender, interests: form.interests,
       country: form.country, locales: form.locales,
+      excluded_countries: form.excludedCountries,
     },
     page_id: form.pageId,
     page_label: form.pageLabel,
@@ -88,8 +89,11 @@ export function applyDataToForm(
     updateField("ageMax", (targeting.age_max as number) ?? 65);
     updateField("gender", (targeting.genders as number) ?? 0);
     updateField("interests", (targeting.interests as CampaignFormState["interests"]) ?? []);
-    updateField("country", (targeting.country as string) ?? "BR");
+    updateField("country", (targeting.country as string) ?? "WORLDWIDE");
     updateField("locales", (targeting.locales as number[]) ?? []);
+    if (Array.isArray(targeting.excluded_countries)) {
+      updateField("excludedCountries", targeting.excluded_countries as string[]);
+    }
   }
 
   updateField("pageId", (data.page_id as string) ?? "");

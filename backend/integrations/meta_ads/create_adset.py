@@ -115,16 +115,25 @@ def _build_targeting(targeting: dict) -> dict:
         "age_max": targeting.get("age_max", 65),
     }
 
-    # Países que exigem declaração regulatória e serão excluídos do worldwide
-    EXCLUDED_COUNTRIES = ["TW", "SG", "IN"]  # Taiwan, Singapura, Índia
+    # Países regulatórios sempre excluídos no worldwide (exigem declarações fiscais e jurídicas específicas)
+    REGULATORY_EXCLUDED = ["TW", "SG", "IN"]
+
+    # Exclusões customizadas enviadas pelo usuário (ex: Singapura, África, Venezuela)
+    custom_excluded = [
+        str(c).upper().strip() for c in targeting.get("excluded_countries", []) if c
+    ]
 
     # País: "WORLDWIDE" usa country_groups, caso contrário filtra por país
     country = targeting.get("country", "BR")
     if country and country != "WORLDWIDE":
         api_targeting["geo_locations"] = {"countries": [country]}
+        valid_exclusions = [c for c in custom_excluded if c != country.upper().strip()]
+        if valid_exclusions:
+            api_targeting["excluded_geo_locations"] = {"countries": list(dict.fromkeys(valid_exclusions))}
     else:
         api_targeting["geo_locations"] = {"country_groups": ["worldwide"]}
-        api_targeting["excluded_geo_locations"] = {"countries": EXCLUDED_COUNTRIES}
+        all_excluded = list(dict.fromkeys(REGULATORY_EXCLUDED + custom_excluded))
+        api_targeting["excluded_geo_locations"] = {"countries": all_excluded}
 
     # Locales (idioma): lista vazia = todos os idiomas (não envia)
     locales = targeting.get("locales", [])

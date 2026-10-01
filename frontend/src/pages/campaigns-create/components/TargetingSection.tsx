@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import type { CampaignFormState } from "../hooks/useCampaignForm";
 import type { InterestData } from "@/services/campaignCreator";
 import { RiCloseLine, RiSearchLine, RiArrowDownSLine } from "@remixicon/react";
-import { COUNTRY_OPTIONS, LOCALE_OPTIONS, getLocaleLabels } from "../utils/targeting";
+import { COUNTRY_OPTIONS, LOCALE_OPTIONS, getLocaleLabels, EXCLUSION_PRESETS } from "../utils/targeting";
 
 interface TargetingSectionProps {
   form: CampaignFormState;
@@ -23,6 +23,7 @@ export function TargetingSection({
   form, onUpdate, interestResults, onSearchInterest,
 }: TargetingSectionProps) {
   const [interestQuery, setInterestQuery] = useState("");
+  const [customCountry, setCustomCountry] = useState("");
 
   const handleInterestSearch = (q: string) => {
     setInterestQuery(q);
@@ -50,6 +51,33 @@ export function TargetingSection({
       onUpdate("locales", current.filter((l) => l !== localeKey));
     } else {
       onUpdate("locales", [...current, localeKey]);
+    }
+  };
+
+  const togglePreset = (countries: string[]) => {
+    const current = form.excludedCountries || [];
+    const allIn = countries.every((c) => current.includes(c));
+    if (allIn) {
+      onUpdate("excludedCountries", current.filter((c) => !countries.includes(c)));
+    } else {
+      const merged = Array.from(new Set([...current, ...countries]));
+      onUpdate("excludedCountries", merged);
+    }
+  };
+
+  const removeExcludedCountry = (code: string) => {
+    const current = form.excludedCountries || [];
+    onUpdate("excludedCountries", current.filter((c) => c !== code));
+  };
+
+  const addCustomCountry = () => {
+    const code = customCountry.trim().toUpperCase();
+    if (code && code.length === 2) {
+      const current = form.excludedCountries || [];
+      if (!current.includes(code)) {
+        onUpdate("excludedCountries", [...current, code]);
+      }
+      setCustomCountry("");
     }
   };
 
@@ -106,6 +134,98 @@ export function TargetingSection({
                 })}
               </PopoverContent>
             </Popover>
+          </div>
+        </div>
+
+        {/* Exclusão Geográfica (Singapura, África, Venezuela, etc.) */}
+        <div className="rounded-lg border border-border/70 bg-muted/20 p-3.5 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-sm font-semibold flex items-center gap-1.5 text-foreground">
+                <span className="text-amber-500">🚫</span> Exclusões Geográficas (Anti-Bot / Baixa Conversão)
+              </Label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Elimina tráfego irrelevante, bots ou regiões sem suporte a pagamentos (ex: Singapura, Venezuela, África).
+              </p>
+            </div>
+            {form.excludedCountries && form.excludedCountries.length > 0 && (
+              <Badge variant="outline" className="text-xs border-amber-500/40 text-amber-400 bg-amber-500/10">
+                {form.excludedCountries.length} excluídos
+              </Badge>
+            )}
+          </div>
+
+          {/* Presets rápidos */}
+          <div className="flex flex-wrap gap-2">
+            {EXCLUSION_PRESETS.map((preset) => {
+              const active = preset.countries.every((c) => form.excludedCountries?.includes(c));
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => togglePreset(preset.countries)}
+                  className={`text-xs px-2.5 py-1.5 rounded-md border transition-all flex items-center gap-1.5 cursor-pointer ${
+                    active
+                      ? "bg-amber-500/20 text-amber-300 border-amber-500/50 font-medium"
+                      : "bg-background text-muted-foreground border-border hover:bg-accent hover:text-foreground"
+                  }`}
+                  title={preset.description}
+                >
+                  <span className="font-bold">{active ? "✓" : "+"}</span>
+                  <span>{preset.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Tags dos países excluídos atualmente */}
+          {form.excludedCountries && form.excludedCountries.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 items-center pt-1">
+              <span className="text-xs text-muted-foreground mr-1">Ativos:</span>
+              {form.excludedCountries.map((code) => (
+                <Badge
+                  key={code}
+                  variant="secondary"
+                  className="gap-1 pr-1 font-mono text-xs bg-red-500/10 text-red-400 border border-red-500/20"
+                >
+                  {code}
+                  <button
+                    type="button"
+                    onClick={() => removeExcludedCountry(code)}
+                    className="hover:text-red-300 transition-colors"
+                  >
+                    <RiCloseLine className="size-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          )}
+
+          {/* Inserir código customizado */}
+          <div className="flex items-center gap-2 pt-1">
+            <Input
+              placeholder="Adicionar código ISO (ex: PK, BD, NG)..."
+              value={customCountry}
+              onChange={(e) => setCustomCountry(e.target.value.toUpperCase())}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addCustomCountry();
+                }
+              }}
+              maxLength={2}
+              className="h-8 text-xs max-w-[240px] uppercase font-mono"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addCustomCountry}
+              className="h-8 text-xs px-2.5"
+              disabled={!customCountry.trim() || customCountry.trim().length !== 2}
+            >
+              + Excluir
+            </Button>
           </div>
         </div>
 
