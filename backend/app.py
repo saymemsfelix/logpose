@@ -69,6 +69,7 @@ from api.advanced_settings.reset_sales import router as reset_sales_router
 
 import database.models.daily_ad_spend
 from database.core.migrate_sql import run_sql_migrations
+from database.seed_sync import seed_sync_data
 import logging
 logger = logging.getLogger(__name__)
 
@@ -80,6 +81,8 @@ try:
     Base.metadata.create_all(bind=engine)
     # Run SQL migrations from database/migrations/
     run_sql_migrations()
+    # Sincroniza dados oficiais da Hotmart e Meta Ads
+    seed_sync_data(engine)
 except Exception as init_err:
     logger.error(f"Erro durante inicialização de banco/migrações: {init_err}")
 

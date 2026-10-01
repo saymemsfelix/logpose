@@ -191,53 +191,57 @@ def _country_distribution(base, db):
     total_rev = 0.0
 
     for tx in approved_txs:
-        c_code = "BR"
-        c_name = "Brasil"
+        p_name = (tx.product_name or "").lower()
+        is_italian_offer = any(k in p_name for k in ["diagnosi", "visive", "hardware", "software", "pinout", "multimetro", "solda", "atlante"])
 
-        # 1. Se a transação já tem country salvo no DB
+        phone = ""
+        cust_country = ""
+        if tx.customer_id:
+            cust = db.query(Customer).filter(Customer.id == tx.customer_id).first()
+            if cust:
+                cust_country = str(getattr(cust, "country", "") or "").strip().upper()
+                if cust.phone:
+                    phone = cust.phone.replace("+", "").replace(" ", "").replace("-", "").strip()
+
         raw_c = str(getattr(tx, "country", "") or "").strip().upper()
-        if raw_c in COUNTRY_MAP:
-            c_code, c_name = COUNTRY_MAP[raw_c]
-        else:
-            phone = ""
-            cust_country = ""
-            if tx.customer_id:
-                cust = db.query(Customer).filter(Customer.id == tx.customer_id).first()
-                if cust:
-                    cust_country = str(getattr(cust, "country", "") or "").strip().upper()
-                    if cust.phone:
-                        phone = cust.phone.replace("+", "").replace(" ", "").replace("-", "").strip()
 
-            if cust_country in COUNTRY_MAP:
-                c_code, c_name = COUNTRY_MAP[cust_country]
-            elif phone:
-                if phone.startswith("39"):
-                    c_code, c_name = COUNTRY_MAP["IT"]
-                elif phone.startswith("41"):
-                    c_code, c_name = COUNTRY_MAP["CH"]
-                elif phone.startswith("351"):
-                    c_code, c_name = COUNTRY_MAP["PT"]
-                elif phone.startswith("34"):
-                    c_code, c_name = COUNTRY_MAP["ES"]
-                elif phone.startswith("1") and len(phone) >= 11:
-                    c_code, c_name = COUNTRY_MAP["US"]
-                elif phone.startswith("44"):
-                    c_code, c_name = COUNTRY_MAP["GB"]
-                elif phone.startswith("33"):
-                    c_code, c_name = COUNTRY_MAP["FR"]
-                elif phone.startswith("49"):
-                    c_code, c_name = COUNTRY_MAP["DE"]
-                elif phone.startswith("52"):
-                    c_code, c_name = COUNTRY_MAP["MX"]
-                elif phone.startswith("54"):
-                    c_code, c_name = COUNTRY_MAP["AR"]
-                elif phone.startswith("55"):
-                    c_code, c_name = COUNTRY_MAP["BR"]
-            
-            # Se for produto internacional italiano e não tiver caído em outro DDI específico
-            p_name = (tx.product_name or "").lower()
-            if any(k in p_name for k in ["diagnosi", "visive", "hardware e software", "solda"]) and not phone.startswith("55") and not phone.startswith("41"):
+        if raw_c == "CH" or cust_country == "CH" or phone.startswith("41"):
+            c_code, c_name = COUNTRY_MAP["CH"]
+        elif raw_c == "IT" or cust_country == "IT" or phone.startswith("39"):
+            c_code, c_name = COUNTRY_MAP["IT"]
+        elif is_italian_offer and not phone.startswith("55"):
+            c_code, c_name = COUNTRY_MAP["IT"]
+        elif raw_c in COUNTRY_MAP:
+            c_code, c_name = COUNTRY_MAP[raw_c]
+        elif cust_country in COUNTRY_MAP:
+            c_code, c_name = COUNTRY_MAP[cust_country]
+        elif phone:
+            if phone.startswith("39"):
                 c_code, c_name = COUNTRY_MAP["IT"]
+            elif phone.startswith("41"):
+                c_code, c_name = COUNTRY_MAP["CH"]
+            elif phone.startswith("351"):
+                c_code, c_name = COUNTRY_MAP["PT"]
+            elif phone.startswith("34"):
+                c_code, c_name = COUNTRY_MAP["ES"]
+            elif phone.startswith("1") and len(phone) >= 11:
+                c_code, c_name = COUNTRY_MAP["US"]
+            elif phone.startswith("44"):
+                c_code, c_name = COUNTRY_MAP["GB"]
+            elif phone.startswith("33"):
+                c_code, c_name = COUNTRY_MAP["FR"]
+            elif phone.startswith("49"):
+                c_code, c_name = COUNTRY_MAP["DE"]
+            elif phone.startswith("52"):
+                c_code, c_name = COUNTRY_MAP["MX"]
+            elif phone.startswith("54"):
+                c_code, c_name = COUNTRY_MAP["AR"]
+            elif phone.startswith("55"):
+                c_code, c_name = COUNTRY_MAP["BR"]
+            else:
+                c_code, c_name = COUNTRY_MAP["IT"] if is_italian_offer else COUNTRY_MAP["BR"]
+        else:
+            c_code, c_name = COUNTRY_MAP["IT"] if is_italian_offer else COUNTRY_MAP["BR"]
 
         if c_code not in country_counts:
             country_counts[c_code] = {"code": c_code, "name": c_name, "sales": 0, "revenue": 0.0}

@@ -29,21 +29,22 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 def _parse_date_range(preset: str, start: Optional[str], end: Optional[str]):
     now = now_sp()
+    end_of_day = now.replace(hour=23, minute=59, second=59, microsecond=999999)
     if preset == "today":
-        return now.replace(hour=0, minute=0, second=0, microsecond=0), now
+        return now.replace(hour=0, minute=0, second=0, microsecond=0), end_of_day
     elif preset == "yesterday":
         yesterday = now - timedelta(days=1)
         return yesterday.replace(hour=0, minute=0, second=0, microsecond=0), yesterday.replace(hour=23, minute=59, second=59, microsecond=999999)
     elif preset == "3d":
-        return now - timedelta(days=3), now
+        return (now - timedelta(days=3)).replace(hour=0, minute=0, second=0, microsecond=0), end_of_day
     elif preset == "7d":
-        return now - timedelta(days=7), now
+        return (now - timedelta(days=7)).replace(hour=0, minute=0, second=0, microsecond=0), end_of_day
     elif preset == "14d":
-        return now - timedelta(days=14), now
+        return (now - timedelta(days=14)).replace(hour=0, minute=0, second=0, microsecond=0), end_of_day
     elif preset == "30d":
-        return now - timedelta(days=30), now
+        return (now - timedelta(days=30)).replace(hour=0, minute=0, second=0, microsecond=0), end_of_day
     elif preset == "90d":
-        return now - timedelta(days=90), now
+        return (now - timedelta(days=90)).replace(hour=0, minute=0, second=0, microsecond=0), end_of_day
     elif preset == "custom" and start and end:
         try:
             s = datetime.strptime(start, "%Y-%m-%d")
