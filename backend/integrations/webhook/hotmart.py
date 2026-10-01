@@ -246,7 +246,9 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
         clean_phone = str(phone or "").replace("+", "").replace(" ", "").replace("-", "").strip()
 
         customer_country = "BR"
-        if country_candidate in ["IT", "ITA", "ITALY", "ITÁLIA", "ITALIA"] or clean_phone.startswith("39") or (currency == "EUR" and not clean_phone.startswith("351") and not clean_phone.startswith("34")):
+        if country_candidate in ["CH", "CHE", "SWITZERLAND", "SUIÇA", "SUICA", "SVIZZERA", "SCHWEIZ", "SUISSE"] or clean_phone.startswith("41") or currency == "CHF":
+            customer_country = "CH"
+        elif country_candidate in ["IT", "ITA", "ITALY", "ITÁLIA", "ITALIA"] or clean_phone.startswith("39") or (currency == "EUR" and not clean_phone.startswith("351") and not clean_phone.startswith("34") and not clean_phone.startswith("41")):
             customer_country = "IT"
         elif country_candidate in ["PT", "PRT", "PORTUGAL"] or clean_phone.startswith("351"):
             customer_country = "PT"
@@ -269,9 +271,12 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
         elif country_candidate:
             customer_country = country_candidate[:2]
 
-        # Se o produto tem nome italiano (ex: Diagnosi Visive) e moeda EUR
-        if any(w in prod_name.lower() for w in ["diagnosi", "guida", "visive", "hardware e software", "solda"]) and (currency == "EUR" or clean_phone.startswith("39")):
-            customer_country = "IT"
+        # Se o produto tem nome italiano (ex: Diagnosi Visive), mas o comprador não é da Suíça ou outro país identificado
+        if customer_country in ["BR", ""] and any(w in prod_name.lower() for w in ["diagnosi", "guida", "visive", "hardware e software", "solda"]):
+            if clean_phone.startswith("41"):
+                customer_country = "CH"
+            else:
+                customer_country = "IT"
 
         return StandardizedWebhookEvent(
             external_id=str(external_id),

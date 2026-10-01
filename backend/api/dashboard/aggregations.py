@@ -171,6 +171,7 @@ def _country_distribution(base, db):
     
     COUNTRY_MAP = {
         "IT": ("IT", "Itália"),
+        "CH": ("CH", "Suíça"),
         "PT": ("PT", "Portugal"),
         "ES": ("ES", "Espanha"),
         "US": ("US", "Estados Unidos"),
@@ -212,6 +213,8 @@ def _country_distribution(base, db):
             elif phone:
                 if phone.startswith("39"):
                     c_code, c_name = COUNTRY_MAP["IT"]
+                elif phone.startswith("41"):
+                    c_code, c_name = COUNTRY_MAP["CH"]
                 elif phone.startswith("351"):
                     c_code, c_name = COUNTRY_MAP["PT"]
                 elif phone.startswith("34"):
@@ -233,7 +236,7 @@ def _country_distribution(base, db):
             
             # Se for produto internacional italiano e não tiver caído em outro DDI específico
             p_name = (tx.product_name or "").lower()
-            if any(k in p_name for k in ["diagnosi", "visive", "hardware e software", "solda"]) and not phone.startswith("55"):
+            if any(k in p_name for k in ["diagnosi", "visive", "hardware e software", "solda"]) and not phone.startswith("55") and not phone.startswith("41"):
                 c_code, c_name = COUNTRY_MAP["IT"]
 
         if c_code not in country_counts:

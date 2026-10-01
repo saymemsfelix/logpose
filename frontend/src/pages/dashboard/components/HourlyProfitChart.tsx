@@ -37,15 +37,36 @@ export function HourlyProfitChart({ data = [], hideValues = false }: HourlyProfi
     }).format(val);
   };
 
+  // Encontrar o horário de pico de vendas e de lucro
+  const hoursWithSales = [...full24Hours].filter((h) => h.sales > 0 || h.revenue > 0);
+  hoursWithSales.sort((a, b) => b.sales - a.sales || b.revenue - a.revenue);
+  const peakSaleHour = hoursWithSales.length > 0 ? hoursWithSales[0] : null;
+
+  const hoursWithProfit = [...full24Hours].filter((h) => h.profit > 0);
+  hoursWithProfit.sort((a, b) => b.profit - a.profit);
+  const peakProfitHour = hoursWithProfit.length > 0 ? hoursWithProfit[0] : null;
+
   return (
     <div className="rounded-xl border border-zinc-200/80 bg-white p-4 sm:p-5 dark:border-zinc-800/80 dark:bg-[#0f172a]/60 backdrop-blur-sm shadow-xs">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <span className="text-[14px] font-semibold text-zinc-900 dark:text-zinc-100">
-            Lucro por horário
-          </span>
-          <p className="text-[11px] text-zinc-400 dark:text-zinc-500">
-            Identifique os horários que mais vendem e onde seus anúncios geram lucro ou sangria
+          <div className="flex items-center gap-2">
+            <span className="text-[15px] font-bold text-zinc-900 dark:text-zinc-100">
+              Lucro e Horários de Pico
+            </span>
+            {peakSaleHour && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 dark:bg-amber-500/20 px-2.5 py-0.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                🔥 Pico de Vendas: {peakSaleHour.hour} ({peakSaleHour.sales} {peakSaleHour.sales === 1 ? "venda" : "vendas"} • {formatCurrency(peakSaleHour.revenue)})
+              </span>
+            )}
+            {peakProfitHour && peakProfitHour.hour !== peakSaleHour?.hour && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                💰 Maior Lucro: {peakProfitHour.hour} (+{formatCurrency(peakProfitHour.profit)})
+              </span>
+            )}
+          </div>
+          <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5">
+            Identifique seus melhores horários de conversão e acompanhe onde seus anúncios geram lucro
           </p>
         </div>
 

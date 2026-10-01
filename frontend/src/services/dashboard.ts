@@ -23,3 +23,16 @@ function buildQuery(params: DashboardParams): string {
 export async function fetchDashboardOverview(params: DashboardParams): Promise<DashboardOverview> {
   return apiRequest<DashboardOverview>(`/dashboard/overview${buildQuery(params)}`);
 }
+
+export async function fetchManualSpend(): Promise<{ spend: number; clicks: number; spend_date: string }> {
+  return apiRequest<{ spend: number; clicks: number; spend_date: string }>("/dashboard/manual-spend");
+}
+
+export async function updateManualSpend(spend: number, clicks?: number, spendDate?: string): Promise<{ status: string }> {
+  return apiRequest<{ status: string }>("/dashboard/manual-spend", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ spend, clicks: clicks || 0, spend_date: spendDate }),
+  });
+}
+

@@ -19,6 +19,9 @@ from api.dashboard.meta_data import (
 )
 from api.dashboard.kpis import calc_kpis
 from api.dashboard.top_campaigns import build_top_campaigns
+from pydantic import BaseModel
+from database.models.daily_ad_spend import DailyAdSpend
+from integrations.meta_ads.schemas import AccountInsightsSummary
 from api.products.alias_helper import get_product_names_for_filter, get_upsell_name_for_filter
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -110,7 +113,36 @@ async def dashboard_overview(
     meta_summary, meta_error = await fetch_meta_account_summary(db, ds, de, account_id=account_id)
     meta_campaigns = await fetch_meta_campaigns_for_dashboard(db, ds, de, account_id=account_id)
 
-    # KPIs com dados da Meta
+    # Se a Meta não retornou spend (>0), buscar da tabela daily_ad_spends para o período
+    if not meta_summary or meta_summary.spend == 0.0:
+        d_start, d_end = _parse_date_range(preset, start_date, end_date)
+        manual_q = db.query(DailyAdSpend)
+        if d_start and d_end:
+            manual_q = manual_q.filter(
+                DailyAdSpend.spend_date >= d_start.date(),
+                DailyAdSpend.spend_date <= d_end.date(),
+            )
+        manual_rows = manual_q.all()
+        # Se não encontrou por data exata (ex: preset customizado ou all), pega o último registro cadastrado como fallback
+        if not manual_rows:
+            latest = db.query(DailyAdSpend).order_by(DailyAdSpend.spend_date.desc()).first()
+            if latest:
+                manual_rows = [latest]
+
+        if manual_rows:
+            tot_spend = sum(m.spend for m in manual_rows)
+            tot_clicks = sum(m.clicks for m in manual_rows)
+            tot_imp = sum(m.impressions for m in manual_rows)
+            if tot_spend > 0:
+                meta_summary = AccountInsightsSummary(
+                    spend=tot_spend,
+                    clicks=tot_clicks,
+                    impressions=tot_imp,
+                    cpc=round(tot_spend / tot_clicks, 2) if tot_clicks > 0 else 0.0,
+                    ctr=round((tot_clicks / tot_imp) * 100, 2) if tot_imp > 0 else 0.0,
+                )
+
+    # KPIs com dados da Meta ou Gasto Manual
     kpis = calc_kpis(base, meta_summary)
 
     # Daily revenue com spend diário da Meta
@@ -141,4 +173,60 @@ async def dashboard_overview(
         "payment_methods": payment_methods,
         "conversion_flow": conversion_flow,
         "meta_error": meta_error,
+    }
+
+
+class ManualSpendInput(BaseModel):
+    spend: float
+    clicks: Optional[int] = 0
+    impressions: Optional[int] = 0
+    spend_date: Optional[str] = None  # YYYY-MM-DD
+
+
+@router.get("/manual-spend")
+def get_current_manual_spend(db: Session = Depends(get_db), _=Depends(get_current_user)):
+    today_date = now_sp().date()
+    row = db.query(DailyAdSpend).filter(DailyAdSpend.spend_date == today_date).first()
+    if not row:
+        row = db.query(DailyAdSpend).order_by(DailyAdSpend.spend_date.desc()).first()
+    return {
+        "spend": row.spend if row else 0.0,
+        "clicks": row.clicks if row else 0,
+        "impressions": row.impressions if row else 0,
+        "spend_date": str(row.spend_date) if row else str(today_date),
+    }
+
+
+@router.post("/manual-spend")
+def set_manual_spend(req: ManualSpendInput, db: Session = Depends(get_db), _=Depends(get_current_user)):
+    target_date = now_sp().date()
+    if req.spend_date:
+        try:
+            target_date = datetime.strptime(req.spend_date, "%Y-%m-%d").date()
+        except ValueError:
+            pass
+
+    row = db.query(DailyAdSpend).filter(DailyAdSpend.spend_date == target_date).first()
+    if not row:
+        row = DailyAdSpend(
+            spend_date=target_date,
+            spend=req.spend,
+            clicks=req.clicks or 0,
+            impressions=req.impressions or 0,
+        )
+        db.add(row)
+    else:
+        row.spend = req.spend
+        if req.clicks is not None:
+            row.clicks = req.clicks
+        if req.impressions is not None:
+            row.impressions = req.impressions
+    db.commit()
+    db.refresh(row)
+    return {
+        "status": "ok",
+        "spend": row.spend,
+        "clicks": row.clicks,
+        "impressions": row.impressions,
+        "spend_date": str(row.spend_date),
     }
