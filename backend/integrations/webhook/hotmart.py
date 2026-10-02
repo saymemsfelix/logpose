@@ -277,6 +277,20 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
                 customer_country = "CH"
             else:
                 customer_country = "IT"
+        # Conversão de Moeda Estrangeira (EUR / USD / CHF) para BRL (Moeda Base do Dashboard)
+        # Hotmart envia valores na moeda da transação (ex: 14.21 EUR, 4.60 EUR).
+        # Para refletir com exatidão o faturamento em Reais e confrontar com os gastos de anúncios,
+        # convertemos para BRL usando a taxa oficial de repasse da Hotmart (~5.1865 BRL/EUR).
+        if amount > 0:
+            if currency == "EUR" or (not currency and customer_country in ["IT", "PT", "ES", "FR", "DE"]):
+                if amount < 50.0:  # Valor em Euro do infoproduto
+                    amount = round(amount * 5.1865, 2)
+            elif currency == "USD" or (not currency and customer_country in ["US"]):
+                if amount < 50.0:
+                    amount = round(amount * 5.45, 2)
+            elif currency == "CHF" or (not currency and customer_country in ["CH"]):
+                if amount < 50.0:
+                    amount = round(amount * 5.50, 2)
 
         return StandardizedWebhookEvent(
             external_id=str(external_id),

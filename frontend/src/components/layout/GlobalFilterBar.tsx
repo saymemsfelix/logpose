@@ -12,6 +12,7 @@ import { ProductSelect } from "@/components/ProductSelect";
 
 const presetLabels: Record<DatePreset, string> = {
   today: "Hoje",
+  yesterday: "Ontem",
   "7d": "Últimos 7 dias",
   "14d": "Últimos 14 dias",
   "30d": "Últimos 30 dias",

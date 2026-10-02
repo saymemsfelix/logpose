@@ -23,8 +23,8 @@ from integrations.meta_ads.schemas import (
 
 logger = logging.getLogger(__name__)
 
-# TTL do cache em segundos (5 minutos)
-CACHE_TTL = 300
+# TTL do cache em segundos (30 segundos para atualização quase instantânea)
+CACHE_TTL = 30
 
 
 class MetaAdsService:

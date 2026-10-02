@@ -6,7 +6,7 @@ import { fetchCompanySettings } from "@/services/company";
 import { useCachedQuery } from "./useCachedQuery";
 import { parseProductFilterValue } from "@/utils/product-filter";
 
-export type DatePreset = "today" | "7d" | "14d" | "30d" | "90d" | "all" | "custom";
+export type DatePreset = "today" | "yesterday" | "7d" | "14d" | "30d" | "90d" | "all" | "custom";
 
 export interface DashboardFilters {
   datePreset: DatePreset;
@@ -71,7 +71,7 @@ export function useDashboard() {
     cachePrefix: "dashboard",
     params,
     queryFn: () => fetchDashboardOverview(params as Record<string, string | number | undefined>),
-    autoRefreshMs: 30000,
+    autoRefreshMs: 15000,
   });
 
   const { data: settings } = useCachedQuery<CompanySettings>({
