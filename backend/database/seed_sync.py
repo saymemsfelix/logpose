@@ -181,9 +181,9 @@ def seed_sync_data(engine):
                     if t.country not in ("CH", "IT"):
                         t.country = "IT"
 
-            # 8. Atualizar modelo de contas Gemini para gemini-2.0-flash se estiver usando gemini-2.5-pro (descontinuado)
+            # 8. Atualizar modelo de contas Gemini para gemini-2.5-flash-lite se estiver usando modelos descontinuados
             try:
-                db.execute(text("UPDATE gemini_accounts SET model = 'gemini-2.0-flash' WHERE model LIKE '%2.5-pro%' OR model IS NULL;"))
+                db.execute(text("UPDATE gemini_accounts SET model = 'gemini-2.5-flash-lite' WHERE model LIKE '%2.0%' OR model LIKE '%2.5-pro%' OR model IS NULL;"))
             except Exception as e_gem:
                 logger.warning(f"Aviso ao atualizar modelo gemini: {e_gem}")
 

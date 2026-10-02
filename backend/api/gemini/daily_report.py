@@ -11,7 +11,10 @@ from database.models.gemini_account import GeminiAccount
 from database.models.company import CompanySettings
 from api.auth.deps import get_current_user
 from ai.daily_report_data import collect_daily_data, format_daily_context
-from ai.service import build_llm_no_tools, _extract_text, _build_user_instructions_block
+from ai.service import (
+    build_llm_no_tools, _extract_text, _build_user_instructions_block,
+    _sanitize_model, FALLBACK_MODEL, SECONDARY_FALLBACK,
+)
 from ai.prompt import DAILY_REPORT_PROMPT
 
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -48,20 +51,36 @@ async def generate_daily_report(
     ai_instructions = settings.ai_instructions if settings else None
     user_block = _build_user_instructions_block(ai_instructions)
 
-    # Montar prompt e chamar AI
-    llm = build_llm_no_tools(account.api_key, account.model)
-
+    clean_model = _sanitize_model(account.model)
     system = f"{DAILY_REPORT_PROMPT}{user_block}"
     messages = [
         SystemMessage(content=system),
         HumanMessage(content=f"Gere o relatório diário com os dados abaixo:\n\n{context}"),
     ]
 
-    try:
-        response = await llm.ainvoke(messages)
-        text = _extract_text(response.content) or "Não consegui gerar o relatório."
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro na AI: {str(e)}")
+    candidates = [clean_model]
+    if FALLBACK_MODEL not in candidates:
+        candidates.append(FALLBACK_MODEL)
+    if SECONDARY_FALLBACK not in candidates:
+        candidates.append(SECONDARY_FALLBACK)
+
+    text = None
+    last_err = None
+    for cand in candidates:
+        try:
+            llm = build_llm_no_tools(account.api_key, cand)
+            response = await llm.ainvoke(messages)
+            text = _extract_text(response.content) or "Não consegui gerar o relatório."
+            break
+        except Exception as e:
+            last_err = e
+            err_msg = str(e)
+            if "NOT_FOUND" in err_msg or "404" in err_msg or "no longer available" in err_msg:
+                continue
+            raise HTTPException(status_code=500, detail=f"Erro na AI: {err_msg}")
+
+    if not text:
+        raise HTTPException(status_code=500, detail=f"Erro na AI: {str(last_err)}")
 
     return DailyReportResponse(
         response=text,

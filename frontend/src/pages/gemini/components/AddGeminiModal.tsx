@@ -19,7 +19,7 @@ interface AddGeminiModalProps {
 export function AddGeminiModal({ open, onOpenChange, onAdd, isLoading }: AddGeminiModalProps) {
   const [name, setName] = useState("");
   const [apiKey, setApiKey] = useState("");
-  const [model, setModel] = useState("gemini-2.0-flash-lite");
+  const [model, setModel] = useState("gemini-2.5-flash-lite");
   const [models, setModels] = useState<GeminiModelAPI[]>([]);
   const [modelSearch, setModelSearch] = useState("");
   const [loadingModels, setLoadingModels] = useState(false);
@@ -60,7 +60,7 @@ export function AddGeminiModal({ open, onOpenChange, onAdd, isLoading }: AddGemi
 
   const handleClose = (v: boolean) => {
     if (!v) {
-      setName(""); setApiKey(""); setModel("gemini-2.0-flash-lite");
+      setName(""); setApiKey(""); setModel("gemini-2.5-flash-lite");
       setModelSearch(""); setModels([]); setShowModels(false);
     }
     onOpenChange(v);

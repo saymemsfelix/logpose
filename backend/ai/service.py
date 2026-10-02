@@ -72,7 +72,8 @@ def _build_user_instructions_block(ai_instructions: dict | None) -> str:
 import logging
 logger = logging.getLogger(__name__)
 
-FALLBACK_MODEL = "gemini-2.0-flash"
+FALLBACK_MODEL = "gemini-2.5-flash-lite"
+SECONDARY_FALLBACK = "gemini-2.5-flash"
 
 
 def _sanitize_model(model: str | None) -> str:
@@ -80,9 +81,9 @@ def _sanitize_model(model: str | None) -> str:
     m = (model or "").strip()
     if not m:
         return FALLBACK_MODEL
-    # Modelos 2.5-pro que a Google descontinuou
-    if "2.5-pro" in m:
-        return "gemini-2.5-flash" if "flash" in m else FALLBACK_MODEL
+    # Modelos 2.0-flash-lite e 2.5-pro descontinuados pela Google
+    if "2.0" in m or "2.5-pro" in m:
+        return FALLBACK_MODEL
     if not m.startswith("gemini-"):
         m = f"gemini-{m}"
     return m
@@ -133,27 +134,33 @@ async def run_agent(
     ai_instructions: dict | None = None,
     learning_data: str = "",
 ) -> str:
-    """Executa o agente. Se page_context presente, usa dados direto sem tool."""
+    """Executa o agente com fallback resiliente entre modelos suportados."""
     user_block = _build_user_instructions_block(ai_instructions)
     clean_model = _sanitize_model(model)
 
-    try:
-        if page_context:
-            return await _run_with_page_context(
-                api_key, clean_model, user_message, history, page_context, user_block, learning_data
-            )
-        return await _run_with_tools(api_key, clean_model, user_message, history, user_block, learning_data)
-    except Exception as exc:
-        err_msg = str(exc)
-        # Se o modelo falhou (404, NOT_FOUND, no longer available) e não era o fallback, tenta com FALLBACK_MODEL
-        if ("NOT_FOUND" in err_msg or "404" in err_msg or "no longer available" in err_msg) and clean_model != FALLBACK_MODEL:
-            logger.warning(f"Modelo {clean_model} falhou com 404/NOT_FOUND. Tentando fallback para {FALLBACK_MODEL}: {exc}")
+    candidates = [clean_model]
+    if FALLBACK_MODEL not in candidates:
+        candidates.append(FALLBACK_MODEL)
+    if SECONDARY_FALLBACK not in candidates:
+        candidates.append(SECONDARY_FALLBACK)
+
+    last_error = None
+    for cand in candidates:
+        try:
             if page_context:
                 return await _run_with_page_context(
-                    api_key, FALLBACK_MODEL, user_message, history, page_context, user_block, learning_data
+                    api_key, cand, user_message, history, page_context, user_block, learning_data
                 )
-            return await _run_with_tools(api_key, FALLBACK_MODEL, user_message, history, user_block, learning_data)
-        raise
+            return await _run_with_tools(api_key, cand, user_message, history, user_block, learning_data)
+        except Exception as exc:
+            err_msg = str(exc)
+            last_error = exc
+            if "NOT_FOUND" in err_msg or "404" in err_msg or "no longer available" in err_msg:
+                logger.warning(f"Modelo {cand} falhou com 404/NOT_FOUND. Tentando próximo modelo...")
+                continue
+            raise
+
+    raise last_error or Exception("Nenhum modelo Gemini respondeu com sucesso.")
 
 
 async def _run_with_page_context(
