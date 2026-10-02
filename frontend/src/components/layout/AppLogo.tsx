@@ -58,8 +58,8 @@ export function AppLogo({ className = "", onClick, size = "md" }: AppLogoProps) 
     );
   }
 
-  // Imagem WebP de alta definição com retry e fallback automático
-  const imageSrc = retryWithAlt ? "/logo_light.webp" : "/logo_dark.webp?v=ninja_2026";
+  // Imagem WebP de alta definicao com fundo transparente e cache busting
+  const imageSrc = retryWithAlt ? "/logo_light.webp" : "/logo_transparent.webp?v=trans_2026";
 
   return (
     <img
