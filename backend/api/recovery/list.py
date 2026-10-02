@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
+from pydantic import BaseModel
 
 from database.core.connection import get_db
+from database.core.timezone import now_sp
 from database.models.recovery import Recovery
 from database.models.customer import Customer
 from database.models.transaction import Transaction, TransactionStatus
@@ -11,6 +13,21 @@ from api.auth.deps import get_current_user
 from api.funnel.date_helpers import resolve_date_range
 
 router = APIRouter(prefix="/recovery", tags=["recovery"])
+
+
+def _resolve_amount(amount: float | None, product_name: str | None) -> float:
+    if amount and amount > 0:
+        return float(amount)
+    if not product_name:
+        return 97.00
+    pn_lower = product_name.lower()
+    if any(k in pn_lower for k in ["diagnosi", "visive", "hardware", "software"]):
+        return 75.18
+    elif any(k in pn_lower for k in ["bump", "multimetro", "connettori", "pinout"]):
+        return 25.06
+    elif "ecografici" in pn_lower:
+        return 19.46
+    return 97.00
 
 
 def _get_channel_configs(db: Session) -> list[RecoveryChannelConfig]:
@@ -46,7 +63,12 @@ def _build_approved_with_src_query(db: Session, configs, dt_start, dt_end):
     if not keyword_filters:
         return None
 
-    q = db.query(Transaction, Customer.name).outerjoin(
+    q = db.query(
+        Transaction,
+        Customer.name.label("customer_name"),
+        Customer.phone.label("customer_phone"),
+        Customer.country.label("customer_country"),
+    ).outerjoin(
         Customer, Transaction.customer_id == Customer.id,
     ).filter(
         Transaction.status == TransactionStatus.APPROVED,
@@ -63,9 +85,19 @@ def _build_approved_with_src_query(db: Session, configs, dt_start, dt_end):
     return q
 
 
-def _build_pending_query(db: Session, dt_start, dt_end):
-    """Busca recoveries que ainda estão pendentes (não recuperadas)."""
-    q = db.query(Recovery).filter(Recovery.recovered.is_(False))
+def _build_recoveries_query(db: Session, recovered: bool, dt_start, dt_end):
+    """Busca registros na tabela recoveries com join em customers para telefone e país."""
+    q = db.query(
+        Recovery,
+        Customer.phone.label("cust_phone"),
+        Customer.country.label("cust_country"),
+    ).outerjoin(
+        Customer,
+        or_(
+            Recovery.customer_id == Customer.id,
+            Recovery.customer_email == Customer.email,
+        ),
+    ).filter(Recovery.recovered.is_(recovered))
 
     if dt_start:
         q = q.filter(Recovery.created_at >= dt_start)
@@ -73,6 +105,55 @@ def _build_pending_query(db: Session, dt_start, dt_end):
         q = q.filter(Recovery.created_at <= dt_end)
 
     return q
+
+
+class UpdateRecoveryStatusRequest(BaseModel):
+    recovered: bool
+    channel: str | None = None
+
+
+@router.put("/{recovery_id}/status")
+def update_recovery_status(
+    recovery_id: str,
+    payload: UpdateRecoveryStatusRequest,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    """Permite marcar uma recuperação como Recuperado ou Pendente."""
+    raw_id = recovery_id
+    if raw_id.startswith("r-"):
+        raw_id = raw_id[2:]
+    elif raw_id.startswith("t-"):
+        return {"success": True, "message": "Transação aprovada já consta como recuperada"}
+
+    try:
+        rec_id = int(raw_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="ID de recuperação inválido")
+
+    rec = db.query(Recovery).filter(Recovery.id == rec_id).first()
+    if not rec:
+        raise HTTPException(status_code=404, detail="Recuperação não encontrada")
+
+    rec.recovered = payload.recovered
+    if payload.recovered:
+        rec.recovered_at = now_sp()
+        if payload.channel:
+            try:
+                from database.models.recovery import RecoveryChannel
+                rec.channel = RecoveryChannel(payload.channel)
+            except Exception:
+                pass
+    else:
+        rec.recovered_at = None
+
+    db.commit()
+    return {
+        "success": True,
+        "id": f"r-{rec.id}",
+        "recovered": rec.recovered,
+        "recovered_at": rec.recovered_at.isoformat() if rec.recovered_at else None,
+    }
 
 
 @router.get("/list")
@@ -97,7 +178,6 @@ def list_recoveries(
     dt_start, dt_end = resolve_date_range(preset, date_start, date_end)
     configs = _get_channel_configs(db)
 
-    # Resolve product names (canonical + aliases) or upsell name once
     upsell_name: str | None = None
     product_names: list[str] | None = None
     
@@ -111,7 +191,7 @@ def list_recoveries(
     # ── Pendentes (da tabela recoveries) ──
     if status_filter in ("all", "pending"):
         if type_filter != "unidentified":
-            pending_q = _build_pending_query(db, dt_start, dt_end)
+            pending_q = _build_recoveries_query(db, recovered=False, dt_start=dt_start, dt_end=dt_end)
             if type_filter != "all":
                 pending_q = pending_q.filter(Recovery.type == type_filter)
             if upsell_name:
@@ -126,13 +206,39 @@ def list_recoveries(
                         Recovery.customer_email.ilike(term),
                     )
                 )
-            for r in pending_q.all():
+            for r, phone, country in pending_q.all():
                 channel = _classify_src(r.src, configs)
                 if channel_filter != "all" and channel != channel_filter:
                     continue
                 if account_slug and account_slug != "all" and r.webhook_slug != account_slug:
                     continue
-                items.append(_recovery_to_row(r, channel))
+                items.append(_recovery_to_row(r, channel, phone, country))
+
+    # ── Recuperados (da tabela recoveries com recovered=True) ──
+    if status_filter in ("all", "recovered"):
+        if type_filter != "unidentified":
+            rec_q = _build_recoveries_query(db, recovered=True, dt_start=dt_start, dt_end=dt_end)
+            if type_filter != "all":
+                rec_q = rec_q.filter(Recovery.type == type_filter)
+            if upsell_name:
+                rec_q = rec_q.filter(Recovery.product_name.ilike(f"%{upsell_name}%"))
+            elif product_names is not None:
+                rec_q = rec_q.filter(Recovery.product_name.in_(product_names))
+            if search:
+                term = f"%{search}%"
+                rec_q = rec_q.filter(
+                    or_(
+                        Recovery.customer_name.ilike(term),
+                        Recovery.customer_email.ilike(term),
+                    )
+                )
+            for r, phone, country in rec_q.all():
+                channel = _classify_src(r.src, configs)
+                if channel_filter != "all" and channel != channel_filter:
+                    continue
+                if account_slug and account_slug != "all" and r.webhook_slug != account_slug:
+                    continue
+                items.append(_recovery_to_row(r, channel, phone, country))
 
     # ── Recuperados (transações aprovadas com src matching) ──
     if status_filter in ("all", "recovered"):
@@ -155,11 +261,11 @@ def list_recoveries(
                     )
                 if account_slug and account_slug != "all":
                     approved_q = approved_q.filter(Transaction.webhook_slug == account_slug)
-                for tx, customer_name in approved_q.all():
+                for tx, cust_name, cust_phone, cust_country in approved_q.all():
                     channel = _classify_src(tx.src, configs)
                     if channel_filter != "all" and channel != channel_filter:
                         continue
-                    items.append(_tx_to_row(tx, channel, customer_name))
+                    items.append(_tx_to_row(tx, channel, cust_name, cust_phone, cust_country))
 
     # ── Ordenar por data (mais recente primeiro) ──
     items.sort(key=lambda x: x.get("date") or "", reverse=True)
@@ -176,30 +282,38 @@ def list_recoveries(
     }
 
 
-def _recovery_to_row(r: Recovery, channel: str) -> dict:
+def _recovery_to_row(r: Recovery, channel: str, phone: str | None = None, country: str | None = None) -> dict:
+    resolved_amount = _resolve_amount(r.amount, r.product_name)
     return {
         "id": f"r-{r.id}",
+        "rawId": r.id,
         "date": r.created_at.isoformat() if r.created_at else None,
         "customerName": r.customer_name or "—",
         "customerEmail": r.customer_email or "—",
+        "customerPhone": phone or getattr(r, "customer_phone", None) or None,
+        "customerCountry": country or getattr(r, "customer_country", None) or None,
         "product": r.product_name or "—",
         "type": r.type.value if r.type else "abandoned_cart",
-        "amount": r.amount,
-        "recovered": False,
+        "amount": resolved_amount,
+        "recovered": bool(r.recovered),
         "channel": channel,
-        "recoveredAt": None,
+        "recoveredAt": r.recovered_at.isoformat() if r.recovered_at else None,
     }
 
 
-def _tx_to_row(tx: Transaction, channel: str, customer_name: str | None = None) -> dict:
+def _tx_to_row(tx: Transaction, channel: str, customer_name: str | None = None, phone: str | None = None, country: str | None = None) -> dict:
+    resolved_amount = _resolve_amount(tx.amount, tx.product_name)
     return {
         "id": f"t-{tx.id}",
+        "rawId": tx.id,
         "date": tx.created_at.isoformat() if tx.created_at else None,
         "customerName": customer_name or tx.customer_email or "—",
         "customerEmail": tx.customer_email or "—",
+        "customerPhone": phone,
+        "customerCountry": country or tx.country or None,
         "product": tx.product_name or "—",
         "type": "unidentified",
-        "amount": tx.amount,
+        "amount": resolved_amount,
         "recovered": True,
         "channel": channel,
         "recoveredAt": tx.created_at.isoformat() if tx.created_at else None,
@@ -236,10 +350,10 @@ def recovery_summary(
 
     all_rows: list[dict] = []
 
-    # ── Pendentes ──
+    # ── Pendentes (da tabela recoveries) ──
     if status_filter in ("all", "pending"):
         if type_filter != "unidentified":
-            pending_q = _build_pending_query(db, dt_start, dt_end)
+            pending_q = _build_recoveries_query(db, recovered=False, dt_start=dt_start, dt_end=dt_end)
             if type_filter != "all":
                 pending_q = pending_q.filter(Recovery.type == type_filter)
             if upsell_name:
@@ -254,15 +368,43 @@ def recovery_summary(
                         Recovery.customer_email.ilike(term),
                     )
                 )
-            for r in pending_q.all():
+            for r, _, _ in pending_q.all():
                 channel = _classify_src(r.src, configs)
                 if channel_filter != "all" and channel != channel_filter:
                     continue
                 if account_slug and account_slug != "all" and r.webhook_slug != account_slug:
                     continue
-                all_rows.append({"recovered": False, "amount": r.amount or 0, "channel": channel})
+                resolved = _resolve_amount(r.amount, r.product_name)
+                all_rows.append({"recovered": False, "amount": resolved, "channel": channel})
 
-    # ── Recuperados ──
+    # ── Recuperados (da tabela recoveries com recovered=True) ──
+    if status_filter in ("all", "recovered"):
+        if type_filter != "unidentified":
+            rec_q = _build_recoveries_query(db, recovered=True, dt_start=dt_start, dt_end=dt_end)
+            if type_filter != "all":
+                rec_q = rec_q.filter(Recovery.type == type_filter)
+            if upsell_name:
+                rec_q = rec_q.filter(Recovery.product_name.ilike(f"%{upsell_name}%"))
+            elif product_names is not None:
+                rec_q = rec_q.filter(Recovery.product_name.in_(product_names))
+            if search:
+                term = f"%{search}%"
+                rec_q = rec_q.filter(
+                    or_(
+                        Recovery.customer_name.ilike(term),
+                        Recovery.customer_email.ilike(term),
+                    )
+                )
+            for r, _, _ in rec_q.all():
+                channel = _classify_src(r.src, configs)
+                if channel_filter != "all" and channel != channel_filter:
+                    continue
+                if account_slug and account_slug != "all" and r.webhook_slug != account_slug:
+                    continue
+                resolved = _resolve_amount(r.amount, r.product_name)
+                all_rows.append({"recovered": True, "amount": resolved, "channel": channel})
+
+    # ── Recuperados (transações aprovadas com src matching) ──
     if status_filter in ("all", "recovered"):
         if type_filter in ("all", "unidentified"):
             approved_q = _build_approved_with_src_query(db, configs, dt_start, dt_end)
@@ -279,13 +421,14 @@ def recovery_summary(
                             Transaction.product_name.ilike(term),
                         )
                     )
-                for tx, _ in approved_q.all():
+                for tx, _, _, _ in approved_q.all():
                     channel = _classify_src(tx.src, configs)
                     if channel_filter != "all" and channel != channel_filter:
                         continue
                     if account_slug and account_slug != "all" and tx.webhook_slug != account_slug:
                         continue
-                    all_rows.append({"recovered": True, "amount": tx.amount or 0, "channel": channel})
+                    resolved = _resolve_amount(tx.amount, tx.product_name)
+                    all_rows.append({"recovered": True, "amount": resolved, "channel": channel})
 
     total = len(all_rows)
     recovered_rows = [r for r in all_rows if r["recovered"]]
@@ -306,8 +449,8 @@ def recovery_summary(
         "recovered": recovered_count,
         "pending": pending_count,
         "recovery_rate": recovery_rate,
-        "recovered_amount": recovered_amount,
-        "lost_amount": lost_amount,
+        "recovered_amount": round(recovered_amount, 2),
+        "lost_amount": round(lost_amount, 2),
         "by_channel": {
             "whatsapp": _count_channel("whatsapp"),
             "email": _count_channel("email"),

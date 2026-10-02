@@ -157,13 +157,122 @@ def seed_sync_data(engine):
                     if t.country not in ("CH", "IT"):
                         t.country = "IT"
 
-            # 8. Atualizar modelo de contas Gemini para gemini-2.5-flash-lite se estiver usando modelos descontinuados
+            # 8. Sincronizar Recuperações de Vendas (Recoveries) para os 4 idiomas solicitados:
+            # 🇮🇹 IT (Cosimo Franco, Gianluca Rizzo)
+            # 🇲🇽/🇪🇸 ES LATAM (Alejandro Gómez)
+            # 🇧🇷 BR (Rodrigo Silveira)
+            # 🇩🇪 DE (Maximilian Weber)
+            from database.models.recovery import Recovery, RecoveryType, RecoveryChannel
+
+            try:
+                db.execute(text("ALTER TABLE recoveries ADD COLUMN IF NOT EXISTS customer_phone VARCHAR(50);"))
+                db.execute(text("ALTER TABLE recoveries ADD COLUMN IF NOT EXISTS customer_country VARCHAR(50);"))
+                db.commit()
+            except Exception:
+                db.rollback()
+
+            sample_recoveries = [
+                {
+                    "email": "cosimo_franco@libero.it",
+                    "name": "Cosimo Franco",
+                    "phone": "+39 347 8821940",
+                    "country": "IT",
+                    "product": "120 Diagnosi Visive per Hardware e Software",
+                    "type": RecoveryType.ABANDONED_CART,
+                    "amount": 75.18,
+                    "delta_hours": 5,
+                },
+                {
+                    "email": "alejandro.gomez@gmail.com",
+                    "name": "Alejandro Gómez",
+                    "phone": "+52 55 4123 9876",
+                    "country": "MX",
+                    "product": "120 Diagnosi Visive per Hardware e Software",
+                    "type": RecoveryType.DECLINED_CARD,
+                    "amount": 75.18,
+                    "delta_hours": 8,
+                },
+                {
+                    "email": "rodrigo.silveira@uol.com.br",
+                    "name": "Rodrigo Silveira",
+                    "phone": "+55 11 98765-4321",
+                    "country": "BR",
+                    "product": "120 Diagnosi Visive per Hardware e Software",
+                    "type": RecoveryType.UNPAID_PIX,
+                    "amount": 75.18,
+                    "delta_hours": 11,
+                },
+                {
+                    "email": "m.weber@t-online.de",
+                    "name": "Maximilian Weber",
+                    "phone": "+49 171 8923456",
+                    "country": "DE",
+                    "product": "120 Diagnosi Visive per Hardware e Software",
+                    "type": RecoveryType.ABANDONED_CART,
+                    "amount": 75.18,
+                    "delta_hours": 14,
+                },
+                {
+                    "email": "gianluca.rizzo@virgilio.it",
+                    "name": "Gianluca Rizzo",
+                    "phone": "+39 333 4567890",
+                    "country": "IT",
+                    "product": "Diagnosi PC con Multimetro",
+                    "type": RecoveryType.ABANDONED_CART,
+                    "amount": 25.06,
+                    "delta_hours": 3,
+                },
+            ]
+
+            for sr in sample_recoveries:
+                cust = db.query(Customer).filter(Customer.email == sr["email"]).first()
+                if not cust:
+                    cust = Customer(
+                        name=sr["name"],
+                        email=sr["email"],
+                        phone=sr["phone"],
+                        country=sr["country"],
+                        total_spent=0.0,
+                        total_orders=0,
+                    )
+                    db.add(cust)
+                    db.flush()
+                else:
+                    cust.phone = sr["phone"]
+                    cust.country = sr["country"]
+
+                rec = db.query(Recovery).filter(Recovery.customer_email == sr["email"]).first()
+                if not rec:
+                    rec = Recovery(
+                        customer_id=cust.id,
+                        customer_name=sr["name"],
+                        customer_email=sr["email"],
+                        product_name=sr["product"],
+                        type=sr["type"],
+                        amount=sr["amount"],
+                        recovered=False,
+                        channel=RecoveryChannel.OTHER,
+                        created_at=now - timedelta(hours=sr["delta_hours"]),
+                    )
+                    try:
+                        setattr(rec, "customer_phone", sr["phone"])
+                        setattr(rec, "customer_country", sr["country"])
+                    except Exception:
+                        pass
+                    db.add(rec)
+                else:
+                    if not rec.amount or rec.amount == 0.0:
+                        rec.amount = sr["amount"]
+                    if not rec.customer_id:
+                        rec.customer_id = cust.id
+
+            # 9. Atualizar modelo de contas Gemini para gemini-2.5-flash-lite se estiver usando modelos descontinuados
             try:
                 db.execute(text("UPDATE gemini_accounts SET model = 'gemini-2.5-flash-lite' WHERE model LIKE '%2.0%' OR model LIKE '%2.5-pro%' OR model IS NULL;"))
             except Exception as e_gem:
                 logger.warning(f"Aviso ao atualizar modelo gemini: {e_gem}")
 
             db.commit()
-            logger.info("✅ 12 vendas reais sincronizadas com R$ 588,94 (IT: R$ 458,93 | CH: R$ 130,01) e Ninja AI calibrada!")
+            logger.info("✅ 12 vendas reais sincronizadas e 5 recuperações multilíngues ativas!")
     except Exception as e:
         logger.error(f"Erro ao sincronizar dados iniciais: {e}", exc_info=True)

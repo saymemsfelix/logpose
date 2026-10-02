@@ -4,11 +4,13 @@ import { RecoveryInlineFilters } from "./components/RecoveryInlineFilters";
 import { RecoveryKpis } from "./components/RecoveryKpis";
 import { RecoveryTable } from "./components/RecoveryTable";
 import { ConfigDrawer } from "./components/ConfigDrawer";
+import { WhatsAppRecoveryModal } from "./components/WhatsAppRecoveryModal";
 import { useRecoveries } from "@/hooks/useRecoveries";
 import { useChannelConfigs } from "@/hooks/useChannelConfigs";
 import { fetchSalesFilterOptions } from "@/services/sales";
+import { updateRecoveryStatus } from "@/services/recovery";
 import type { DateRangeState } from "@/components/DateRangeFilter";
-import type { ChannelConfig, CustomChannelPayload } from "@/services/recovery";
+import type { ChannelConfig, CustomChannelPayload, RecoveryRow } from "@/services/recovery";
 import type { SalesFilterOptions } from "@/types/sale";
 
 export default function RecoveryPage() {
@@ -23,6 +25,9 @@ export default function RecoveryPage() {
   const [search, setSearch] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
+  const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<RecoveryRow | null>(null);
+
   const [filterOptions, setFilterOptions] = useState<SalesFilterOptions>({
     products: [], upsells: [], campaigns: [], platforms: [], accounts: [],
   });
@@ -64,6 +69,35 @@ export default function RecoveryPage() {
     await reload();
   }, [removeCustom, reload]);
 
+  const handleOpenWhatsApp = useCallback((row: RecoveryRow) => {
+    setSelectedLead(row);
+    setWhatsAppModalOpen(true);
+  }, []);
+
+  const handleToggleStatus = useCallback(async (row: RecoveryRow) => {
+    try {
+      await updateRecoveryStatus(row.id, {
+        recovered: !row.recovered,
+        channel: "whatsapp",
+      });
+      await reload();
+    } catch (err) {
+      console.error("Erro ao alternar status da recuperação:", err);
+    }
+  }, [reload]);
+
+  const handleMarkRecovered = useCallback(async (id: string) => {
+    try {
+      await updateRecoveryStatus(id, {
+        recovered: true,
+        channel: "whatsapp",
+      });
+      await reload();
+    } catch (err) {
+      console.error("Erro ao marcar como recuperado:", err);
+    }
+  }, [reload]);
+
   return (
     <div className="flex flex-col gap-6 p-6">
       <RecoveryHeader
@@ -97,6 +131,7 @@ export default function RecoveryPage() {
       )}
 
       <RecoveryKpis summary={summary} loading={isLoading} />
+
       <RecoveryTable
         data={data}
         isLoading={isLoading}
@@ -104,7 +139,10 @@ export default function RecoveryPage() {
         page={page}
         onPageChange={setPage}
         channelConfigs={configs}
+        onOpenWhatsApp={handleOpenWhatsApp}
+        onToggleStatus={handleToggleStatus}
       />
+
       <ConfigDrawer
         open={configOpen}
         onOpenChange={setConfigOpen}
@@ -113,6 +151,13 @@ export default function RecoveryPage() {
         onAddCustom={handleAddCustom}
         onRemoveCustom={handleRemoveCustom}
         isSaving={isSaving}
+      />
+
+      <WhatsAppRecoveryModal
+        open={whatsAppModalOpen}
+        onOpenChange={setWhatsAppModalOpen}
+        lead={selectedLead}
+        onMarkRecovered={handleMarkRecovered}
       />
     </div>
   );

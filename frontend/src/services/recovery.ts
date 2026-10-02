@@ -3,15 +3,19 @@ import { apiRequest } from "./api";
 // ── Types ───────────────────────────────────────────────
 export interface RecoveryRow {
   id: string;
+  rawId?: number;
   date: string | null;
   customerName: string;
   customerEmail: string;
+  customerPhone?: string | null;
+  customerCountry?: string | null;
   product: string;
   type: "abandoned_cart" | "declined_card" | "unpaid_pix" | "trial" | "unidentified";
   amount: number;
   recovered: boolean;
   channel: string;
   recoveredAt: string | null;
+  checkoutUrl?: string | null;
 }
 
 export interface ChannelConfig {
@@ -133,3 +137,17 @@ export async function fetchRecoverySummary(params: {
   if (params.accountSlug) qs.set("account_slug", params.accountSlug);
   return apiRequest<RecoverySummary>(`/recovery/summary?${qs.toString()}`);
 }
+
+export async function updateRecoveryStatus(
+  recoveryId: string,
+  payload: { recovered: boolean; channel?: string },
+): Promise<{ success: boolean; id: string; recovered: boolean }> {
+  return apiRequest<{ success: boolean; id: string; recovered: boolean }>(
+    `/recovery/${recoveryId}/status`,
+    {
+      method: "PUT",
+      body: payload,
+    },
+  );
+}
+
