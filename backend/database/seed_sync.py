@@ -266,11 +266,24 @@ def seed_sync_data(engine):
                     if not rec.customer_id:
                         rec.customer_id = cust.id
 
-            # 9. Atualizar modelo de contas Gemini para gemini-2.5-flash-lite se estiver usando modelos descontinuados
+            # 10. Garantir Admin padrão se a tabela de admins estiver vazia
             try:
-                db.execute(text("UPDATE gemini_accounts SET model = 'gemini-2.5-flash-lite' WHERE model LIKE '%2.0%' OR model LIKE '%2.5-pro%' OR model IS NULL;"))
-            except Exception as e_gem:
-                logger.warning(f"Aviso ao atualizar modelo gemini: {e_gem}")
+                from database.models.admin import Admin, UserRole
+                import bcrypt
+                admin_user = db.query(Admin).filter(Admin.email.isnot(None)).first()
+                if not admin_user:
+                    hashed = bcrypt.hashpw(b"admin123", bcrypt.gensalt()).decode("utf-8")
+                    default_admin = Admin(
+                        name="Admin",
+                        email="admin@admin.com",
+                        password_hash=hashed,
+                        role=UserRole.owner,
+                    )
+                    db.add(default_admin)
+                    db.commit()
+                    logger.info("✅ Admin padrão criado: admin@admin.com")
+            except Exception as e_adm:
+                logger.warning(f"Aviso ao verificar admin padrão: {e_adm}")
 
             db.commit()
             logger.info("✅ 12 vendas reais sincronizadas e 5 recuperações multilíngues ativas!")
