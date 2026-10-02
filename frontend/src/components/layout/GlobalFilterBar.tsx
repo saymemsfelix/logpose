@@ -54,14 +54,14 @@ export function GlobalFilterBar({
     filters.product !== "all" ? "1" : "",
     filters.platform !== "all" ? "1" : "",
     filters.accountSlug !== "all" ? "1" : "",
-    filters.taxEnabled ? "1" : "",
+    !filters.taxEnabled ? "1" : "",
     filters.opCostsEnabled ? "1" : "",
   ].filter(Boolean).length;
   const platformLabels: Record<string, string> = { kiwify: "Kiwify", payt: "PayT", api: "API" };
   const handleClear = () => onFiltersChange({
     datePreset: "today", dateStart: "", dateEnd: "",
     product: "all", platform: "all", accountSlug: "all",
-    taxEnabled: false, opCostsEnabled: false,
+    taxEnabled: true, opCostsEnabled: false,
   });
 
   return (

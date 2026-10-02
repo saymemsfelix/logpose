@@ -26,12 +26,28 @@ export const dashboardFilterDefaults: DashboardFilters = {
   product: "all",
   platform: "all",
   accountSlug: "all",
-  taxEnabled: false,
+  taxEnabled: true,
   opCostsEnabled: false,
 };
 
 export function useDashboard() {
-  const [filters, setFilters] = useState<DashboardFilters>(dashboardFilterDefaults);
+  const [filters, setFiltersState] = useState<DashboardFilters>(() => {
+    const savedTax = typeof window !== "undefined" ? localStorage.getItem("ninjas_tracker_tax_enabled") : null;
+    return {
+      ...dashboardFilterDefaults,
+      taxEnabled: savedTax !== null ? savedTax === "true" : true,
+    };
+  });
+
+  const setFilters = useCallback((updater: DashboardFilters | ((prev: DashboardFilters) => DashboardFilters)) => {
+    setFiltersState((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("ninjas_tracker_tax_enabled", String(next.taxEnabled));
+      }
+      return next;
+    });
+  }, []);
 
   const buildParams = useCallback(() => {
     const p: Record<string, unknown> = {
