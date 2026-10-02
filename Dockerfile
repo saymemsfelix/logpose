@@ -4,7 +4,7 @@ FROM node:20-slim AS frontend-build
 WORKDIR /frontend
 
 COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci --no-audit --no-fund --legacy-peer-deps
+RUN npm install --no-audit --no-fund --legacy-peer-deps
 
 COPY frontend/ ./
 ENV NODE_OPTIONS="--max-old-space-size=2048"

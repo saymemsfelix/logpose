@@ -169,7 +169,7 @@ if os.path.isdir(_frontend_dir):
         async def dispatch(self, request: Request, call_next):
             path = request.url.path
 
-            if path.startswith("/api") or path.startswith("/webhook") or path.startswith("/assets"):
+            if path.startswith("/api") or path.startswith("/webhook") or path.startswith("/assets") or path == "/health":
                 return await call_next(request)
 
             if request.method not in ("GET", "HEAD"):
