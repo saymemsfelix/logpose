@@ -24,6 +24,12 @@ export interface CampaignAdData {
   no_id_sales: number;
   plays_vsl: number;
   play_rate: number;
+  video_views?: number;
+  video_p25?: number;
+  video_p50?: number;
+  video_p100?: number;
+  hook_rate?: number;
+  body_rate?: number;
 }
 
 export interface CampaignAdSetData {
@@ -48,6 +54,12 @@ export interface CampaignAdSetData {
   no_id_sales: number;
   plays_vsl: number;
   play_rate: number;
+  video_views?: number;
+  video_p25?: number;
+  video_p50?: number;
+  video_p100?: number;
+  hook_rate?: number;
+  body_rate?: number;
   ads: CampaignAdData[];
 }
 
@@ -81,6 +93,12 @@ export interface CampaignData {
   no_id_sales: number;
   plays_vsl: number;
   play_rate: number;
+  video_views?: number;
+  video_p25?: number;
+  video_p50?: number;
+  video_p100?: number;
+  hook_rate?: number;
+  body_rate?: number;
   adsets: CampaignAdSetData[];
   products?: UnidentifiedProduct[];
 }

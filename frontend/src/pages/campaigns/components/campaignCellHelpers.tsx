@@ -22,6 +22,9 @@ export interface MetricRow {
   budget: number;
   playsVsl: number;
   playRate: number;
+  hookRate?: number;
+  bodyRate?: number;
+  videoViews?: number;
 }
 
 /** Returns the CSS class for a KPI value given its color entry config */
@@ -140,6 +143,23 @@ export function getCellValue(
     checkoutConversion: `${checkoutConv.toFixed(1)}%`,
     checkoutToSaleRate: `${saleRate.toFixed(1)}%`,
     budget: fmt(c.budget),
+    hookRate: (
+      <span className={cn(
+        "font-semibold",
+        (c.hookRate ?? 0) >= 30 ? "text-[var(--color-success)]" : (c.hookRate ?? 0) >= 20 ? "text-[var(--color-warning)]" : (c.hookRate ?? 0) > 0 ? "text-destructive" : ""
+      )}>
+        {(c.hookRate ?? 0) > 0 ? `${(c.hookRate ?? 0).toFixed(1)}%` : "—"}
+      </span>
+    ),
+    bodyRate: (
+      <span className={cn(
+        "font-semibold",
+        (c.bodyRate ?? 0) >= 20 ? "text-[var(--color-success)]" : (c.bodyRate ?? 0) >= 10 ? "text-[var(--color-warning)]" : (c.bodyRate ?? 0) > 0 ? "text-destructive" : ""
+      )}>
+        {(c.bodyRate ?? 0) > 0 ? `${(c.bodyRate ?? 0).toFixed(1)}%` : "—"}
+      </span>
+    ),
+    videoViews: (c.videoViews ?? 0) > 0 ? (c.videoViews ?? 0).toLocaleString("pt-BR") : "—",
   };
   return map[col] ?? "—";
 }
@@ -166,6 +186,22 @@ export function getFooterValue(data: MetricRow[], col: string): string {
       String(data.reduce((s, c) => s + c.initiateCheckout, 0)),
     playsVsl: () =>
       data.reduce((s, c) => s + c.playsVsl, 0).toLocaleString("pt-BR"),
+    hookRate: () => {
+      const totalImpr = data.reduce((s, c) => s + c.impressions, 0);
+      const totalViews = data.reduce((s, c) => s + (c.videoViews ?? 0), 0);
+      return totalImpr > 0 && totalViews > 0
+        ? `${((totalViews / totalImpr) * 100).toFixed(1)}%`
+        : "—";
+    },
+    bodyRate: () => {
+      const totalViews = data.reduce((s, c) => s + (c.videoViews ?? 0), 0);
+      const totalP50 = data.reduce((s, c) => s + ((c.videoViews ?? 0) * (c.bodyRate ?? 0) / 100), 0);
+      return totalViews > 0 && totalP50 > 0
+        ? `${((totalP50 / totalViews) * 100).toFixed(1)}%`
+        : "—";
+    },
+    videoViews: () =>
+      data.reduce((s, c) => s + (c.videoViews ?? 0), 0).toLocaleString("pt-BR"),
   };
   return sums[col]?.() ?? "—";
 }

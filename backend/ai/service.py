@@ -69,10 +69,30 @@ def _build_user_instructions_block(ai_instructions: dict | None) -> str:
     return block
 
 
-def build_llm(api_key: str, model: str = "gemini-2.0-flash-lite"):
+import logging
+logger = logging.getLogger(__name__)
+
+FALLBACK_MODEL = "gemini-2.0-flash"
+
+
+def _sanitize_model(model: str | None) -> str:
+    """Higieniza o nome do modelo para evitar versões descontinuadas da Google."""
+    m = (model or "").strip()
+    if not m:
+        return FALLBACK_MODEL
+    # Modelos 2.5-pro que a Google descontinuou
+    if "2.5-pro" in m:
+        return "gemini-2.5-flash" if "flash" in m else FALLBACK_MODEL
+    if not m.startswith("gemini-"):
+        m = f"gemini-{m}"
+    return m
+
+
+def build_llm(api_key: str, model: str = FALLBACK_MODEL):
     """Cria LLM com a tool universal vinculada."""
+    clean_model = _sanitize_model(model)
     llm = ChatGoogleGenerativeAI(
-        model=model,
+        model=clean_model,
         google_api_key=api_key,
         temperature=0.3,
         convert_system_message_to_human=True,
@@ -80,10 +100,11 @@ def build_llm(api_key: str, model: str = "gemini-2.0-flash-lite"):
     return llm.bind_tools(ALL_TOOLS)
 
 
-def build_llm_no_tools(api_key: str, model: str = "gemini-2.0-flash-lite"):
+def build_llm_no_tools(api_key: str, model: str = FALLBACK_MODEL):
     """Cria LLM sem tools (para quando já temos dados da página)."""
+    clean_model = _sanitize_model(model)
     return ChatGoogleGenerativeAI(
-        model=model,
+        model=clean_model,
         google_api_key=api_key,
         temperature=0.3,
         convert_system_message_to_human=True,
@@ -114,12 +135,25 @@ async def run_agent(
 ) -> str:
     """Executa o agente. Se page_context presente, usa dados direto sem tool."""
     user_block = _build_user_instructions_block(ai_instructions)
+    clean_model = _sanitize_model(model)
 
-    if page_context:
-        return await _run_with_page_context(
-            api_key, model, user_message, history, page_context, user_block, learning_data
-        )
-    return await _run_with_tools(api_key, model, user_message, history, user_block, learning_data)
+    try:
+        if page_context:
+            return await _run_with_page_context(
+                api_key, clean_model, user_message, history, page_context, user_block, learning_data
+            )
+        return await _run_with_tools(api_key, clean_model, user_message, history, user_block, learning_data)
+    except Exception as exc:
+        err_msg = str(exc)
+        # Se o modelo falhou (404, NOT_FOUND, no longer available) e não era o fallback, tenta com FALLBACK_MODEL
+        if ("NOT_FOUND" in err_msg or "404" in err_msg or "no longer available" in err_msg) and clean_model != FALLBACK_MODEL:
+            logger.warning(f"Modelo {clean_model} falhou com 404/NOT_FOUND. Tentando fallback para {FALLBACK_MODEL}: {exc}")
+            if page_context:
+                return await _run_with_page_context(
+                    api_key, FALLBACK_MODEL, user_message, history, page_context, user_block, learning_data
+                )
+            return await _run_with_tools(api_key, FALLBACK_MODEL, user_message, history, user_block, learning_data)
+        raise
 
 
 async def _run_with_page_context(

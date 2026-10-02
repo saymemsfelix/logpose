@@ -5,17 +5,15 @@ import { AppSidebar } from "./AppSidebar";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { MobileAIChat } from "./MobileAIChat";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { IntroVideo } from "./IntroVideo";
 
 export function DashboardLayout() {
   const isMobile = useIsMobile();
-  // On mobile, auto-open AI chat on first load
-  const [aiOpen, setAiOpen] = useState(isMobile);
+  // Abre o Dashboard diretamente (sem floreios, sem vídeo e sem popup automático da IA)
+  const [aiOpen, setAiOpen] = useState(false);
 
   if (isMobile) {
     return (
       <>
-        <IntroVideo />
         <div className="flex flex-col min-h-[100dvh]">
           <main className="flex-1 overflow-auto pb-20">
             <div className="mx-auto w-full min-h-full">
@@ -31,7 +29,6 @@ export function DashboardLayout() {
 
   return (
     <>
-      <IntroVideo />
       <SidebarProvider
         style={{ "--sidebar-width": "14.5rem" } as React.CSSProperties}
         className="h-screen"

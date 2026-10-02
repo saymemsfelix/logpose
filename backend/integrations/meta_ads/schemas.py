@@ -21,6 +21,12 @@ class CampaignInsights(BaseModel):
     landing_page_views: int = 0
     initiate_checkout: int = 0
     connect_rate: float = 0.0
+    video_views: int = 0
+    video_p25: int = 0
+    video_p50: int = 0
+    video_p100: int = 0
+    hook_rate: float = 0.0
+    body_rate: float = 0.0
 
 
 class AdSetInsights(BaseModel):
@@ -38,6 +44,12 @@ class AdSetInsights(BaseModel):
     landing_page_views: int = 0
     initiate_checkout: int = 0
     connect_rate: float = 0.0
+    video_views: int = 0
+    video_p25: int = 0
+    video_p50: int = 0
+    video_p100: int = 0
+    hook_rate: float = 0.0
+    body_rate: float = 0.0
 
 
 class AdInsights(BaseModel):
@@ -55,6 +67,12 @@ class AdInsights(BaseModel):
     landing_page_views: int = 0
     initiate_checkout: int = 0
     connect_rate: float = 0.0
+    video_views: int = 0
+    video_p25: int = 0
+    video_p50: int = 0
+    video_p100: int = 0
+    hook_rate: float = 0.0
+    body_rate: float = 0.0
 
 
 class AccountInsightsSummary(BaseModel):

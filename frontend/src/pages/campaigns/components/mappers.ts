@@ -30,6 +30,9 @@ export function campaignToMetricRow(c: CampaignData): MetricRow & {
     noIdSales: c.no_id_sales,
     playsVsl: c.plays_vsl ?? 0,
     playRate: c.play_rate ?? 0,
+    hookRate: c.hook_rate ?? 0,
+    bodyRate: c.body_rate ?? 0,
+    videoViews: c.video_views ?? 0,
   };
 }
 
@@ -64,6 +67,9 @@ export function adsetToMetricRow(a: CampaignAdSetData): MetricRow & {
     noIdSales: a.no_id_sales,
     playsVsl: a.plays_vsl ?? 0,
     playRate: a.play_rate ?? 0,
+    hookRate: a.hook_rate ?? 0,
+    bodyRate: a.body_rate ?? 0,
+    videoViews: a.video_views ?? 0,
   };
 }
 
@@ -98,5 +104,8 @@ export function adToMetricRow(a: CampaignAdData): MetricRow & {
     noIdSales: a.no_id_sales,
     playsVsl: a.plays_vsl ?? 0,
     playRate: a.play_rate ?? 0,
+    hookRate: a.hook_rate ?? 0,
+    bodyRate: a.body_rate ?? 0,
+    videoViews: a.video_views ?? 0,
   };
 }

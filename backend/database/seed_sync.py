@@ -181,7 +181,13 @@ def seed_sync_data(engine):
                     if t.country not in ("CH", "IT"):
                         t.country = "IT"
 
+            # 8. Atualizar modelo de contas Gemini para gemini-2.0-flash se estiver usando gemini-2.5-pro (descontinuado)
+            try:
+                db.execute(text("UPDATE gemini_accounts SET model = 'gemini-2.0-flash' WHERE model LIKE '%2.5-pro%' OR model IS NULL;"))
+            except Exception as e_gem:
+                logger.warning(f"Aviso ao atualizar modelo gemini: {e_gem}")
+
             db.commit()
-            logger.info("✅ 12 vendas reais sincronizadas com R$ 588,94 (IT: R$ 458,93 | CH: R$ 130,01)!")
+            logger.info("✅ 12 vendas reais sincronizadas com R$ 588,94 (IT: R$ 458,93 | CH: R$ 130,01) e Ninja AI calibrada!")
     except Exception as e:
         logger.error(f"Erro ao sincronizar dados iniciais: {e}", exc_info=True)

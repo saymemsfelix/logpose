@@ -9,7 +9,14 @@ export const defaultPresets: ColumnPreset[] = [
     id: "vendas",
     name: "Vendas",
     columns: [
-      "name", "spend", "sales", "revenue", "profit", "roas", "cpa", "cpc", "ctr", "lpv", "ic",
+      "name", "spend", "sales", "revenue", "profit", "roas", "cpa", "hookRate", "bodyRate", "cpc", "ctr", "lpv", "ic",
+    ],
+  },
+  {
+    id: "criativos",
+    name: "Criativos",
+    columns: [
+      "name", "spend", "impressions", "clicks", "hookRate", "bodyRate", "connectRate", "sales", "roas",
     ],
   },
   {
@@ -30,6 +37,9 @@ export const allColumns: Record<string, string> = {
   profit: "Lucro",
   roas: "ROAS",
   cpa: "CPA",
+  hookRate: "Hook Rate (3s)",
+  bodyRate: "Body Rate (50%)",
+  videoViews: "Views de Vídeo",
   cpc: "CPC",
   ctr: "CTR",
   clicks: "Cliques",

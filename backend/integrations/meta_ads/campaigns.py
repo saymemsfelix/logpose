@@ -19,6 +19,9 @@ INSIGHT_FIELDS = ",".join([
     "inline_link_click_ctr",
     "cost_per_unique_inline_link_click",
     "actions",
+    "video_p25_watched_actions",
+    "video_p50_watched_actions",
+    "video_p100_watched_actions",
 ])
 
 
@@ -56,6 +59,19 @@ async def fetch_campaigns(
         spend = safe_float(insight.get("spend", 0))
         ctr = safe_float(insight.get("inline_link_click_ctr", 0))
         cpc = safe_float(insight.get("cost_per_unique_inline_link_click", 0))
+        impr = safe_int(insight.get("impressions", 0))
+
+        # Métricas de Vídeo & Retenção de Funil
+        video_views = safe_int(extract_action_value(actions, "video_view"))
+        p25_arr = insight.get("video_p25_watched_actions", [])
+        video_p25 = safe_int(p25_arr[0].get("value")) if p25_arr else 0
+        p50_arr = insight.get("video_p50_watched_actions", [])
+        video_p50 = safe_int(p50_arr[0].get("value")) if p50_arr else 0
+        p100_arr = insight.get("video_p100_watched_actions", [])
+        video_p100 = safe_int(p100_arr[0].get("value")) if p100_arr else 0
+
+        hook_rate = round((video_views / impr) * 100, 1) if impr > 0 else 0.0
+        body_rate = round((video_p50 / video_views) * 100, 1) if video_views > 0 else 0.0
 
         budget = safe_float(
             camp.get("daily_budget", 0)
@@ -71,13 +87,19 @@ async def fetch_campaigns(
             budget=budget,
             spend=spend,
             clicks=clicks,
-            impressions=safe_int(insight.get("impressions", 0)),
+            impressions=impr,
             cpc=cpc,
             ctr=ctr,
             cpa=0.0,
             landing_page_views=lpv,
             initiate_checkout=initiate,
             connect_rate=calc_connect_rate(lpv, clicks),
+            video_views=video_views,
+            video_p25=video_p25,
+            video_p50=video_p50,
+            video_p100=video_p100,
+            hook_rate=hook_rate,
+            body_rate=body_rate,
         ))
 
     return results
