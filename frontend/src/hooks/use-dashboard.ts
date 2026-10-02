@@ -71,6 +71,7 @@ export function useDashboard() {
     cachePrefix: "dashboard",
     params,
     queryFn: () => fetchDashboardOverview(params as Record<string, string | number | undefined>),
+    autoRefreshMs: 30000,
   });
 
   const { data: settings } = useCachedQuery<CompanySettings>({
