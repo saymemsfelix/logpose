@@ -17,15 +17,15 @@ from database.models.customer import Customer
 
 logger = logging.getLogger(__name__)
 
-META_TOKEN = "EAAQNi9yZBwRUBSrDuVbjcMGeIs8jAGv0i3oR5KjGiKwdKzR6lngSCQW075XamzQDBmsESsAqilbfhoYZCSmZBBYQ5eRhkvGZBpEM2BJgO0YctpQ772KZARnbjVZBgZCuT8g3cqQAxCQMFKXq8AYJwQfG3V9osqJJ14ZCYJ2AgTjEOWgmQ0r89w4uSrWwqbud3toxIAZDZD"
+META_TOKEN = "EAAQNi9yZBwRUBSusBKZAkpFMWTSZCPa8C2X37Wem982W0iUoDosY9VRPUMSnoEkXi8oRMphyRy4MlAV5TxpncQadQnzGtRxMRM51tEiZCRtxFGPv1LiMRconhYo4CSL4oehErCo4NTfwtVhZCtWmNQylYvwY53QPT4oNXLwPiS2Fu11HZC97XVeFR7tfeZAJkECHAZDZD"
 ACCOUNT_ID = "act_949690764845924"
 
 
 def seed_sync_data(engine):
-    """Executado no boot para sincronizar dados e garantir que nada fique desatualizado."""
+    """Executado no boot para sincronizar dados sem sobrescrever dados reais."""
     try:
         with Session(engine) as db:
-            # 1. Atualizar ou Criar Conta do Facebook com o Token Oficial
+            # 1. Atualizar ou Criar Conta do Facebook com o Token Oficial se não existir ou estiver inválido
             fb = db.query(FacebookAccount).filter(FacebookAccount.account_id == ACCOUNT_ID).first()
             if not fb:
                 fb = FacebookAccount(
@@ -36,29 +36,24 @@ def seed_sync_data(engine):
                     token_valid=True,
                 )
                 db.add(fb)
-            else:
-                fb.label = "CONTA BR 3k"
+                db.commit()
+            elif not fb.access_token or not fb.token_valid:
                 fb.access_token = META_TOKEN
-                fb.business_id = "1045466701201218"
                 fb.token_valid = True
-            db.commit()
+                db.commit()
 
-            # 2. Atualizar Gasto de Anúncios de Hoje (R$ 170,76 da Meta Ads ao vivo)
+            # 2. Inicializar Gasto de Anúncios de Hoje somente se não existir
             today_date = today_sp()
             spend_row = db.query(DailyAdSpend).filter(DailyAdSpend.spend_date == today_date).first()
             if not spend_row:
                 spend_row = DailyAdSpend(
                     spend_date=today_date,
-                    spend=170.76,
-                    clicks=71,
-                    impressions=1400,
+                    spend=438.92,
+                    clicks=174,
+                    impressions=3513,
                 )
                 db.add(spend_row)
-            else:
-                spend_row.spend = 170.76
-                spend_row.clicks = 71
-                spend_row.impressions = 1400
-            db.commit()
+                db.commit()
 
             # 3. Criar os 6 Compradores Reais (5 da Itália e 1 da Suíça) para bater os 6 compradores do NexoFy
             customers_data = [
@@ -138,16 +133,11 @@ def seed_sync_data(engine):
                     tx.status = TransactionStatus.APPROVED
                     tx.utm_campaign = "CBO-TESTE CRIATIVO — NEW OFFER"
                     tx.utm_source = "FB"
-                    tx.created_at = dt
 
-            # 5. Remover carrinho abandonado para bater 12 de 12 pedidos (100% aprovação) igual ao NexoFy
+            # 5. Remover carrinho abandonado de teste se existir
             db.query(Transaction).filter(Transaction.external_id == "HT_ABANDON_COSIMO").delete(synchronize_session=False)
 
-            # 6. Purgar qualquer transação de teste antiga que não seja uma das 12 vendas oficiais de hoje
-            valid_external_ids = [s[0] for s in real_sales]
-            db.query(Transaction).filter(
-                Transaction.external_id.notin_(valid_external_ids)
-            ).delete(synchronize_session=False)
+            # 6. Preservar todas as transações reais e importações históricas (nunca deletar)
 
             # 7. Corrigir qualquer transação remanescente de produto italiano
             all_txs = db.query(Transaction).all()

@@ -25,22 +25,22 @@ BEGIN
     VALUES (
       'CONTA BR 3k',
       'act_949690764845924',
-      'EAAQNi9yZBwRUBSrDuVbjcMGeIs8jAGv0i3oR5KjGiKwdKzR6lngSCQW075XamzQDBmsESsAqilbfhoYZCSmZBBYQ5eRhkvGZBpEM2BJgO0YctpQ772KZARnbjVZBgZCuT8g3cqQAxCQMFKXq8AYJwQfG3V9osqJJ14ZCYJ2AgTjEOWgmQ0r89w4uSrWwqbud3toxIAZDZD',
+      'EAAQNi9yZBwRUBSusBKZAkpFMWTSZCPa8C2X37Wem982W0iUoDosY9VRPUMSnoEkXi8oRMphyRy4MlAV5TxpncQadQnzGtRxMRM51tEiZCRtxFGPv1LiMRconhYo4CSL4oehErCo4NTfwtVhZCtWmNQylYvwY53QPT4oNXLwPiS2Fu11HZC97XVeFR7tfeZAJkECHAZDZD',
       'BM 4KBRL',
       true
     );
   ELSE
     UPDATE facebook_accounts
     SET label = 'CONTA BR 3k',
-        access_token = 'EAAQNi9yZBwRUBSrDuVbjcMGeIs8jAGv0i3oR5KjGiKwdKzR6lngSCQW075XamzQDBmsESsAqilbfhoYZCSmZBBYQ5eRhkvGZBpEM2BJgO0YctpQ772KZARnbjVZBgZCuT8g3cqQAxCQMFKXq8AYJwQfG3V9osqJJ14ZCYJ2AgTjEOWgmQ0r89w4uSrWwqbud3toxIAZDZD',
+        access_token = 'EAAQNi9yZBwRUBSusBKZAkpFMWTSZCPa8C2X37Wem982W0iUoDosY9VRPUMSnoEkXi8oRMphyRy4MlAV5TxpncQadQnzGtRxMRM51tEiZCRtxFGPv1LiMRconhYo4CSL4oehErCo4NTfwtVhZCtWmNQylYvwY53QPT4oNXLwPiS2Fu11HZC97XVeFR7tfeZAJkECHAZDZD',
         business_id = 'BM 4KBRL',
         token_valid = true
     WHERE account_id = 'act_949690764845924';
   END IF;
 
-  -- 3. Atualiza os gastos com anúncios de hoje da Meta Ads (R$ 158,24)
+  -- 3. Atualiza os gastos com anúncios de hoje da Meta Ads (R$ 438,92)
   INSERT INTO daily_ad_spends (spend_date, spend, clicks, impressions)
-  VALUES (CURRENT_DATE, 158.24, 92, 1315)
+  VALUES (CURRENT_DATE, 438.92, 174, 3513)
   ON CONFLICT (spend_date) DO UPDATE 
   SET spend = EXCLUDED.spend, clicks = EXCLUDED.clicks, impressions = EXCLUDED.impressions;
 

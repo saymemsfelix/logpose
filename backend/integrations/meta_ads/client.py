@@ -22,15 +22,11 @@ class MetaAuthError(Exception):
         self.error_code = error_code
 
 
-# Códigos de erro da Meta que indicam falha permanente de autenticação
+# Códigos de erro da Meta que indicam falha permanente e definitiva do token
 # Referência: https://developers.facebook.com/docs/graph-api/guides/error-handling
 FATAL_AUTH_CODES = {
-    190,  # Invalid OAuth 2.0 Access Token (token inválido, expirado, app deletado)
+    190,  # Invalid OAuth 2.0 Access Token (token revogado, expirado ou app deletado)
     102,  # Session key invalid or no longer valid
-    2500, # Error parsing OAuth token (general)
-    200,  # Missing permissions (ex: ads_management ou ads_read ausente)
-    10,   # Permission denied
-    294,  # Managing advertisements requires ads_management permission
 }
 
 # Versão da Graph API via ENV (padrão v25.0)
@@ -108,9 +104,9 @@ class MetaAdsClient:
                 code = error.get("code", 0)
                 err_type = str(error.get("type", "")).strip()
                 message = error.get("message", "Token inválido")
-                if code in FATAL_AUTH_CODES or err_type == "OAuthException":
+                if code in FATAL_AUTH_CODES:
                     logger.error(
-                        f"Erro fatal de autenticação/permissão Meta (code={code}, type={err_type}): {message}"
+                        f"Erro fatal de autenticação Meta (code={code}, type={err_type}): {message}"
                     )
                     return MetaAuthError(message, error_code=code)
             except Exception:
