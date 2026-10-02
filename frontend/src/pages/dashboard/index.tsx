@@ -96,7 +96,15 @@ export default function DashboardPage() {
       ) : (
         <>
           {/* 3. Grid dos 12 KPIs Principais */}
-          <NexoKpisGrid kpis={data.kpis} hideAllValues={hideValues} onSpendUpdated={reload} />
+          <NexoKpisGrid
+            kpis={data.kpis}
+            hideAllValues={hideValues}
+            onSpendUpdated={reload}
+            taxEnabled={filters.taxEnabled}
+            taxRate={settings?.tax_rate ?? 0}
+            opCostsEnabled={filters.opCostsEnabled}
+            opCostsTotal={settings?.operational_costs.reduce((s, c) => s + c.amount, 0) ?? 0}
+          />
 
           {/* 4. SFY Flow: Funil de Conversão em Tempo Real */}
           <SfyFlow flow={data.conversion_flow} />

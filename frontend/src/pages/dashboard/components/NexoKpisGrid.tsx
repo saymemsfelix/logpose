@@ -8,9 +8,21 @@ interface NexoKpisGridProps {
   kpis: DashboardKpis;
   hideAllValues?: boolean;
   onSpendUpdated?: () => void;
+  taxEnabled?: boolean;
+  taxRate?: number;
+  opCostsEnabled?: boolean;
+  opCostsTotal?: number;
 }
 
-export function NexoKpisGrid({ kpis, hideAllValues = false, onSpendUpdated }: NexoKpisGridProps) {
+export function NexoKpisGrid({
+  kpis,
+  hideAllValues = false,
+  onSpendUpdated,
+  taxEnabled = false,
+  taxRate = 0,
+  opCostsEnabled = false,
+  opCostsTotal = 0,
+}: NexoKpisGridProps) {
   const [hiddenCards, setHiddenCards] = useState<Record<string, boolean>>({});
   const [isEditingSpend, setIsEditingSpend] = useState(false);
   const [spendInput, setSpendInput] = useState(String(kpis.total_spend || 43.89));
@@ -59,28 +71,42 @@ export function NexoKpisGrid({ kpis, hideAllValues = false, onSpendUpdated }: Ne
     return valueStr;
   };
 
-  const profit = kpis.profit ?? (kpis.total_revenue - kpis.total_spend);
+  const taxDeduction = taxEnabled ? kpis.total_revenue * (taxRate / 100) : 0;
+  const opDeduction = opCostsEnabled ? opCostsTotal : 0;
+
+  const adjustedRevenue = kpis.total_revenue - taxDeduction;
+  const baseProfit = kpis.profit ?? (kpis.total_revenue - kpis.total_spend);
+  const profit = baseProfit - taxDeduction - opDeduction;
   const isProfitPositive = profit >= 0;
-  const margin = kpis.profit_margin ?? (kpis.total_revenue > 0 ? (profit / kpis.total_revenue) * 100 : 0);
-  const roas = kpis.roas ?? (kpis.total_spend > 0 ? kpis.total_revenue / kpis.total_spend : 0);
-  const roi = kpis.roi ?? (kpis.total_spend > 0 ? profit / kpis.total_spend : 0);
+  const margin = adjustedRevenue > 0 ? (profit / adjustedRevenue) * 100 : 0;
+  const roas = kpis.total_spend > 0 ? adjustedRevenue / kpis.total_spend : 0;
+  const totalCostBasis = kpis.total_spend + opDeduction;
+  const roi = totalCostBasis > 0 ? profit / totalCostBasis : 0;
   const totalOrders = kpis.total_orders ?? kpis.total_sales;
   const approvalRate = kpis.approval_rate ?? (totalOrders > 0 ? (kpis.total_sales / totalOrders) * 100 : 0);
+
+  const taxSubtext = taxEnabled
+    ? `-${formatCurrency(taxDeduction)} impostos (${taxRate}%)`
+    : null;
+  const opSubtext = opCostsEnabled
+    ? `-${formatCurrency(opDeduction)} custos fixos`
+    : null;
+  const profitSubtext = [taxSubtext, opSubtext].filter(Boolean).join(" | ") || null;
 
   const cards = [
     {
       id: "rev",
-      title: "Faturamento líquido",
-      value: formatCurrency(kpis.total_revenue),
-      subtext: null,
+      title: taxEnabled ? "Faturamento (- impostos)" : "Faturamento líquido",
+      value: formatCurrency(adjustedRevenue),
+      subtext: taxSubtext,
       colorClass: "text-zinc-900 dark:text-zinc-100",
       hasToggle: true,
     },
     {
       id: "profit",
-      title: "Lucro",
+      title: (taxEnabled || opCostsEnabled) ? "Lucro Real" : "Lucro",
       value: formatCurrency(profit),
-      subtext: null,
+      subtext: profitSubtext,
       colorClass: isProfitPositive
         ? "text-emerald-600 dark:text-emerald-400 font-semibold"
         : "text-rose-600 dark:text-rose-400 font-semibold",
@@ -88,7 +114,7 @@ export function NexoKpisGrid({ kpis, hideAllValues = false, onSpendUpdated }: Ne
     },
     {
       id: "margin",
-      title: "Margem",
+      title: (taxEnabled || opCostsEnabled) ? "Margem Real" : "Margem",
       value: `${margin.toFixed(1)}%`,
       subtext: null,
       colorClass: "text-zinc-900 dark:text-zinc-100",
@@ -96,7 +122,7 @@ export function NexoKpisGrid({ kpis, hideAllValues = false, onSpendUpdated }: Ne
     },
     {
       id: "roas",
-      title: "ROAS",
+      title: taxEnabled ? "ROAS Real" : "ROAS",
       value: `${roas.toFixed(2)}x`,
       subtext: null,
       colorClass: roas >= 1.0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400",
@@ -104,7 +130,7 @@ export function NexoKpisGrid({ kpis, hideAllValues = false, onSpendUpdated }: Ne
     },
     {
       id: "roi",
-      title: "ROI",
+      title: (taxEnabled || opCostsEnabled) ? "ROI Real" : "ROI",
       value: `${roi.toFixed(2)}x`,
       subtext: null,
       colorClass: roi >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400",
