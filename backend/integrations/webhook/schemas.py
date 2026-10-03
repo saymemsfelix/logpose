@@ -23,7 +23,7 @@ class StandardizedWebhookEvent(BaseModel):
     
     # Dados do cliente
     customer_external_id: Optional[str] = None
-    customer_email: EmailStr
+    customer_email: str
     customer_name: Optional[str] = None
     customer_cpf: Optional[str] = None
     customer_phone: Optional[str] = None

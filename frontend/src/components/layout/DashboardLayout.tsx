@@ -1,20 +1,30 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { MobileAIChat } from "./MobileAIChat";
+import { MobilePushBanner } from "./MobilePushBanner";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { subscribeToPushNotifications } from "@/services/salesNotifier";
 
 export function DashboardLayout() {
   const isMobile = useIsMobile();
   // Abre o Dashboard diretamente (sem floreios, sem vídeo e sem popup automático da IA)
   const [aiOpen, setAiOpen] = useState(false);
 
+  useEffect(() => {
+    // Garante que o Service Worker registre a inscrição push se o navegador já tiver permissão
+    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+      subscribeToPushNotifications().catch(() => {});
+    }
+  }, []);
+
   if (isMobile) {
     return (
       <>
         <div className="flex flex-col min-h-[100dvh]">
+          <MobilePushBanner />
           <main className="flex-1 overflow-auto pb-20">
             <div className="mx-auto w-full min-h-full">
               <Outlet />
@@ -36,6 +46,7 @@ export function DashboardLayout() {
         <div className="flex flex-1 h-full p-2.5 gap-2.5 min-w-0">
           <AppSidebar />
           <SidebarInset className="overflow-y-auto overflow-x-hidden flex-1 min-w-0">
+            <MobilePushBanner />
             <div
               className="mx-auto w-full min-h-full rounded-xl border border-border/40 bg-background shadow-sm overflow-auto"
               style={{ maxWidth: "min(1600px, 100%)" }}

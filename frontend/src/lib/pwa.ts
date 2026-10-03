@@ -5,7 +5,7 @@
 export function registerServiceWorker(): void {
   if (!('serviceWorker' in navigator)) return;
 
-  window.addEventListener('load', async () => {
+  const register = async () => {
     try {
       const registration = await navigator.serviceWorker.register('/sw.js', {
         scope: '/',
@@ -29,5 +29,12 @@ export function registerServiceWorker(): void {
     } catch (err) {
       console.warn('[PWA] Falha ao registrar Service Worker:', err);
     }
-  });
+  };
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    register();
+  } else {
+    window.addEventListener('load', register);
+  }
 }
+

@@ -177,8 +177,12 @@ export async function subscribeToPushNotifications(): Promise<boolean> {
   }
 
   try {
-    const reg = await navigator.serviceWorker.ready;
-    let sub = await reg.pushManager.getSubscription();
+    let reg = await navigator.serviceWorker.getRegistration();
+    if (!reg) {
+      reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+    }
+    const readyReg = await navigator.serviceWorker.ready;
+    let sub = await readyReg.pushManager.getSubscription();
 
     if (!sub) {
       // 1. Busca a chave pública VAPID do servidor
@@ -188,7 +192,7 @@ export async function subscribeToPushNotifications(): Promise<boolean> {
       }
 
       // 2. Inscreve o Service Worker
-      sub = await reg.pushManager.subscribe({
+      sub = await readyReg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(keyData.public_key),
       });
