@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ninjastracker-v2';
+const CACHE_NAME = 'ninjastracker-v3';
 
 const STATIC_ASSETS = [
   '/',
@@ -92,14 +92,17 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// Suporte a Web Push remoto
+// Suporte a Web Push remoto (Android, iOS PWA e Desktop)
 self.addEventListener('push', (event) => {
-  let title = '💰 Nova Venda Ninja Tracker!';
+  let title = '💰 NINJA TRACKER: Venda Aprovada!';
   let options = {
-    body: 'Venda aprovada!',
+    body: 'Nova venda aprovada!',
     icon: '/icons/pwa-192.png',
     badge: '/icons/pwa-192.png',
-    vibrate: [200, 100, 200, 100, 300],
+    vibrate: [300, 100, 300, 100, 400],
+    renotify: true,
+    requireInteraction: true,
+    tag: 'ninja-sale-' + Date.now(),
     data: { url: '/dashboard' },
   };
 
@@ -107,7 +110,18 @@ self.addEventListener('push', (event) => {
     try {
       const data = event.data.json();
       title = data.title || title;
-      options = { ...options, ...(data.options || {}) };
+      options = {
+        ...options,
+        ...(data.options || {}),
+        body: data.body || options.body,
+        icon: data.icon || options.icon,
+        badge: data.badge || options.badge,
+        tag: data.tag || options.tag,
+        renotify: data.renotify !== undefined ? data.renotify : options.renotify,
+        requireInteraction: data.requireInteraction !== undefined ? data.requireInteraction : options.requireInteraction,
+        vibrate: data.vibrate || options.vibrate,
+        data: data.data || options.data,
+      };
     } catch {
       options.body = event.data.text();
     }

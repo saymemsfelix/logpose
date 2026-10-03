@@ -59,6 +59,89 @@ export async function showNativeNotification(title: string, options: Notificatio
   }
 }
 
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/\-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+/**
+ * Registra o navegador / celular no backend para Web Push contínuo em segundo plano
+ */
+export async function subscribeToPushNotifications(): Promise<boolean> {
+  if (
+    typeof window === "undefined" ||
+    !("serviceWorker" in navigator) ||
+    !("PushManager" in window)
+  ) {
+    return false;
+  }
+
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+
+    if (!sub) {
+      // 1. Busca a chave pública VAPID do servidor
+      const keyData = await apiRequest<{ public_key: string }>("/notifications/vapid-key");
+      if (!keyData?.public_key) {
+        throw new Error("Chave VAPID não retornada pelo servidor");
+      }
+
+      // 2. Inscreve o Service Worker
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(keyData.public_key),
+      });
+    }
+
+    // 3. Envia os dados da inscrição para o backend salvar no banco
+    if (sub) {
+      const subJson = sub.toJSON();
+      await apiRequest("/notifications/subscribe", {
+        method: "POST",
+        body: JSON.stringify({
+          endpoint: sub.endpoint,
+          keys: subJson.keys,
+          user_agent: navigator.userAgent,
+        }),
+      });
+      console.log("✅ Web Push celular inscrito com sucesso no Ninja Tracker!");
+      return true;
+    }
+  } catch (err) {
+    console.error("Falha ao registrar Web Push no celular:", err);
+  }
+  return false;
+}
+
+/**
+ * Envia um push de teste imediato do servidor para o celular
+ */
+export async function sendTestPushNotification(): Promise<boolean> {
+  try {
+    const res = await apiRequest<{ status: string; message: string; sent_count: number }>(
+      "/notifications/test",
+      { method: "POST" }
+    );
+    if (res?.sent_count && res.sent_count > 0) {
+      toast.success(res.message);
+      return true;
+    } else {
+      toast.warning(res?.message || "Nenhum celular cadastrado para receber notificações.");
+      return false;
+    }
+  } catch (err) {
+    toast.error("Erro ao enviar pop-up de teste do servidor.");
+    return false;
+  }
+}
+
 export async function requestSalesNotificationPermission(): Promise<boolean> {
   if (typeof window === "undefined" || !("Notification" in window)) {
     toast.error("Notificações não são suportadas neste navegador.");
@@ -74,8 +157,10 @@ export async function requestSalesNotificationPermission(): Promise<boolean> {
 
   if (Notification.permission === "granted") {
     localStorage.setItem(STORAGE_KEY_NOTIF, "true");
-    toast.success("🔔 Alertas e Voz estilo UTMify já estão ativos!", {
-      description: "Você ouvirá o Ka-ching 🪙, a voz com criativo e popups a cada nova venda!",
+    await subscribeToPushNotifications();
+
+    toast.success("🔔 Alertas no Celular Ativos!", {
+      description: "Você receberá pop-ups mesmo com a tela bloqueada ou navegador fechado!",
     });
     await showNativeNotification("🎉 NINJA TRACKER Alertas Ativos!", {
       body: "Notificações móveis prontas! Vendas, criativos e lucros aparecerão aqui em tempo real.",
@@ -88,8 +173,10 @@ export async function requestSalesNotificationPermission(): Promise<boolean> {
     const permission = await Notification.requestPermission();
     if (permission === "granted") {
       localStorage.setItem(STORAGE_KEY_NOTIF, "true");
+      await subscribeToPushNotifications();
+
       toast.success("🔔 Notificações e Som ativados no Celular!", {
-        description: "Você será avisado em tempo real com som de moedas, criativo e voz estilo UTMify!",
+        description: "Você será avisado em tempo real com som de moedas, criativo e pop-up estilo Nexofy!",
       });
 
       await showNativeNotification("🎉 NINJA TRACKER Alertas Ativos!", {

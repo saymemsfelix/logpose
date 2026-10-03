@@ -115,6 +115,14 @@ def process_webhook_event(db: Session, event: StandardizedWebhookEvent):
 
         create_recovery_if_pending(db, event, customer)
         db.commit()
+
+        if is_newly_approved:
+            try:
+                from services.push_service import send_sale_push_notification
+                send_sale_push_notification(db, event)
+            except Exception as push_err:
+                logger.warning(f"Erro ao disparar Web Push para venda aprovada {event.external_id}: {push_err}")
+
         return existing_tx
     
     # -------------------------------------------------------------
@@ -189,4 +197,12 @@ def process_webhook_event(db: Session, event: StandardizedWebhookEvent):
     
     db.commit()
     logger.info(f"Webhook processado com sucesso. Transação: {new_tx.id}")
+
+    if event.status == TransactionStatus.APPROVED:
+        try:
+            from services.push_service import send_sale_push_notification
+            send_sale_push_notification(db, event)
+        except Exception as push_err:
+            logger.warning(f"Erro ao disparar Web Push para nova venda {event.external_id}: {push_err}")
+
     return new_tx

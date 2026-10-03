@@ -18,6 +18,7 @@ from database.models.gemini_account import GeminiAccount
 from database.models.campaign_action import CampaignAction, ActionType
 from database.models.stripe_account import StripeAccount
 from database.models.product_alias import ProductAlias
+from database.models.push_subscription import PushSubscription
 
 __all__ = [
     "Admin",
@@ -51,4 +52,5 @@ __all__ = [
     "ActionType",
     "StripeAccount",
     "ProductAlias",
+    "PushSubscription",
 ]

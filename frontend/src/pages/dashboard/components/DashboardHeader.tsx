@@ -24,6 +24,7 @@ interface DashboardHeaderProps {
   notificationsEnabled?: boolean;
   onToggleNotifications?: () => void;
   onTestSound?: () => void;
+  onTestPush?: () => void;
 }
 
 export function DashboardHeader({
@@ -34,6 +35,7 @@ export function DashboardHeader({
   notificationsEnabled = false,
   onToggleNotifications,
   onTestSound,
+  onTestPush,
 }: DashboardHeaderProps) {
   const user = getStoredUser();
   const firstName = user?.name?.split(" ")[0] || "Sayme";
@@ -86,7 +88,18 @@ export function DashboardHeader({
             className="inline-flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[11px] font-medium text-amber-500 hover:bg-amber-500/20 transition-colors cursor-pointer"
           >
             <span>🪙</span>
-            <span className="hidden sm:inline">Testar</span>
+            <span className="hidden sm:inline">Testar Som</span>
+          </button>
+        )}
+        {onTestPush && (
+          <button
+            type="button"
+            onClick={onTestPush}
+            title="Disparar pop-up real no celular (Web Push)"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-[11px] font-medium text-blue-400 hover:bg-blue-500/20 transition-colors cursor-pointer"
+          >
+            <span>📲</span>
+            <span>Testar Pop-up</span>
           </button>
         )}
 

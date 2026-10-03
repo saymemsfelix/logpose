@@ -21,7 +21,7 @@ import type { UpsellOption } from "@/types/sale";
 
 export default function DashboardPage() {
   const { data, settings, loading, filters, setFilters, reload } = useDashboard();
-  const { isEnabled: notificationsEnabled, toggleNotifications, testAlertSound } = useSalesListener(reload);
+  const { isEnabled: notificationsEnabled, toggleNotifications, testAlertSound, testPushNotification } = useSalesListener(reload);
   const navigate = useNavigate();
   const [products, setProducts] = useState<{ id: number; name: string }[]>([]);
   const [upsells, setUpsells] = useState<UpsellOption[]>([]);
@@ -73,6 +73,7 @@ export default function DashboardPage() {
         notificationsEnabled={notificationsEnabled}
         onToggleNotifications={toggleNotifications}
         onTestSound={testAlertSound}
+        onTestPush={testPushNotification}
       />
 
       {/* Banner de Ativação Mobile de Alertas Estilo UTMify */}
@@ -84,23 +85,23 @@ export default function DashboardPage() {
             </div>
             <div className="min-w-0">
               <h4 className="text-xs sm:text-sm font-semibold text-white flex items-center gap-2">
-                <span>Alertas no Celular (Estilo UTMify)</span>
+                <span>Pop-ups no Celular (Estilo Nexofy & Hotmart)</span>
                 <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded font-mono font-medium">
-                  Som + Voz + Criativo + Lucro
+                  Web Push Ativo
                 </span>
               </h4>
               <p className="text-[11px] sm:text-xs text-zinc-300/80 mt-0.5">
-                Receba o plin-plin 🪙, a voz dizendo o criativo e popups de lucro direto na tela do seu celular!
+                Receba o pop-up com som e vibração na tela do celular a cada venda aprovada com valor em dinheiro e criativo!
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
             <button
               type="button"
-              onClick={testAlertSound}
-              className="px-2.5 py-1.5 rounded-lg border border-zinc-700/80 bg-slate-800/60 hover:bg-slate-700 text-[11px] font-medium text-zinc-200 transition-colors cursor-pointer"
+              onClick={testPushNotification}
+              className="px-2.5 py-1.5 rounded-lg border border-blue-500/40 bg-blue-900/40 hover:bg-blue-800/60 text-[11px] font-medium text-blue-200 transition-colors cursor-pointer"
             >
-              Testar Voz & Som
+              Testar Pop-up 📲
             </button>
             <button
               type="button"

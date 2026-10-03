@@ -3,6 +3,8 @@ import {
   isSalesNotificationEnabled,
   requestSalesNotificationPermission,
   disableSalesNotification,
+  subscribeToPushNotifications,
+  sendTestPushNotification,
   notifyNewSale,
   fetchLatestSales,
   getLastSeenSaleId,
@@ -16,7 +18,13 @@ export function useSalesListener(onNewSale?: () => void) {
   const initializedRef = useRef(false);
 
   useEffect(() => {
-    setIsEnabled(isSalesNotificationEnabled());
+    const enabled = isSalesNotificationEnabled();
+    setIsEnabled(enabled);
+
+    // Se as notificações já estiverem permitidas no navegador, garante a inscrição Push no backend
+    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+      subscribeToPushNotifications().catch(() => {});
+    }
   }, []);
 
   const toggleNotifications = async () => {
@@ -38,6 +46,10 @@ export function useSalesListener(onNewSale?: () => void) {
     toast.success("🪙 Ka-ching + Voz testados!", {
       description: "É assim que vai apitar e falar no seu celular a cada venda e status de lucro!",
     });
+  };
+
+  const testPushNotification = async () => {
+    await sendTestPushNotification();
   };
 
   // Polling em background a cada 15 segundos para novas vendas
@@ -86,5 +98,6 @@ export function useSalesListener(onNewSale?: () => void) {
     isEnabled,
     toggleNotifications,
     testAlertSound,
+    testPushNotification,
   };
 }

@@ -6,6 +6,23 @@ from api.auth.token import verify_token
 from database.models.admin import Admin, UserRole
 
 security = HTTPBearer()
+security_optional = HTTPBearer(auto_error=False)
+
+
+def get_optional_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security_optional),
+    db: Session = Depends(get_db),
+) -> Admin | None:
+    if not credentials:
+        return None
+    token = credentials.credentials
+    payload = verify_token(token)
+    if not payload:
+        return None
+    admin_id = payload.get("sub")
+    if not admin_id:
+        return None
+    return db.query(Admin).filter(Admin.id == admin_id).first()
 
 
 def get_current_user(
