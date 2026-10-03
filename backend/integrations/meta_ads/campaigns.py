@@ -15,6 +15,9 @@ STRUCTURE_FIELDS = "id,name,status,daily_budget,lifetime_budget,objective,bid_st
 INSIGHT_FIELDS = ",".join([
     "spend",
     "impressions",
+    "clicks",
+    "cpc",
+    "ctr",
     "inline_link_clicks",
     "inline_link_click_ctr",
     "cost_per_unique_inline_link_click",
@@ -55,11 +58,23 @@ async def fetch_campaigns(
 
         lpv = safe_int(extract_action_value(actions, "landing_page_view"))
         initiate = safe_int(extract_action_value(actions, "omni_initiated_checkout"))
-        clicks = safe_int(insight.get("inline_link_clicks", 0))
         spend = safe_float(insight.get("spend", 0))
-        ctr = safe_float(insight.get("inline_link_click_ctr", 0))
-        cpc = safe_float(insight.get("cost_per_unique_inline_link_click", 0))
         impr = safe_int(insight.get("impressions", 0))
+        
+        # Cliques com fallback para clicks gerais se inline_link_clicks estiver vazio
+        clicks = safe_int(insight.get("inline_link_clicks", 0))
+        if clicks == 0:
+            clicks = safe_int(insight.get("clicks", 0))
+
+        # CTR com fallback calculado
+        ctr = safe_float(insight.get("inline_link_click_ctr", 0)) or safe_float(insight.get("ctr", 0))
+        if ctr == 0.0 and impr > 0 and clicks > 0:
+            ctr = round((clicks / impr) * 100, 2)
+
+        # CPC com fallback calculado
+        cpc = safe_float(insight.get("cost_per_unique_inline_link_click", 0)) or safe_float(insight.get("cpc", 0))
+        if cpc == 0.0 and clicks > 0 and spend > 0:
+            cpc = round(spend / clicks, 2)
 
         # Métricas de Vídeo & Retenção de Funil
         video_views = safe_int(extract_action_value(actions, "video_view"))

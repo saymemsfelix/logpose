@@ -157,6 +157,8 @@ def seed_sync_data(engine):
                         customer_id=cust.id,
                         customer_name=sr["name"],
                         customer_email=sr["email"],
+                        customer_phone=sr["phone"],
+                        customer_country=sr["country"],
                         product_name=sr["product"],
                         type=sr["type"],
                         amount=sr["amount"],
@@ -164,17 +166,16 @@ def seed_sync_data(engine):
                         channel=RecoveryChannel.OTHER,
                         created_at=now - timedelta(hours=sr["delta_hours"]),
                     )
-                    try:
-                        setattr(rec, "customer_phone", sr["phone"])
-                        setattr(rec, "customer_country", sr["country"])
-                    except Exception:
-                        pass
                     db.add(rec)
                 else:
                     if not rec.amount or rec.amount == 0.0:
                         rec.amount = sr["amount"]
                     if not rec.customer_id:
                         rec.customer_id = cust.id
+                    if not rec.customer_phone:
+                        rec.customer_phone = sr["phone"]
+                    if not rec.customer_country:
+                        rec.customer_country = sr["country"]
 
             # 10. Garantir Admin padrão se a tabela de admins estiver vazia
             try:
@@ -194,6 +195,28 @@ def seed_sync_data(engine):
                     logger.info("✅ Admin padrão criado: admin@admin.com")
             except Exception as e_adm:
                 logger.warning(f"Aviso ao verificar admin padrão: {e_adm}")
+
+            # 11. Garantir Conta Gemini Oficial conectada no boot (evita deslogar no Render)
+            try:
+                from database.models.gemini_account import GeminiAccount
+                from api.gemini.default_key import get_official_gemini_key
+                default_k = get_official_gemini_key()
+                if default_k:
+                    gem = db.query(GeminiAccount).first()
+                    if not gem:
+                        gem = GeminiAccount(
+                            name="Ninja Gemini Oficial",
+                            api_key=default_k,
+                            model="gemini-2.5-flash-lite",
+                        )
+                        db.add(gem)
+                        db.commit()
+                        logger.info("✅ Conta Gemini Oficial conectada e fixada no boot")
+                    elif not gem.api_key or gem.api_key.strip() == "":
+                        gem.api_key = default_k
+                        db.commit()
+            except Exception as e_gem:
+                logger.warning(f"Aviso ao verificar conta Gemini padrão: {e_gem}")
 
             db.commit()
             logger.info("✅ 12 vendas reais sincronizadas e 5 recuperações multilíngues ativas!")

@@ -3,24 +3,53 @@ Helpers para parsear UTMs no formato name|id e cruzar
 dados do Meta Ads com transações do banco de dados.
 """
 from typing import Optional
+from urllib.parse import unquote_plus
+import re
+
+
+def clean_utm_text(raw: Optional[str]) -> str:
+    """Decodifica URL encoding e remove macros e ruídos."""
+    if not raw:
+        return ""
+    try:
+        decoded = unquote_plus(str(raw).strip())
+    except Exception:
+        decoded = str(raw).strip()
+    
+    # Se for uma macro não substituída como {{campaign.name}}
+    if decoded.startswith("{{") and decoded.endswith("}}"):
+        return ""
+    return decoded
 
 
 def parse_utm_field(raw: Optional[str]) -> tuple[Optional[str], Optional[str]]:
     """
-    Parseia campo UTM no formato 'name|id'.
+    Parseia campo UTM no formato 'name|id' ou variações flexíveis.
     Retorna (name, id). Se for apenas dígitos, retorna (None, id).
-    Se não tem pipe, retorna (raw, None).
+    Se não tem pipe, retorna (name, None) ou (None, id) se for ID numérico.
     """
     if not raw:
         return None, None
-    clean = raw.strip()
+    clean = clean_utm_text(raw)
+    if not clean:
+        return None, None
+
     if "|" in clean:
         parts = clean.rsplit("|", 1)
         name = parts[0].strip() or None
         uid = parts[1].strip() or None
+        # Limpar macros residuais
+        if uid and (uid.startswith("{{") or not any(c.isdigit() for c in uid)):
+            uid = None
+        if name and name.startswith("{{"):
+            name = None
         return name, uid
-    if clean.isdigit():
-        return None, clean
+
+    # Se for puramente numérico (ID de campanha/anúncio da Meta com 9+ dígitos)
+    clean_digits = re.sub(r"\D", "", clean)
+    if clean.isdigit() or (len(clean_digits) >= 10 and clean.startswith("act_")):
+        return None, clean_digits or clean
+
     return clean, None
 
 

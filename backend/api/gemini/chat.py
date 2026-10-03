@@ -45,10 +45,21 @@ async def chat_with_ai(
         account = db.query(GeminiAccount).first()
 
     if not account:
-        raise HTTPException(
-            status_code=400,
-            detail="Nenhuma conta Gemini configurada. Adicione uma API Key em Integrações → Gemini API."
+        from api.gemini.default_key import get_official_gemini_key
+        default_k = get_official_gemini_key()
+        if not default_k:
+            raise HTTPException(
+                status_code=400,
+                detail="Nenhuma conta Gemini configurada."
+            )
+        account = GeminiAccount(
+            name="Ninja Gemini Oficial",
+            api_key=default_k,
+            model="gemini-2.5-flash-lite",
         )
+        db.add(account)
+        db.commit()
+        db.refresh(account)
 
     # Buscar instruções personalizadas do usuário
     settings = db.query(CompanySettings).first()

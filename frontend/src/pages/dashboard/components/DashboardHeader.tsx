@@ -75,18 +75,18 @@ export function DashboardHeader({
             }`}
           >
             <Bell className={`h-3.5 w-3.5 ${notificationsEnabled ? "fill-emerald-500 text-emerald-500" : ""}`} />
-            <span className="hidden md:inline">{notificationsEnabled ? "Som Ativo" : "Ativar Som"}</span>
+            <span className="text-[11px] font-medium">{notificationsEnabled ? "Alertas Ativos" : "Ativar Alertas"}</span>
           </button>
         )}
         {onTestSound && (
           <button
             type="button"
             onClick={onTestSound}
-            title="Ouvir som de venda (Ka-ching! 🪙)"
+            title="Ouvir som de venda e voz UTMify"
             className="inline-flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[11px] font-medium text-amber-500 hover:bg-amber-500/20 transition-colors cursor-pointer"
           >
             <span>🪙</span>
-            <span className="hidden lg:inline">Testar som</span>
+            <span className="hidden sm:inline">Testar</span>
           </button>
         )}
 

@@ -31,12 +31,28 @@ class GeminiAccountResponse(BaseModel):
         from_attributes = True
 
 
+from api.gemini.default_key import get_official_gemini_key
+
+
 @router.get("/accounts", response_model=list[GeminiAccountResponse])
 def list_accounts(
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    return db.query(GeminiAccount).order_by(GeminiAccount.id.desc()).all()
+    accounts = db.query(GeminiAccount).order_by(GeminiAccount.id.desc()).all()
+    if not accounts:
+        default_k = get_official_gemini_key()
+        if default_k:
+            default_acc = GeminiAccount(
+                name="Ninja Gemini Oficial",
+                api_key=default_k,
+                model="gemini-2.5-flash-lite",
+            )
+            db.add(default_acc)
+            db.commit()
+            db.refresh(default_acc)
+            return [default_acc]
+    return accounts
 
 
 @router.post("/accounts", response_model=GeminiAccountResponse, status_code=201)

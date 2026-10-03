@@ -35,6 +35,8 @@ class Recovery(Base):
     )
     customer_name = Column(String(255), nullable=True)
     customer_email = Column(String(255), nullable=True, index=True)
+    customer_phone = Column(String(50), nullable=True)
+    customer_country = Column(String(50), nullable=True)
     product_name = Column(String(255), nullable=True)
     type = Column(Enum(RecoveryType), nullable=False)
     amount = Column(Float, nullable=False)

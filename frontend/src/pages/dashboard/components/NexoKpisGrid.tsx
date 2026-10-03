@@ -1,8 +1,6 @@
 import { useState } from "react";
-import { Eye, EyeOff, Pencil, X, Loader2 } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import type { DashboardKpis } from "@/types/dashboard";
-import { updateManualSpend } from "@/services/dashboard";
-import { toast } from "sonner";
 
 interface NexoKpisGridProps {
   kpis: DashboardKpis;
@@ -17,39 +15,12 @@ interface NexoKpisGridProps {
 export function NexoKpisGrid({
   kpis,
   hideAllValues = false,
-  onSpendUpdated,
   taxEnabled = false,
   taxRate = 0,
   opCostsEnabled = false,
   opCostsTotal = 0,
 }: NexoKpisGridProps) {
   const [hiddenCards, setHiddenCards] = useState<Record<string, boolean>>({});
-  const [isEditingSpend, setIsEditingSpend] = useState(false);
-  const [spendInput, setSpendInput] = useState(String(kpis.total_spend || 43.89));
-  const [clicksInput, setClicksInput] = useState("21");
-  const [isSavingSpend, setIsSavingSpend] = useState(false);
-
-  const handleSaveSpend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSavingSpend(true);
-    try {
-      const numSpend = parseFloat(spendInput.replace(",", "."));
-      const numClicks = parseInt(clicksInput, 10) || 0;
-      if (isNaN(numSpend) || numSpend < 0) {
-        toast.error("Insira um valor numérico válido para o gasto");
-        setIsSavingSpend(false);
-        return;
-      }
-      await updateManualSpend(numSpend, numClicks);
-      toast.success("Gastos com anúncios atualizados com sucesso!");
-      setIsEditingSpend(false);
-      onSpendUpdated?.();
-    } catch {
-      toast.error("Erro ao salvar gastos com anúncios");
-    } finally {
-      setIsSavingSpend(false);
-    }
-  };
 
   const toggleCard = (key: string) => {
     setHiddenCards((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -206,19 +177,6 @@ export function NexoKpisGrid({
                   {card.title}
                 </span>
                 <div className="flex items-center gap-1">
-                  {card.id === "spend" && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSpendInput(String(kpis.total_spend || 43.89));
-                        setIsEditingSpend(true);
-                      }}
-                      title="Ajustar Gastos com Anúncios"
-                      className="shrink-0 rounded p-1 text-zinc-400 hover:text-amber-500 transition-colors cursor-pointer"
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </button>
-                  )}
                   {card.hasToggle && (
                     <button
                       type="button"
@@ -247,87 +205,6 @@ export function NexoKpisGrid({
           </div>
         );
       })}
-
-      {/* Modal para Ajustar Gastos com Anúncios */}
-      {isEditingSpend && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="w-full max-w-sm rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#0f172a] p-6 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
-              <div className="flex items-center gap-2">
-                <span className="text-base font-bold text-zinc-900 dark:text-white">
-                  Gastos com Anúncios
-                </span>
-                <span className="rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2 py-0.5 text-[11px] font-semibold">
-                  Meta Ads
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsEditingSpend(false)}
-                className="rounded p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveSpend} className="mt-4 space-y-4">
-              <div>
-                <label className="block text-[12px] font-medium text-zinc-700 dark:text-zinc-300">
-                  Valor Gasto Hoje (R$)
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ex: 43.89"
-                  value={spendInput}
-                  onChange={(e) => setSpendInput(e.target.value)}
-                  className="mt-1.5 w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-white focus:border-blue-500 focus:outline-hidden"
-                />
-                <span className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1 block">
-                  Atualiza automaticamente Lucro, ROAS, ROI, Margem e CPA.
-                </span>
-              </div>
-
-              <div>
-                <label className="block text-[12px] font-medium text-zinc-700 dark:text-zinc-300">
-                  Cliques no Anúncio (opcional)
-                </label>
-                <input
-                  type="number"
-                  placeholder="Ex: 21"
-                  value={clicksInput}
-                  onChange={(e) => setClicksInput(e.target.value)}
-                  className="mt-1.5 w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-white focus:border-blue-500 focus:outline-hidden"
-                />
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsEditingSpend(false)}
-                  className="flex-1 rounded-lg border border-zinc-200 dark:border-zinc-800 py-2 text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSavingSpend}
-                  className="flex-1 rounded-lg bg-blue-600 py-2 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-sm shadow-blue-500/25 cursor-pointer"
-                >
-                  {isSavingSpend ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      Salvando...
-                    </>
-                  ) : (
-                    "Salvar Gasto"
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

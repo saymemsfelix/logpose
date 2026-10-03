@@ -70,3 +70,48 @@ self.addEventListener('fetch', (event) => {
       })
   );
 });
+
+// Notificações: clique no banner/popup do celular abre o Dashboard
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const urlToOpen = (event.notification.data && event.notification.data.url) || '/dashboard';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) {
+          if (client.url && (client.url.includes('/dashboard') || client.url.includes(urlToOpen))) {
+            return client.focus();
+          }
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
+});
+
+// Suporte a Web Push remoto
+self.addEventListener('push', (event) => {
+  let title = '💰 Nova Venda Ninja Tracker!';
+  let options = {
+    body: 'Venda aprovada!',
+    icon: '/icons/pwa-192.png',
+    badge: '/icons/pwa-192.png',
+    vibrate: [200, 100, 200, 100, 300],
+    data: { url: '/dashboard' },
+  };
+
+  if (event.data) {
+    try {
+      const data = event.data.json();
+      title = data.title || title;
+      options = { ...options, ...(data.options || {}) };
+    } catch {
+      options.body = event.data.text();
+    }
+  }
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});

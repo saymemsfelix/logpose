@@ -8,7 +8,7 @@ import {
   getLastSeenSaleId,
   setLastSeenSaleId,
 } from "@/services/salesNotifier";
-import { playSaleCashSound, vibrateSale } from "@/utils/salesSound";
+import { playSaleCashSound, vibrateSale, speakVoice } from "@/utils/salesSound";
 import { toast } from "sonner";
 
 export function useSalesListener(onNewSale?: () => void) {
@@ -32,8 +32,11 @@ export function useSalesListener(onNewSale?: () => void) {
   const testAlertSound = () => {
     playSaleCashSound();
     vibrateSale();
-    toast.success("🪙 Ka-ching! Som de venda testado!", {
-      description: "É assim que vai apitar no seu celular quando entrar uma venda!",
+    try {
+      speakVoice("Venda aprovada! R$ 97,00! Criativo: CBO teste criativo. Parabéns, você está no lucro de R$ 111,00 hoje!");
+    } catch {}
+    toast.success("🪙 Ka-ching + Voz testados!", {
+      description: "É assim que vai apitar e falar no seu celular a cada venda e status de lucro!",
     });
   };
 

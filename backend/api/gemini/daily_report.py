@@ -35,10 +35,21 @@ async def generate_daily_report(
     """Gera relatório diário automático com todos os dados do dia."""
     account = db.query(GeminiAccount).first()
     if not account:
-        raise HTTPException(
-            status_code=400,
-            detail="Nenhuma conta Gemini configurada.",
+        from api.gemini.default_key import get_official_gemini_key
+        default_k = get_official_gemini_key()
+        if not default_k:
+            raise HTTPException(
+                status_code=400,
+                detail="Nenhuma conta Gemini configurada.",
+            )
+        account = GeminiAccount(
+            name="Ninja Gemini Oficial",
+            api_key=default_k,
+            model="gemini-2.5-flash-lite",
         )
+        db.add(account)
+        db.commit()
+        db.refresh(account)
 
     # Coletar dados
     data = collect_daily_data(db)

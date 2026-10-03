@@ -96,15 +96,54 @@ function detectLanguage(lead: RecoveryRow | null): RecoveryLanguage {
   return "it";
 }
 
-function cleanCustomerPhone(phone: string | null | undefined): string {
+function cleanCustomerPhone(
+  phone: string | null | undefined,
+  country?: string | null,
+  lang?: RecoveryLanguage
+): string {
   if (!phone) return "";
   let digits = phone.replace(/\D/g, "");
-  // Se for celular brasileiro sem DDI 55
-  if (digits.length === 10 || digits.length === 11) {
-    if (!digits.startsWith("55")) {
+  if (!digits) return "";
+
+  const cUpper = (country || "").toUpperCase();
+
+  // Se já tiver DDI válido
+  if (digits.startsWith("39") && digits.length >= 11) return digits; // Itália (+39 3XX XXXXXXX)
+  if (digits.startsWith("55") && (digits.length === 12 || digits.length === 13)) return digits; // Brasil
+  if (digits.startsWith("52") && digits.length >= 12) return digits; // México
+  if (digits.startsWith("34") && digits.length >= 11) return digits; // Espanha
+  if (digits.startsWith("49") && digits.length >= 11) return digits; // Alemanha
+  if (digits.startsWith("41") && digits.length >= 11) return digits; // Suíça
+
+  // Tratamento inteligente baseado no país e idioma da oferta
+  if (cUpper === "IT" || lang === "it" || digits.startsWith("3")) {
+    if (!digits.startsWith("39")) {
+      digits = "39" + digits;
+    }
+    return digits;
+  }
+
+  if (cUpper === "BR" || lang === "pt") {
+    if (!digits.startsWith("55") && (digits.length === 10 || digits.length === 11)) {
       digits = "55" + digits;
     }
+    return digits;
   }
+
+  if (cUpper === "ES" || (lang === "es" && digits.startsWith("6"))) {
+    if (!digits.startsWith("34")) {
+      digits = "34" + digits;
+    }
+    return digits;
+  }
+
+  if (cUpper === "MX") {
+    if (!digits.startsWith("52")) {
+      digits = "52" + digits;
+    }
+    return digits;
+  }
+
   return digits;
 }
 
@@ -205,6 +244,8 @@ export function WhatsAppRecoveryModal({
   const [copied, setCopied] = useState(false);
   const [isMarking, setIsMarking] = useState(false);
 
+  const [phoneInput, setPhoneInput] = useState("");
+
   // Auto detect language when lead changes
   useEffect(() => {
     if (lead) {
@@ -213,6 +254,7 @@ export function WhatsAppRecoveryModal({
       setSelectedStrategy("support");
       setCustomText(generateCopy(autoLang, "support", lead));
       setCopied(false);
+      setPhoneInput(lead.customerPhone || "");
     }
   }, [lead]);
 
@@ -227,8 +269,10 @@ export function WhatsAppRecoveryModal({
     setCustomText(generateCopy(selectedLang, strategy, lead));
   };
 
-  const rawPhone = lead?.customerPhone || "";
-  const cleanPhone = useMemo(() => cleanCustomerPhone(rawPhone), [rawPhone]);
+  const cleanPhone = useMemo(
+    () => cleanCustomerPhone(phoneInput || lead?.customerPhone, lead?.customerCountry, selectedLang),
+    [phoneInput, lead?.customerPhone, lead?.customerCountry, selectedLang]
+  );
 
   const handleCopy = async () => {
     try {
@@ -242,7 +286,7 @@ export function WhatsAppRecoveryModal({
 
   const handleOpenWhatsApp = () => {
     if (!cleanPhone) {
-      alert("Este cliente não possui telefone/WhatsApp cadastrado.");
+      alert("Por favor, digite um número de WhatsApp válido.");
       return;
     }
     const encoded = encodeURIComponent(customText);
@@ -304,11 +348,19 @@ export function WhatsAppRecoveryModal({
           </div>
           <div>
             <div className="text-[10px] text-muted-foreground uppercase font-medium">WhatsApp / Tel</div>
-            <div className="font-mono text-emerald-400 font-medium">
-              {rawPhone || "Não informado"}
-            </div>
-            <div className="text-[10px] text-muted-foreground">
-              País: <span className="font-semibold text-white">{lead.customerCountry || "Auto"}</span>
+            <input
+              type="text"
+              value={phoneInput}
+              onChange={(e) => setPhoneInput(e.target.value)}
+              placeholder="Digite com DDI (ex: 39340...)"
+              className="mt-0.5 w-full bg-slate-800/80 border border-border/60 rounded px-1.5 py-0.5 text-xs font-mono text-emerald-400 focus:outline-none focus:border-emerald-500"
+            />
+            <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
+              {cleanPhone ? (
+                <span>wa.me/<strong className="text-emerald-300">+{cleanPhone}</strong></span>
+              ) : (
+                <span className="text-amber-400">Insira o número</span>
+              )}
             </div>
           </div>
           <div>

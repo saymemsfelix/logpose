@@ -99,3 +99,35 @@ export function vibrateSale() {
     }
   }
 }
+
+/**
+ * Sintetizador de Fala (Text-to-Speech) no estilo UTMify.
+ * Fala em voz alta as vendas, criativo e status de lucro.
+ */
+export function speakVoice(text: string) {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+    return;
+  }
+  try {
+    // Cancela falas anteriores pendentes
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "pt-BR";
+    utterance.rate = 1.05; // ritmo dinâmico de aplicativo
+    utterance.pitch = 1.05;
+
+    // Tenta encontrar uma voz em Português
+    const voices = window.speechSynthesis.getVoices();
+    const ptVoice = voices.find(
+      (v) => v.lang.toLowerCase().includes("pt-br") || v.lang.toLowerCase().startsWith("pt")
+    );
+    if (ptVoice) {
+      utterance.voice = ptVoice;
+    }
+
+    window.speechSynthesis.speak(utterance);
+  } catch (err) {
+    console.warn("Falha ao sintetizar voz:", err);
+  }
+}

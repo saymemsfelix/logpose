@@ -89,8 +89,8 @@ def _build_recoveries_query(db: Session, recovered: bool, dt_start, dt_end):
     """Busca registros na tabela recoveries com join em customers para telefone e país."""
     q = db.query(
         Recovery,
-        Customer.phone.label("cust_phone"),
-        Customer.country.label("cust_country"),
+        func.coalesce(Recovery.customer_phone, Customer.phone).label("cust_phone"),
+        func.coalesce(Recovery.customer_country, Customer.country).label("cust_country"),
     ).outerjoin(
         Customer,
         or_(

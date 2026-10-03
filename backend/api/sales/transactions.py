@@ -265,6 +265,20 @@ def get_latest_sales(
         query = query.filter(Transaction.id > since_id)
 
     rows = query.order_by(Transaction.id.desc()).limit(limit).all()
+    def _extract_ad_name(utm_content: str | None) -> str:
+        if not utm_content:
+            return ""
+        # Remove macro tags like {{...}} se vier cru
+        cleaned = utm_content.replace("{{ad.name}}", "").replace("{{ad.id}}", "").strip()
+        if "|" in cleaned:
+            parts = cleaned.split("|")
+            candidate = parts[0].strip()
+            if candidate and not candidate.isdigit():
+                return candidate
+            if len(parts) > 1 and parts[1].strip() and not parts[1].strip().isdigit():
+                return parts[1].strip()
+        return cleaned or utm_content
+
     return [
         {
             "id": t.id,
@@ -272,6 +286,10 @@ def get_latest_sales(
             "amount": t.amount,
             "product_name": t.product_name,
             "customer_email": t.customer_email,
+            "utm_content": t.utm_content,
+            "utm_campaign": t.utm_campaign,
+            "utm_source": t.utm_source,
+            "ad_name": _extract_ad_name(t.utm_content),
             "country": getattr(t, "country", None) or ("IT" if any(k in (t.product_name or "").lower() for k in ["diagnosi", "visive", "hardware"]) else "BR"),
             "created_at": t.created_at.isoformat() if t.created_at else None,
         }

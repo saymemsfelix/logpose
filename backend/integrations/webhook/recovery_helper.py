@@ -82,6 +82,8 @@ def create_recovery_if_pending(
         customer_id=customer.id,
         customer_name=event.customer_name,
         customer_email=event.customer_email,
+        customer_phone=event.customer_phone or getattr(customer, "phone", None),
+        customer_country=event.customer_country or getattr(customer, "country", None),
         product_name=event.product_name,
         type=recovery_type,
         amount=event.amount,

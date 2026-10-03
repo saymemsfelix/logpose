@@ -30,47 +30,29 @@ def _top_campaigns_merged(
     meta_campaigns: list[CampaignInsights],
     limit: int,
 ) -> list[dict]:
-    """Cruza campanhas da Meta com transações por utm_campaign."""
+    """Cruza campanhas da Meta com transações usando a mesma lógica inteligente da aba Campanhas."""
     approved = base.filter(
         Transaction.status == TransactionStatus.APPROVED,
     ).all()
 
-    # Agrupar transações por campaign_id e campaign_name
-    by_id: dict[str, list] = defaultdict(list)
-    by_name: dict[str, list] = defaultdict(list)
+    from api.campaigns.merge import merge_campaigns
+    merged = merge_campaigns(meta_campaigns, [], [], approved)
 
-    for tx in approved:
-        camp_name, camp_id = parse_utm_campaign(tx.utm_campaign)
-        if camp_id:
-            by_id[camp_id].append(tx)
-        elif camp_name:
-            by_name[camp_name.lower()].append(tx)
+    results = [
+        {
+            "name": c["name"],
+            "spend": c["spend"],
+            "revenue": c["revenue"],
+            "sales": c["sales"],
+            "profit": c["profit"],
+            "roas": c["roas"],
+            "cpa": c["cpa"],
+        }
+        for c in merged
+    ]
 
-    results = []
-    for camp in meta_campaigns:
-        # Match por ID primeiro, depois por nome
-        txs = by_id.get(camp.id, [])
-        if not txs:
-            txs = by_name.get(camp.name.lower(), [])
-
-        revenue = sum(t.amount for t in txs)
-        sales = len(txs)
-        profit = revenue - camp.spend
-        roas = safe_division(revenue, camp.spend)
-        cpa = safe_division(camp.spend, sales) if sales > 0 else 0
-
-        results.append({
-            "name": camp.name,
-            "spend": camp.spend,
-            "revenue": revenue,
-            "sales": sales,
-            "profit": profit,
-            "roas": roas,
-            "cpa": cpa,
-        })
-
-    # Ordenar por revenue desc e limitar
-    results.sort(key=lambda x: x["revenue"], reverse=True)
+    # Ordenar por faturamento desc e depois por gasto desc
+    results.sort(key=lambda x: (x["revenue"], x["spend"]), reverse=True)
     return results[:limit]
 
 
