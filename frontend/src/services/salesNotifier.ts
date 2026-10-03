@@ -203,11 +203,11 @@ export async function subscribeToPushNotifications(): Promise<boolean> {
       const subJson = sub.toJSON();
       await apiRequest("/notifications/subscribe", {
         method: "POST",
-        body: JSON.stringify({
+        body: {
           endpoint: sub.endpoint,
           keys: subJson.keys,
           user_agent: navigator.userAgent,
-        }),
+        },
       });
       console.log("✅ Web Push celular inscrito com sucesso no Ninja Tracker!");
       return true;

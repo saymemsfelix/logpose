@@ -49,8 +49,8 @@ export async function apiRequest<T>(
     },
   };
 
-  if (body) {
-    config.body = JSON.stringify(body);
+  if (body !== undefined && body !== null) {
+    config.body = typeof body === "string" ? body : JSON.stringify(body);
   }
 
   const token = getCookie("access_token");

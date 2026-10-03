@@ -27,6 +27,8 @@ import {
   type NotificationPreferences,
   isSalesNotificationEnabled,
   requestSalesNotificationPermission,
+  subscribeToPushNotifications,
+  sendTestPushNotification,
   showNativeNotification,
 } from "@/services/salesNotifier";
 import { playSaleCashSound, vibrateSale, speakVoice } from "@/utils/salesSound";
@@ -50,10 +52,11 @@ export function NexofyNotificationModal({
   useEffect(() => {
     if (isOpen) {
       setPrefs(getNotificationPreferences());
-      setPushGranted(
-        isSalesNotificationEnabled() ||
-          (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted")
-      );
+      const hasPerm = typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted";
+      setPushGranted(isSalesNotificationEnabled() || hasPerm);
+      if (hasPerm) {
+        subscribeToPushNotifications().catch(() => {});
+      }
     }
   }, [isOpen]);
 
@@ -104,11 +107,13 @@ export function NexofyNotificationModal({
     const ok = await requestSalesNotificationPermission();
     setPushGranted(ok);
     if (ok) {
+      await subscribeToPushNotifications();
+      await sendTestPushNotification();
       toast.success("🔔 Notificações e Pop-ups ativados com sucesso!");
     }
   };
 
-  const handleTestNotification = () => {
+  const handleTestNotification = async () => {
     setIsTesting(true);
 
     // 1. Toca o som de caixa registradora e vibra
@@ -124,26 +129,31 @@ export function NexofyNotificationModal({
       } catch {}
     }
 
-    // 3. Dispara o pop-up nativo do sistema/celular
+    // 3. Garante que o aparelho esteja cadastrado no backend e envia push do servidor também!
+    await subscribeToPushNotifications();
+    await sendTestPushNotification();
+
+    // 4. Dispara o pop-up nativo do sistema/celular
     showNativeNotification("💰 Nova Venda Aprovada: R$ 97,00!", {
       body: "🎨 Criativo: CBO teste criativo\n📦 Infoproduto Escala Máxima\n🇧🇷 Brasil • Pix Compensado",
       tag: "test-sale",
       vibrate: [200, 100, 200, 100, 300],
     } as unknown as NotificationOptions);
 
-    // 4. Toast interativo na tela
+    // 5. Toast interativo na tela
     toast.success("🎉 VENDA APROVADA: R$ 97,00!", {
-      description: "🎨 Criativo: CBO teste criativo • 🇧🇷 Brasil • Notificação disparada com sucesso!",
+      description: "🎨 Criativo: CBO teste criativo • 🇧🇷 Brasil • Pop-up disparado com sucesso!",
       duration: 6000,
     });
 
     setTimeout(() => setIsTesting(false), 800);
   };
 
-  const handleSaveAll = () => {
+  const handleSaveAll = async () => {
     saveNotificationPreferences(prefs);
+    await subscribeToPushNotifications();
     toast.success("✅ Configurações salvas!", {
-      description: "Suas preferências de pop-up e notificações foram atualizadas.",
+      description: "Suas preferências foram salvas e o dispositivo conectado para receber pop-ups!",
     });
     onRefreshDashboard?.();
     onClose();
