@@ -7,6 +7,7 @@ from pywebpush import webpush, WebPushException
 from py_vapid import Vapid
 
 from database.models.push_subscription import PushSubscription
+from integrations.webhook.schemas import StandardizedWebhookEvent
 
 logger = logging.getLogger(__name__)
 
