@@ -1,9 +1,10 @@
-import { RiLogoutBoxLine, RiExpandUpDownLine, RiSunLine, RiMoonLine, RiUserLine, RiSettings3Line, RiMoneyDollarCircleLine } from "@remixicon/react";
+import { RiLogoutBoxLine, RiExpandUpDownLine, RiSunLine, RiMoonLine, RiUserLine, RiSettings3Line, RiMoneyDollarCircleLine, RiNotification3Line } from "@remixicon/react";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { useValueDisplay } from "@/contexts/ValueDisplayContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { NexofyNotificationModal } from "@/components/NexofyNotificationModal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +24,7 @@ import { logout, getStoredUser } from "@/services/auth";
 export function SidebarUser() {
   const { isMobile } = useSidebar();
   const navigate = useNavigate();
+  const [notifModalOpen, setNotifModalOpen] = useState(false);
   const user = getStoredUser();
 
   const [isDark, setIsDark] = useState(() => localStorage.getItem("theme") !== "light");
@@ -115,6 +117,10 @@ export function SidebarUser() {
                 Opções Avançadas
               </DropdownMenuItem>
             )}
+            <DropdownMenuItem onClick={() => setNotifModalOpen(true)}>
+              <RiNotification3Line className="size-4 text-blue-400" />
+              Pop-ups & Notificações
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate("/profile")}>
               <RiUserLine className="size-4" />
               Perfil
@@ -131,6 +137,11 @@ export function SidebarUser() {
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
+
+      <NexofyNotificationModal
+        isOpen={notifModalOpen}
+        onClose={() => setNotifModalOpen(false)}
+      />
     </SidebarMenu>
   );
 }

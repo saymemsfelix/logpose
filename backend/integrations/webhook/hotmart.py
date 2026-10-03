@@ -292,6 +292,23 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
                 if amount < 50.0:
                     amount = round(amount * 5.50, 2)
 
+        # Extração de código de oferta e URL do checkout Hotmart
+        offer_info = purchase.get("offer") or data.get("offer") or {}
+        offer_code = None
+        if isinstance(offer_info, dict):
+            offer_code = offer_info.get("code")
+        elif isinstance(offer_info, str):
+            offer_code = offer_info
+        if not offer_code:
+            offer_code = payload.get("off") or payload.get("offer_code") or data.get("offer_code")
+
+        checkout_url_val = (
+            data.get("checkout_url")
+            or payload.get("checkout_url")
+            or (f"https://pay.hotmart.com/{offer_code}" if offer_code else None)
+            or (f"https://pay.hotmart.com/{prod_id}" if prod_id and prod_id != "hotmart_prod" else None)
+        )
+
         return StandardizedWebhookEvent(
             external_id=str(external_id),
             platform=PaymentPlatform.HOTMART,
@@ -314,7 +331,7 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
             utm_content=utm_content,
             utm_term=utm_term,
             src=src,
-            checkout_url=data.get("checkout_url") or payload.get("checkout_url"),
+            checkout_url=checkout_url_val,
             order_bumps=[]
         )
 

@@ -18,6 +18,100 @@ export interface RecentSaleItem {
 
 const STORAGE_KEY_NOTIF = "ninja_sales_notif_enabled";
 const STORAGE_KEY_LAST_ID = "ninja_last_seen_sale_id";
+const STORAGE_KEY_PREFS = "nexofy_notification_preferences";
+
+export interface NotificationPreferences {
+  // Vendas
+  sales_pix_created: boolean;
+  sales_approved: boolean;
+  sales_pix_approved: boolean;
+  sales_card_approved: boolean;
+  
+  // Recuperação
+  recovery_rejected: boolean;
+  
+  // Conta e Assinatura
+  account_limits: boolean;
+  
+  // Novidades e Recursos
+  news_features: boolean;
+  
+  // Resumo da Operação
+  daily_summary_enabled: boolean;
+  summary_times: {
+    morning: boolean;   // 09:00 - Como o dia começou
+    midday: boolean;    // 12:00 - Resumo do meio-dia
+    afternoon: boolean; // 18:00 - Fechamento da tarde
+    night: boolean;     // 23:00 - Resumo do dia
+  };
+  
+  // Canais de Entrega
+  channels: {
+    new_sale: { email: boolean; push: boolean; sound: boolean };
+    daily_summary: { email: boolean; push: boolean };
+    scheduled_report: { email: boolean; push: boolean };
+    recovery_alert: { email: boolean; push: boolean };
+  };
+
+  sound_enabled: boolean;
+  voice_enabled: boolean;
+}
+
+export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
+  sales_pix_created: true,
+  sales_approved: true,
+  sales_pix_approved: true,
+  sales_card_approved: true,
+  recovery_rejected: true,
+  account_limits: true,
+  news_features: true,
+  daily_summary_enabled: true,
+  summary_times: {
+    morning: true,
+    midday: true,
+    afternoon: true,
+    night: true,
+  },
+  channels: {
+    new_sale: { email: false, push: true, sound: true },
+    daily_summary: { email: false, push: true },
+    scheduled_report: { email: false, push: false },
+    recovery_alert: { email: false, push: true },
+  },
+  sound_enabled: true,
+  voice_enabled: true,
+};
+
+export function getNotificationPreferences(): NotificationPreferences {
+  if (typeof window === "undefined") return DEFAULT_NOTIFICATION_PREFERENCES;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_PREFS);
+    if (!raw) return DEFAULT_NOTIFICATION_PREFERENCES;
+    const parsed = JSON.parse(raw);
+    return {
+      ...DEFAULT_NOTIFICATION_PREFERENCES,
+      ...parsed,
+      summary_times: { ...DEFAULT_NOTIFICATION_PREFERENCES.summary_times, ...(parsed.summary_times || {}) },
+      channels: {
+        new_sale: { ...DEFAULT_NOTIFICATION_PREFERENCES.channels.new_sale, ...(parsed.channels?.new_sale || {}) },
+        daily_summary: { ...DEFAULT_NOTIFICATION_PREFERENCES.channels.daily_summary, ...(parsed.channels?.daily_summary || {}) },
+        scheduled_report: { ...DEFAULT_NOTIFICATION_PREFERENCES.channels.scheduled_report, ...(parsed.channels?.scheduled_report || {}) },
+        recovery_alert: { ...DEFAULT_NOTIFICATION_PREFERENCES.channels.recovery_alert, ...(parsed.channels?.recovery_alert || {}) },
+      },
+    };
+  } catch {
+    return DEFAULT_NOTIFICATION_PREFERENCES;
+  }
+}
+
+export function saveNotificationPreferences(prefs: NotificationPreferences): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_KEY_PREFS, JSON.stringify(prefs));
+  } catch (err) {
+    console.error("Falha ao salvar preferências de notificação:", err);
+  }
+}
 
 export function isSalesNotificationEnabled(): boolean {
   if (typeof window === "undefined") return false;
@@ -204,9 +298,13 @@ export function disableSalesNotification() {
  * Notifica uma nova venda com som Ka-Ching, voz do criativo e pop-up nativo do celular (estilo UTMify)
  */
 export function notifyNewSale(sale: RecentSaleItem) {
-  // 1. Toca o som de dinheiro e vibra
-  playSaleCashSound();
-  vibrateSale();
+  const prefs = getNotificationPreferences();
+
+  // 1. Toca o som de dinheiro e vibra se habilitado
+  if (prefs.sound_enabled && prefs.channels.new_sale.sound) {
+    playSaleCashSound();
+    vibrateSale();
+  }
 
   const countryFlag =
     sale.country === "IT"
@@ -227,19 +325,23 @@ export function notifyNewSale(sale: RecentSaleItem) {
   const creative = sale.ad_name || sale.utm_content || "Criativo Anúncio";
 
   // 2. Voz estilo UTMify falando o valor e o criativo
-  try {
-    speakVoice(`Venda aprovada! ${formattedVal}! Criativo: ${creative}.`);
-  } catch (err) {
-    console.warn("Falha na fala:", err);
+  if (prefs.voice_enabled && prefs.channels.new_sale.sound) {
+    try {
+      speakVoice(`Venda aprovada! ${formattedVal}! Criativo: ${creative}.`);
+    } catch (err) {
+      console.warn("Falha na fala:", err);
+    }
   }
 
   // 3. Pop-up nativo no sistema operacional (Android, iOS PWA ou Windows/Mac)
-  showNativeNotification(`💰 Nova Venda: ${formattedVal}!`, {
-    body: `🎨 Criativo: ${creative}\n📦 ${sale.product_name || "Produto"}\n🌍 ${countryFlag} • Venda Aprovada`,
-    tag: `sale-${sale.id}`,
-    vibrate: [200, 100, 200, 100, 300],
-    data: { url: "/dashboard" },
-  });
+  if (prefs.channels.new_sale.push) {
+    showNativeNotification(`💰 Nova Venda: ${formattedVal}!`, {
+      body: `🎨 Criativo: ${creative}\n📦 ${sale.product_name || "Produto"}\n🌍 ${countryFlag} • Venda Aprovada`,
+      tag: `sale-${sale.id}`,
+      vibrate: [200, 100, 200, 100, 300],
+      data: { url: "/dashboard" },
+    } as unknown as NotificationOptions);
+  }
 
   // 4. Pop-up animado na tela do app
   toast.success(`🎉 VENDA APROVADA: ${formattedVal}!`, {
@@ -275,14 +377,14 @@ export function notifyProfitStatus(profit: number, roas: number, salesCount: num
       tag: "ninja-daily-profit",
       vibrate: [150, 100, 250],
       data: { url: "/dashboard" },
-    });
+    } as unknown as NotificationOptions);
   } else {
     showNativeNotification(`⚠️ Ninja Tracker: Atenção às Métricas`, {
       body: `Balanço atual: ${formattedProfit} (${salesCount} vendas). Fique atento aos custos de tráfego.`,
       tag: "ninja-daily-profit",
       vibrate: [250, 100, 250],
       data: { url: "/dashboard" },
-    });
+    } as unknown as NotificationOptions);
   }
 }
 

@@ -17,6 +17,7 @@ import { fetchCustomersFilterOptions } from "@/services/customers";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { Bell } from "lucide-react";
+import { NexofyNotificationModal } from "@/components/NexofyNotificationModal";
 import type { UpsellOption } from "@/types/sale";
 
 export default function DashboardPage() {
@@ -29,6 +30,7 @@ export default function DashboardPage() {
   const [accounts, setAccounts] = useState<{ slug: string; name: string; platform: string }[]>([]);
   const [hideValues, setHideValues] = useState<boolean>(false);
   const [bannerDismissed, setBannerDismissed] = useState<boolean>(false);
+  const [isNotifModalOpen, setIsNotifModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     if (data?.meta_error === "token_invalid") {
@@ -65,7 +67,7 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto w-full">
-      {/* 1. Header com Saudação, Status e Toggle de Ocultar Valores */}
+      {/* 1. Header com Saudação, Status, Pop-ups Nexofy e Toggle de Ocultar Valores */}
       <DashboardHeader
         onRefresh={reload}
         hideValues={hideValues}
@@ -74,6 +76,14 @@ export default function DashboardPage() {
         onToggleNotifications={toggleNotifications}
         onTestSound={testAlertSound}
         onTestPush={testPushNotification}
+        onOpenNotificationModal={() => setIsNotifModalOpen(true)}
+      />
+
+      {/* Modal de Configuração de Pop-up & Alertas Estilo Nexofy */}
+      <NexofyNotificationModal
+        isOpen={isNotifModalOpen}
+        onClose={() => setIsNotifModalOpen(false)}
+        onRefreshDashboard={reload}
       />
 
       {/* Banner de Ativação Mobile de Alertas Estilo UTMify */}
@@ -98,10 +108,10 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
             <button
               type="button"
-              onClick={testPushNotification}
-              className="px-2.5 py-1.5 rounded-lg border border-blue-500/40 bg-blue-900/40 hover:bg-blue-800/60 text-[11px] font-medium text-blue-200 transition-colors cursor-pointer"
+              onClick={() => setIsNotifModalOpen(true)}
+              className="px-3 py-1.5 rounded-lg border border-blue-400/40 bg-blue-900/40 hover:bg-blue-800/60 text-[11px] font-medium text-blue-200 transition-colors cursor-pointer"
             >
-              Testar Pop-up 📲
+              Configurar Pop-ups ⚙️
             </button>
             <button
               type="button"

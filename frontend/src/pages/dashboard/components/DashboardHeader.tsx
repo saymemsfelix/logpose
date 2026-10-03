@@ -25,6 +25,7 @@ interface DashboardHeaderProps {
   onToggleNotifications?: () => void;
   onTestSound?: () => void;
   onTestPush?: () => void;
+  onOpenNotificationModal?: () => void;
 }
 
 export function DashboardHeader({
@@ -36,6 +37,7 @@ export function DashboardHeader({
   onToggleNotifications,
   onTestSound,
   onTestPush,
+  onOpenNotificationModal,
 }: DashboardHeaderProps) {
   const user = getStoredUser();
   const firstName = user?.name?.split(" ")[0] || "Sayme";
@@ -64,6 +66,23 @@ export function DashboardHeader({
       </div>
 
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        {/* Pop-ups & Alertas (Estilo Nexofy) */}
+        {onOpenNotificationModal && (
+          <button
+            type="button"
+            onClick={onOpenNotificationModal}
+            title="Configurar Pop-ups, Push no Celular, Sons e Resumos Diários"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20 px-2.5 py-1.5 text-[12px] font-medium text-blue-400 dark:text-blue-300 transition-colors shadow-2xs cursor-pointer group"
+          >
+            <span className="relative flex h-2 w-2">
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${notificationsEnabled ? "bg-emerald-400" : "bg-blue-400"}`}></span>
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${notificationsEnabled ? "bg-emerald-500" : "bg-blue-500"}`}></span>
+            </span>
+            <Bell className="h-3.5 w-3.5 group-hover:rotate-12 transition-transform" />
+            <span className="text-[11px] font-medium">Pop-ups & Alertas</span>
+          </button>
+        )}
+
         {/* Notificações e Som de Vendas */}
         {onToggleNotifications && (
           <button

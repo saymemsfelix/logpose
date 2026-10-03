@@ -89,8 +89,8 @@ def _create_checkout_from_event(
     checkout_url = event.checkout_url or ""
     checkout_code = None
 
-    # PayT envia checkout_code no campo product_external_id
-    if checkout_platform == CheckoutPlatform.PAYT and event.product_external_id:
+    # PayT e Hotmart enviam código no product_external_id
+    if checkout_platform in [CheckoutPlatform.PAYT, CheckoutPlatform.HOTMART] and event.product_external_id:
         checkout_code = event.product_external_id
 
     # Verificar se já existe checkout com a mesma URL (evita duplicatas)
