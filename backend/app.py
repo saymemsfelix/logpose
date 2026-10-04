@@ -89,6 +89,39 @@ except Exception as init_err:
 
 app = FastAPI(title="SFOFY API")
 
+import asyncio
+from database.core.connection import SessionLocal
+from database.core.timezone import now_sp, today_sp_str
+from services.push_service import send_daily_profit_push_notification
+
+async def _scheduled_profit_notifier_loop():
+    """Verifica e envia resumo de lucro nos horários definidos (08:00, 12:00, 18:00, 20:00, 22:00)."""
+    last_sent_key = None
+    target_hours = {8, 12, 18, 20, 22}
+    while True:
+        try:
+            sp_time = now_sp()
+            current_hour = sp_time.hour
+            current_minute = sp_time.minute
+            today_key = today_sp_str()
+            hour_key = f"{today_key}_{current_hour}"
+
+            if current_hour in target_hours and current_minute <= 5 and last_sent_key != hour_key:
+                logger.info(f"⏰ Disparando resumo de lucro diário programado ({current_hour}:00)...")
+                db = SessionLocal()
+                try:
+                    send_daily_profit_push_notification(db)
+                    last_sent_key = hour_key
+                finally:
+                    db.close()
+        except Exception as e:
+            logger.warning(f"Aviso no loop de notificações de lucro: {e}")
+        await asyncio.sleep(60)
+
+@app.on_event("startup")
+async def start_background_workers():
+    asyncio.create_task(_scheduled_profit_notifier_loop())
+
 # Health check endpoints para o Render (suporta GET e HEAD)
 @app.get("/health")
 @app.head("/health")

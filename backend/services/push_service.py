@@ -116,8 +116,8 @@ def send_sale_push_notification(db: Session, event: StandardizedWebhookEvent) ->
 
     # 4. Monta o Payload do Pop-up Nativo do Celular
     payload = {
-        "title": f"💰 NINJA TRACKER: Venda Aprovada!",
-        "body": f"{flag} {formatted_amount} • {product_name}\n🎨 Criativo: {creative}",
+        "title": f"💰 Venda Aprovada: {formatted_amount}",
+        "body": f"{flag} {product_name} • {formatted_amount}\n🎨 Criativo: {creative}",
         "icon": "/icons/pwa-192.png",
         "badge": "/icons/pwa-192.png",
         "tag": f"ninja-sale-{event.external_id}",
@@ -140,11 +140,138 @@ def send_sale_push_notification(db: Session, event: StandardizedWebhookEvent) ->
     return sent_count
 
 
-def send_test_push_notification(db: Session, admin_id: int | None = None) -> int:
-    """Envia um push de teste imediato para validar o pop-up no celular."""
+def send_recovery_push_notification(db: Session, event: StandardizedWebhookEvent) -> int:
+    """
+    Dispara notificação de 'Quase Venda' (estilo Nexofy) para recuperação imediata:
+    'Essa quase foi 😬 - Venda de R$ 74,33 recusada. Clique para tentar recuperar.'
+    """
+    subscriptions = db.query(PushSubscription).all()
+    if not subscriptions:
+        return 0
+
+    amount = float(event.amount) if event.amount is not None else 0.0
+    formatted_amount = f"R$ {amount:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+    # Detecção se é PIX pendente ou Cartão recusado
+    from database.models.transaction import TransactionStatus
+    if event.status == TransactionStatus.WAITING_PAYMENT:
+        title = "Quase lá! PIX Gerado ⌛"
+        body = f"PIX de {formatted_amount} gerado. Clique para acompanhar."
+        tag = f"ninja-pix-{event.external_id}"
+    else:
+        title = "Essa quase foi 😬"
+        body = f"Venda de {formatted_amount} recusada. Clique para tentar recuperar."
+        tag = f"ninja-recusada-{event.external_id}"
+
+    payload = {
+        "title": title,
+        "body": body,
+        "icon": "/icons/pwa-192.png",
+        "badge": "/icons/pwa-192.png",
+        "tag": tag,
+        "renotify": True,
+        "requireInteraction": True,
+        "vibrate": [300, 100, 300, 100, 400],
+        "data": {
+            "url": "/recovery",
+            "type": "recovery",
+            "external_id": event.external_id,
+            "amount": amount,
+            "customer_name": event.customer_name,
+            "customer_email": event.customer_email,
+        },
+    }
+
+    sent = 0
+    for sub in subscriptions:
+        if send_web_push(sub, payload, db=db):
+            sent += 1
+
+    logger.info(f"🚨 Pop-up de recuperação disparado para {sent} dispositivos: {title}")
+    return sent
+
+
+def get_today_profit_metrics(db: Session) -> dict:
+    """Calcula faturamento, gasto de ads e lucro líquido do dia (timezone São Paulo)."""
+    from database.core.timezone import today_sp_str
+    from database.models.transaction import Transaction, TransactionStatus
+    from database.models.daily_ad_spend import DailyAdSpend
+
+    today_str = today_sp_str()
+    txs = db.query(Transaction).filter(
+        Transaction.status == TransactionStatus.APPROVED,
+        Transaction.created_at >= today_str,
+        Transaction.created_at <= f"{today_str} 23:59:59",
+    ).all()
+    today_revenue = sum(float(t.amount or 0.0) for t in txs)
+    today_sales = len(txs)
+
+    spends = db.query(DailyAdSpend).filter(
+        DailyAdSpend.date == today_str
+    ).all()
+    today_spend = sum(float(s.spend or 0.0) for s in spends)
+
+    profit = round(today_revenue - today_spend, 2)
+    return {
+        "revenue": today_revenue,
+        "spend": today_spend,
+        "profit": profit,
+        "sales": today_sales,
+    }
+
+
+def send_daily_profit_push_notification(db: Session, admin_id: int | None = None) -> int:
+    """
+    Dispara notificação de lucro do dia (estilo Nexofy):
+    'Hoje deu bom, patrão 😎 - R$ 230,15 de lucro até agora.'
+    """
+    metrics = get_today_profit_metrics(db)
+    profit = metrics["profit"]
+    formatted_profit = f"R$ {abs(profit):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+    if profit >= 0:
+        title = "Hoje deu bom, patrão 😎"
+        body = f"{formatted_profit} de lucro até agora."
+    else:
+        title = "Atenção aos números! ⚠️"
+        body = f"-{formatted_profit} de prejuízo hoje. Verifique seus anúncios."
+
+    payload = {
+        "title": title,
+        "body": body,
+        "icon": "/icons/pwa-192.png",
+        "badge": "/icons/pwa-192.png",
+        "tag": "ninja-daily-profit",
+        "renotify": True,
+        "requireInteraction": True,
+        "vibrate": [200, 100, 200, 100, 300],
+        "data": {
+            "url": "/dashboard",
+            "type": "daily_profit",
+            "profit": profit,
+        },
+    }
+
+    subscriptions = db.query(PushSubscription).all()
+    sent = 0
+    for sub in subscriptions:
+        if send_web_push(sub, payload, db=db):
+            sent += 1
+
+    logger.info(f"📊 Notificação de lucro diário enviada para {sent} dispositivos: {body}")
+    return sent
+
+
+def send_test_push_notification(db: Session, admin_id: int | None = None, test_type: str = "sale") -> int:
+    """
+    Envia um push de teste imediato para validar o pop-up no celular.
+    Tipos suportados:
+    - 'sale': 💰 Venda Aprovada
+    - 'recovery': 😬 Essa quase foi (Recuperação)
+    - 'profit': 😎 Hoje deu bom, patrão (Lucro do dia)
+    """
     query = db.query(PushSubscription)
     if admin_id is not None:
-        # Se especificado, prioriza os dispositivos do admin logado
         subs = query.filter(PushSubscription.admin_id == admin_id).all()
         if not subs:
             subs = query.all()
@@ -154,23 +281,61 @@ def send_test_push_notification(db: Session, admin_id: int | None = None) -> int
     if not subs:
         return 0
 
-    payload = {
-        "title": "🎯 NINJA TRACKER: Pop-up Ativo!",
-        "body": "💰 Venda Aprovada R$ 97,00 • Teste Ninja Tracker\n🎨 Criativo: CBO Escala • Alertas no celular funcionando 100%!",
-        "icon": "/icons/pwa-192.png",
-        "badge": "/icons/pwa-192.png",
-        "tag": "ninja-test-popup",
-        "renotify": True,
-        "requireInteraction": True,
-        "vibrate": [300, 100, 300, 100, 400],
-        "data": {
-            "url": "/dashboard",
-            "test": True,
-        },
-    }
+    if test_type == "recovery":
+        payload = {
+            "title": "Essa quase foi 😬",
+            "body": "Venda de R$ 74,33 recusada. Clique para tentar recuperar.",
+            "icon": "/icons/pwa-192.png",
+            "badge": "/icons/pwa-192.png",
+            "tag": "ninja-test-recovery",
+            "renotify": True,
+            "requireInteraction": True,
+            "vibrate": [300, 100, 300, 100, 400],
+            "data": {
+                "url": "/recovery",
+                "test": True,
+                "type": "recovery",
+            },
+        }
+    elif test_type == "profit":
+        metrics = get_today_profit_metrics(db)
+        profit_val = metrics["profit"] if metrics["profit"] > 0 else 230.15
+        formatted_profit = f"R$ {profit_val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        payload = {
+            "title": "Hoje deu bom, patrão 😎",
+            "body": f"{formatted_profit} de lucro até agora.",
+            "icon": "/icons/pwa-192.png",
+            "badge": "/icons/pwa-192.png",
+            "tag": "ninja-test-profit",
+            "renotify": True,
+            "requireInteraction": True,
+            "vibrate": [200, 100, 200, 100, 300],
+            "data": {
+                "url": "/dashboard",
+                "test": True,
+                "type": "daily_profit",
+            },
+        }
+    else:
+        payload = {
+            "title": "💰 NINJA TRACKER: Venda Aprovada!",
+            "body": "🇧🇷 R$ 97,00 • 120 Diagnosi Visive\n🎨 Criativo: CBO teste criativo",
+            "icon": "/icons/pwa-192.png",
+            "badge": "/icons/pwa-192.png",
+            "tag": "ninja-test-sale",
+            "renotify": True,
+            "requireInteraction": True,
+            "vibrate": [300, 100, 300, 100, 400],
+            "data": {
+                "url": "/dashboard",
+                "test": True,
+                "type": "sale",
+            },
+        }
 
     sent = 0
     for sub in subs:
         if send_web_push(sub, payload, db=db):
             sent += 1
     return sent
+

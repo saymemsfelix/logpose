@@ -219,13 +219,18 @@ export async function subscribeToPushNotifications(): Promise<boolean> {
 }
 
 /**
- * Envia um push de teste imediato do servidor para o celular
+ * Envia um push de teste imediato do servidor para o celular (venda, recuperação ou lucro)
  */
-export async function sendTestPushNotification(): Promise<boolean> {
+export async function sendTestPushNotification(
+  testType: "sale" | "recovery" | "profit" = "sale"
+): Promise<boolean> {
   try {
     const res = await apiRequest<{ status: string; message: string; sent_count: number }>(
       "/notifications/test",
-      { method: "POST" }
+      {
+        method: "POST",
+        body: { test_type: testType },
+      }
     );
     if (res?.sent_count && res.sent_count > 0) {
       toast.success(res.message);

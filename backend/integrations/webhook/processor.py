@@ -122,6 +122,12 @@ def process_webhook_event(db: Session, event: StandardizedWebhookEvent):
                 send_sale_push_notification(db, event)
             except Exception as push_err:
                 logger.warning(f"Erro ao disparar Web Push para venda aprovada {event.external_id}: {push_err}")
+        elif existing_tx.status in [TransactionStatus.REFUSED, TransactionStatus.WAITING_PAYMENT]:
+            try:
+                from services.push_service import send_recovery_push_notification
+                send_recovery_push_notification(db, event)
+            except Exception as push_err:
+                logger.warning(f"Erro ao disparar Web Push de recuperação {event.external_id}: {push_err}")
 
         return existing_tx
     
@@ -204,5 +210,11 @@ def process_webhook_event(db: Session, event: StandardizedWebhookEvent):
             send_sale_push_notification(db, event)
         except Exception as push_err:
             logger.warning(f"Erro ao disparar Web Push para nova venda {event.external_id}: {push_err}")
+    elif event.status in [TransactionStatus.REFUSED, TransactionStatus.WAITING_PAYMENT]:
+        try:
+            from services.push_service import send_recovery_push_notification
+            send_recovery_push_notification(db, event)
+        except Exception as push_err:
+            logger.warning(f"Erro ao disparar Web Push de recuperação {event.external_id}: {push_err}")
 
     return new_tx

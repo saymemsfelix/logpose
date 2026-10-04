@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ninjastracker-v3';
+const CACHE_NAME = 'ninjastracker-v4';
 
 const STATIC_ASSETS = [
   '/',
@@ -71,7 +71,7 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Notificações: clique no banner/popup do celular abre o Dashboard
+// Notificações: clique no banner/popup do celular abre o Dashboard ou Recuperação
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const urlToOpen = (event.notification.data && event.notification.data.url) || '/dashboard';
@@ -80,9 +80,10 @@ self.addEventListener('notificationclick', (event) => {
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
         if ('focus' in client) {
-          if (client.url && (client.url.includes('/dashboard') || client.url.includes(urlToOpen))) {
-            return client.focus();
+          if ('navigate' in client && urlToOpen) {
+            client.navigate(urlToOpen);
           }
+          return client.focus();
         }
       }
       if (clients.openWindow) {

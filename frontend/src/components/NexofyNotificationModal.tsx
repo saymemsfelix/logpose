@@ -113,38 +113,67 @@ export function NexofyNotificationModal({
     }
   };
 
-  const handleTestNotification = async () => {
+  const handleTestNotification = async (testType: "sale" | "recovery" | "profit" = "sale") => {
     setIsTesting(true);
 
-    // 1. Toca o som de caixa registradora e vibra
-    if (prefs.sound_enabled) {
+    if (testType === "recovery") {
+      vibrateSale();
+      try {
+        speakVoice("Atenção! Venda recusada de R$ 74,33. Acesse a recuperação de vendas no Ninja Tracker para enviar WhatsApp!");
+      } catch {}
+      await subscribeToPushNotifications();
+      await sendTestPushNotification("recovery");
+      showNativeNotification("Essa quase foi 😬", {
+        body: "Venda de R$ 74,33 recusada. Clique para tentar recuperar.",
+        tag: "test-recovery",
+        vibrate: [300, 100, 300, 100, 400],
+        data: { url: "/recovery" },
+      } as unknown as NotificationOptions);
+      toast.error("😬 Essa quase foi 😬", {
+        description: "Venda de R$ 74,33 recusada. Pop-up enviado para o celular!",
+        duration: 5000,
+      });
+    } else if (testType === "profit") {
       playSaleCashSound();
       vibrateSale();
-    }
-
-    // 2. Sintetiza a voz no estilo UTMify
-    if (prefs.voice_enabled) {
       try {
-        speakVoice("Venda aprovada! R$ 97,00! Criativo: CBO teste criativo. Parabéns, você está no lucro de R$ 111,00 hoje!");
+        speakVoice("Hoje deu bom, patrão! R$ 230,15 de lucro até agora!");
       } catch {}
+      await subscribeToPushNotifications();
+      await sendTestPushNotification("profit");
+      showNativeNotification("Hoje deu bom, patrão 😎", {
+        body: "R$ 230,15 de lucro até agora.",
+        tag: "test-profit",
+        vibrate: [200, 100, 200, 100, 300],
+        data: { url: "/dashboard" },
+      } as unknown as NotificationOptions);
+      toast.success("😎 Hoje deu bom, patrão 😎", {
+        description: "Pop-up de lucro enviado para o celular com sucesso!",
+        duration: 5000,
+      });
+    } else {
+      // Venda aprovada
+      if (prefs.sound_enabled) {
+        playSaleCashSound();
+        vibrateSale();
+      }
+      if (prefs.voice_enabled) {
+        try {
+          speakVoice("Venda aprovada! R$ 97,00! Criativo: CBO teste criativo. Parabéns, você está no lucro de R$ 111,00 hoje!");
+        } catch {}
+      }
+      await subscribeToPushNotifications();
+      await sendTestPushNotification("sale");
+      showNativeNotification("💰 Nova Venda Aprovada: R$ 97,00!", {
+        body: "🎨 Criativo: CBO teste criativo\n📦 120 Diagnosi Visive • Pix Compensado",
+        tag: "test-sale",
+        vibrate: [200, 100, 200, 100, 300],
+      } as unknown as NotificationOptions);
+      toast.success("🎉 VENDA APROVADA: R$ 97,00!", {
+        description: "Pop-up de venda aprovada enviado com sucesso!",
+        duration: 5000,
+      });
     }
-
-    // 3. Garante que o aparelho esteja cadastrado no backend e envia push do servidor também!
-    await subscribeToPushNotifications();
-    await sendTestPushNotification();
-
-    // 4. Dispara o pop-up nativo do sistema/celular
-    showNativeNotification("💰 Nova Venda Aprovada: R$ 97,00!", {
-      body: "🎨 Criativo: CBO teste criativo\n📦 Infoproduto Escala Máxima\n🇧🇷 Brasil • Pix Compensado",
-      tag: "test-sale",
-      vibrate: [200, 100, 200, 100, 300],
-    } as unknown as NotificationOptions);
-
-    // 5. Toast interativo na tela
-    toast.success("🎉 VENDA APROVADA: R$ 97,00!", {
-      description: "🎨 Criativo: CBO teste criativo • 🇧🇷 Brasil • Pop-up disparado com sucesso!",
-      duration: 6000,
-    });
 
     setTimeout(() => setIsTesting(false), 800);
   };
@@ -421,17 +450,59 @@ export function NexofyNotificationModal({
             </p>
           </div>
 
-          {/* BOTÃO INTERATIVO: Enviar notificação de teste (Exato da screenshot) */}
-          <div className="pt-1">
-            <button
-              type="button"
-              onClick={handleTestNotification}
-              disabled={isTesting}
-              className="w-full py-3 px-4 rounded-xl border border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-sm hover:shadow-blue-500/10 cursor-pointer active:scale-[0.99]"
-            >
-              <span>🪙</span>
-              <span>{isTesting ? "Disparando som e pop-up..." : "Enviar notificação de teste"}</span>
-            </button>
+          {/* BOTÕES INTERATIVOS: Enviar notificações de teste (Estilo Nexofy) */}
+          <div className="rounded-xl border border-blue-500/30 bg-blue-950/20 p-4 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold tracking-wider text-blue-400 uppercase flex items-center gap-1.5">
+                <Sparkles className="size-3.5 text-blue-400" />
+                TESTAR NOTIFICAÇÕES NO CELULAR
+              </span>
+              <span className="text-[11px] text-zinc-400">Toque para simular</span>
+            </div>
+            <p className="text-xs text-zinc-300 leading-relaxed">
+              Teste os pop-ups reais que chegam na tela de bloqueio e barra de notificações do seu celular:
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => handleTestNotification("sale")}
+                disabled={isTesting}
+                className="py-2.5 px-3 rounded-lg border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 font-semibold text-xs flex flex-col items-center justify-center gap-1 transition-all shadow-sm cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                <div className="flex items-center gap-1.5 font-bold">
+                  <span>💰</span>
+                  <span>Venda Aprovada</span>
+                </div>
+                <span className="text-[10px] text-emerald-400/80 font-normal">R$ 97,00 (Com som)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleTestNotification("recovery")}
+                disabled={isTesting}
+                className="py-2.5 px-3 rounded-lg border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-semibold text-xs flex flex-col items-center justify-center gap-1 transition-all shadow-sm cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                <div className="flex items-center gap-1.5 font-bold">
+                  <span>😬</span>
+                  <span>Essa quase foi</span>
+                </div>
+                <span className="text-[10px] text-amber-400/80 font-normal">Venda recusada (Recuperação)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleTestNotification("profit")}
+                disabled={isTesting}
+                className="py-2.5 px-3 rounded-lg border border-indigo-500/40 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 font-semibold text-xs flex flex-col items-center justify-center gap-1 transition-all shadow-sm cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                <div className="flex items-center gap-1.5 font-bold">
+                  <span>😎</span>
+                  <span>Hoje deu bom</span>
+                </div>
+                <span className="text-[10px] text-indigo-400/80 font-normal">R$ 230,15 de lucro</span>
+              </button>
+            </div>
           </div>
 
           {/* CARD 6: MATRIZ DE CANAIS (E-MAIL vs PUSH vs SOM/VOZ) */}
