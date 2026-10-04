@@ -38,18 +38,32 @@ def calc_kpis(base, meta_summary: Optional[AccountInsightsSummary]) -> dict:
     )
 
     # Dados da Meta Ads
-    total_spend = meta_summary.spend if meta_summary else 0
+    total_spend = meta_summary.spend if meta_summary else 0.0
     total_clicks = meta_summary.clicks if meta_summary else 0
+    total_impressions = meta_summary.impressions if meta_summary else 0
+    pageviews = meta_summary.landing_page_views if meta_summary else 0
+    initiate_checkout = meta_summary.initiate_checkout if meta_summary else 0
 
-    # Métricas calculadas
+    # Métricas calculadas padrão UTMify / NexoFy
     profit = total_revenue - total_spend
     roas = round(total_revenue / total_spend, 2) if total_spend > 0 else 0.0
     roi = round(profit / total_spend, 2) if total_spend > 0 else 0.0
     cpa = round(total_spend / total_sales, 2) if total_sales > 0 else 0.0
     profit_margin = round((profit / total_revenue) * 100, 2) if total_revenue > 0 else 0.0
-    conversion_rate = (
-        round((total_sales / total_clicks) * 100, 2) if total_clicks > 0 else 0.0
-    )
+
+    # Tráfego & Leilão
+    cpc = meta_summary.cpc if (meta_summary and meta_summary.cpc > 0) else (round(total_spend / total_clicks, 2) if total_clicks > 0 and total_spend > 0 else 0.0)
+    ctr = meta_summary.ctr if (meta_summary and meta_summary.ctr > 0) else (round((total_clicks / total_impressions) * 100, 2) if total_impressions > 0 and total_clicks > 0 else 0.0)
+    cpm = meta_summary.cpm if (meta_summary and meta_summary.cpm > 0) else (round((total_spend / total_impressions) * 1000, 2) if total_impressions > 0 and total_spend > 0 else 0.0)
+
+    # Funil & Páginas
+    cpv = meta_summary.cpv if (meta_summary and meta_summary.cpv > 0) else (round(total_spend / pageviews, 2) if pageviews > 0 and total_spend > 0 else 0.0)
+    connect_rate = meta_summary.connect_rate if (meta_summary and meta_summary.connect_rate > 0) else (round((pageviews / total_clicks) * 100, 2) if total_clicks > 0 and pageviews > 0 else 0.0)
+    cost_per_ic = meta_summary.cost_per_ic if (meta_summary and meta_summary.cost_per_ic > 0) else (round(total_spend / initiate_checkout, 2) if initiate_checkout > 0 and total_spend > 0 else 0.0)
+    checkout_rate = meta_summary.checkout_rate if (meta_summary and meta_summary.checkout_rate > 0) else (round((initiate_checkout / pageviews) * 100, 2) if pageviews > 0 and initiate_checkout > 0 else 0.0)
+    checkout_conversion_rate = round((total_sales / initiate_checkout) * 100, 2) if initiate_checkout > 0 else 0.0
+    page_conversion_rate = round((total_sales / pageviews) * 100, 2) if pageviews > 0 else 0.0
+    conversion_rate = round((total_sales / total_clicks) * 100, 2) if total_clicks > 0 else 0.0
 
     return {
         "total_revenue": total_revenue,
@@ -66,6 +80,19 @@ def calc_kpis(base, meta_summary: Optional[AccountInsightsSummary]) -> dict:
         "profit_margin": round(profit_margin, 2),
         "conversion_rate": conversion_rate,
         "total_clicks": total_clicks,
+        "total_impressions": total_impressions,
+        "cpm": cpm,
+        "cpc": cpc,
+        "ctr": ctr,
+        "pageviews": pageviews,
+        "landing_page_views": pageviews,
+        "cpv": cpv,
+        "connect_rate": connect_rate,
+        "initiate_checkout": initiate_checkout,
+        "cost_per_ic": cost_per_ic,
+        "checkout_rate": checkout_rate,
+        "checkout_conversion_rate": checkout_conversion_rate,
+        "page_conversion_rate": page_conversion_rate,
         "chargeback_amount": chargeback_amount,
         "chargeback_rate": round(chargeback_rate, 2),
         "refunded_count": len(refunded),
@@ -74,3 +101,4 @@ def calc_kpis(base, meta_summary: Optional[AccountInsightsSummary]) -> dict:
         "pending_amount": pending_amount,
         "chargeback_count": len(chargebacks),
     }
+

@@ -47,6 +47,16 @@ def _top_campaigns_merged(
             "profit": c["profit"],
             "roas": c["roas"],
             "cpa": c["cpa"],
+            "cpm": c.get("cpm", 0.0),
+            "cpc": c.get("cpc", 0.0),
+            "ctr": c.get("ctr", 0.0),
+            "clicks": c.get("clicks", 0),
+            "impressions": c.get("impressions", 0),
+            "landing_page_views": c.get("landing_page_views", 0),
+            "initiate_checkout": c.get("initiate_checkout", 0),
+            "connect_rate": c.get("connect_rate", 0.0),
+            "cpv": c.get("cpv", 0.0),
+            "cost_per_ic": c.get("cost_per_ic", 0.0),
         }
         for c in merged
     ]
@@ -54,6 +64,7 @@ def _top_campaigns_merged(
     # Ordenar por faturamento desc e depois por gasto desc
     results.sort(key=lambda x: (x["revenue"], x["spend"]), reverse=True)
     return results[:limit]
+
 
 
 def _top_campaigns_from_db(base, limit: int) -> list[dict]:

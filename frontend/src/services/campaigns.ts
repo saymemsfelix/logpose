@@ -30,6 +30,10 @@ export interface CampaignAdData {
   video_p100?: number;
   hook_rate?: number;
   body_rate?: number;
+  cpm?: number;
+  cpv?: number;
+  cost_per_ic?: number;
+  checkout_rate?: number;
 }
 
 export interface CampaignAdSetData {
@@ -60,6 +64,10 @@ export interface CampaignAdSetData {
   video_p100?: number;
   hook_rate?: number;
   body_rate?: number;
+  cpm?: number;
+  cpv?: number;
+  cost_per_ic?: number;
+  checkout_rate?: number;
   ads: CampaignAdData[];
 }
 
@@ -99,6 +107,10 @@ export interface CampaignData {
   video_p100?: number;
   hook_rate?: number;
   body_rate?: number;
+  cpm?: number;
+  cpv?: number;
+  cost_per_ic?: number;
+  checkout_rate?: number;
   adsets: CampaignAdSetData[];
   products?: UnidentifiedProduct[];
 }

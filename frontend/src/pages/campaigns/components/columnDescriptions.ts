@@ -16,6 +16,8 @@ export const columnDescriptions: Record<string, string> = {
     "Return On Ad Spend\nRetorno sobre o investimento em anúncios. Faturamento ÷ Gastos. Um ROAS de 2x significa que para cada R$1 gasto, R$2 retornaram.",
   cpa:
     "Custo Por Aquisição\nCusto médio para cada venda realizada. Gastos ÷ Vendas.",
+  cpm:
+    "Custo Por Mil\nCusto médio para cada 1.000 impressões exibidas. (Gastos ÷ Impressões) × 1.000.",
   cpc:
     "Custo Por Clique\nValor médio pago por cada clique no anúncio. Gastos ÷ Cliques.",
   ctr:
@@ -26,8 +28,12 @@ export const columnDescriptions: Record<string, string> = {
     "Impressões\nQuantidade de vezes que o anúncio foi exibido para os usuários.",
   lpv:
     "Landing Page Views\nVisualizações da página de destino. Quantidade de pessoas que chegaram à landing page após clicar no anúncio.",
+  cpv:
+    "Custo Por Visualização de Página\nCusto médio para cada visualização da Landing Page (LPV). Gastos ÷ LPV.",
   ic:
     "Initiate Checkout\nInício de checkout. Quantidade de usuários que iniciaram o processo de compra.",
+  costPerIc:
+    "Custo por Initiate Checkout\nCusto médio para cada início de finalização de compra. Gastos ÷ IC.",
   connectRate:
     "Connect Rate\nTaxa de conexão entre o clique e a Landing Page. Percentual de cliques que resultaram em visualização da LP. (LPV ÷ Cliques) × 100.",
   playsVsl:

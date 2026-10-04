@@ -15,6 +15,19 @@ export interface DashboardKpis {
   profit_margin: number;
   conversion_rate: number;
   total_clicks: number;
+  total_impressions?: number;
+  cpm?: number;
+  cpc?: number;
+  ctr?: number;
+  pageviews?: number;
+  landing_page_views?: number;
+  cpv?: number;
+  connect_rate?: number;
+  initiate_checkout?: number;
+  cost_per_ic?: number;
+  checkout_rate?: number;
+  checkout_conversion_rate?: number;
+  page_conversion_rate?: number;
   chargeback_amount: number;
   chargeback_rate: number;
   refunded_count: number;
@@ -47,7 +60,18 @@ export interface TopCampaign {
   profit: number;
   roas: number;
   cpa: number;
+  cpm?: number;
+  cpc?: number;
+  ctr?: number;
+  clicks?: number;
+  impressions?: number;
+  landing_page_views?: number;
+  initiate_checkout?: number;
+  connect_rate?: number;
+  cpv?: number;
+  cost_per_ic?: number;
 }
+
 
 export interface HourlySale {
   hour: string;

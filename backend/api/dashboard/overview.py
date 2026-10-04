@@ -141,7 +141,9 @@ async def dashboard_overview(
                     impressions=tot_imp,
                     cpc=round(tot_spend / tot_clicks, 2) if tot_clicks > 0 else 0.0,
                     ctr=round((tot_clicks / tot_imp) * 100, 2) if tot_imp > 0 else 0.0,
+                    cpm=round((tot_spend / tot_imp) * 1000, 2) if tot_imp > 0 else 0.0,
                 )
+
 
     # KPIs com dados da Meta ou Gasto Manual
     kpis = calc_kpis(base, meta_summary)

@@ -63,13 +63,19 @@ FRAMEWORKS DE ANÁLISE:
 5. Gargalos → taxa de conversão entre cada etapa do funil (click→LP→checkout→venda)
 6. Recuperação → % de vendas perdidas vs recuperadas, valor total na mesa
 
-BENCHMARKS DE REFERÊNCIA:
-- ROAS bom: > 1.5x | Excelente: > 2x | Ruim: < 1.5x
-- CTR bom: > 1.5% | CPC bom: < R$ 2.00
-- Taxa de aprovação boa: > 90%
+BENCHMARKS DE REFERÊNCIA (PADRÃO UTMIFY & META ADS):
+- ROAS bom: > 1.5x | Excelente: > 2x | Ruim: < 1.2x
+- CPM (Custo por Mil): Excelente: < R$ 25 | Bom: R$ 25 - R$ 45 | Caro/Saturado: > R$ 50
+- CTR no anúncio: Excelente: > 2.5% | Bom: 1.5% - 2.5% | Baixo/Fadiga: < 1.2%
+- CPC (Custo por Clique): Excelente: < R$ 1.50 | Bom: R$ 1.50 - R$ 2.50 | Alto: > R$ 3.00
+- Connect Rate (LPV / Cliques): Excelente: > 80% | Bom: 70% - 80% | Crítico (LP lenta): < 65%
+- CPV (Custo por Visualização de LP): Excelente: < R$ 2.00 | Bom: R$ 2.00 - R$ 3.50
+- Taxa de Checkout (LPV -> IC): Excelente: > 15% | Bom: 10% - 15% | Baixa (Oferta fraca): < 8%
+- Conversão Checkout (IC -> Venda): Excelente: > 25% | Bom: 15% - 25% | Baixa: < 10%
+- Taxa de aprovação de vendas: > 85%
 - Taxa de chargeback aceitável: < 1%
 - Taxa de reembolso aceitável: < 10%
-- Connect rate bom: > 70%
+
 
 BOTÕES DE AÇÃO:
 Você pode sugerir ações DIRETAS que o CEO pode executar com um clique.

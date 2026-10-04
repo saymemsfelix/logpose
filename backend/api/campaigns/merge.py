@@ -209,6 +209,12 @@ def merge_campaigns(
         # CPC e CTR com fallbacks seguros
         cpc = camp.cpc or (round(camp.spend / camp.clicks, 2) if camp.clicks > 0 and camp.spend > 0 else 0.0)
         ctr = camp.ctr or (round(camp.clicks / camp.impressions * 100, 2) if camp.impressions > 0 and camp.clicks > 0 else 0.0)
+        cpm = getattr(camp, "cpm", 0.0) or (round((camp.spend / camp.impressions) * 1000, 2) if camp.impressions > 0 and camp.spend > 0 else 0.0)
+        cpv = getattr(camp, "cpv", 0.0) or (round(camp.spend / camp.landing_page_views, 2) if camp.landing_page_views > 0 and camp.spend > 0 else 0.0)
+        cost_per_ic = getattr(camp, "cost_per_ic", 0.0) or (round(camp.spend / camp.initiate_checkout, 2) if camp.initiate_checkout > 0 and camp.spend > 0 else 0.0)
+        checkout_rate = getattr(camp, "checkout_rate", 0.0) or (round((camp.initiate_checkout / camp.landing_page_views) * 100, 2) if camp.landing_page_views > 0 else 0.0)
+        checkout_to_sale_rate = round((sales_data["sales"] / camp.initiate_checkout) * 100, 2) if camp.initiate_checkout > 0 else 0.0
+        conversion_rate = round((sales_data["sales"] / camp.clicks) * 100, 2) if camp.clicks > 0 else 0.0
 
         results.append({
             "id": camp.id,
@@ -222,10 +228,16 @@ def merge_campaigns(
             "clicks": camp.clicks,
             "impressions": camp.impressions,
             "cpc": cpc,
+            "cpm": cpm,
             "ctr": ctr,
             "landing_page_views": camp.landing_page_views,
+            "cpv": cpv,
             "initiate_checkout": camp.initiate_checkout,
+            "cost_per_ic": cost_per_ic,
             "connect_rate": camp.connect_rate,
+            "checkout_rate": checkout_rate,
+            "checkout_conversion": checkout_to_sale_rate,
+            "conversion_rate": conversion_rate,
             "video_views": camp.video_views,
             "video_p25": camp.video_p25,
             "video_p50": camp.video_p50,
@@ -242,6 +254,7 @@ def merge_campaigns(
             "play_rate": 0,
             "adsets": adsets_merged,
         })
+
 
     # Atribuição Inteligente para Vendas Sem UTM / Transações Não Atribuídas
     unattributed_txs = [t for t in transactions if t.id not in attributed_tx_ids]
@@ -307,6 +320,12 @@ def _merge_adsets_for_campaign(
 
         cpc = adset.cpc or (round(adset.spend / adset.clicks, 2) if adset.clicks > 0 and adset.spend > 0 else 0.0)
         ctr = adset.ctr or (round(adset.clicks / adset.impressions * 100, 2) if adset.impressions > 0 and adset.clicks > 0 else 0.0)
+        cpm = getattr(adset, "cpm", 0.0) or (round((adset.spend / adset.impressions) * 1000, 2) if adset.impressions > 0 and adset.spend > 0 else 0.0)
+        cpv = getattr(adset, "cpv", 0.0) or (round(adset.spend / adset.landing_page_views, 2) if adset.landing_page_views > 0 and adset.spend > 0 else 0.0)
+        cost_per_ic = getattr(adset, "cost_per_ic", 0.0) or (round(adset.spend / adset.initiate_checkout, 2) if adset.initiate_checkout > 0 and adset.spend > 0 else 0.0)
+        checkout_rate = getattr(adset, "checkout_rate", 0.0) or (round((adset.initiate_checkout / adset.landing_page_views) * 100, 2) if adset.landing_page_views > 0 else 0.0)
+        checkout_to_sale_rate = round((sales_data["sales"] / adset.initiate_checkout) * 100, 2) if adset.initiate_checkout > 0 else 0.0
+        conversion_rate = round((sales_data["sales"] / adset.clicks) * 100, 2) if adset.clicks > 0 else 0.0
 
         results.append({
             "id": adset.id,
@@ -318,10 +337,16 @@ def _merge_adsets_for_campaign(
             "clicks": adset.clicks,
             "impressions": adset.impressions,
             "cpc": cpc,
+            "cpm": cpm,
             "ctr": ctr,
             "landing_page_views": adset.landing_page_views,
+            "cpv": cpv,
             "initiate_checkout": adset.initiate_checkout,
+            "cost_per_ic": cost_per_ic,
             "connect_rate": adset.connect_rate,
+            "checkout_rate": checkout_rate,
+            "checkout_conversion": checkout_to_sale_rate,
+            "conversion_rate": conversion_rate,
             "video_views": adset.video_views,
             "video_p25": adset.video_p25,
             "video_p50": adset.video_p50,
@@ -360,6 +385,12 @@ def merge_ads(
 
         cpc = ad.cpc or (round(ad.spend / ad.clicks, 2) if ad.clicks > 0 and ad.spend > 0 else 0.0)
         ctr = ad.ctr or (round(ad.clicks / ad.impressions * 100, 2) if ad.impressions > 0 and ad.clicks > 0 else 0.0)
+        cpm = getattr(ad, "cpm", 0.0) or (round((ad.spend / ad.impressions) * 1000, 2) if ad.impressions > 0 and ad.spend > 0 else 0.0)
+        cpv = getattr(ad, "cpv", 0.0) or (round(ad.spend / ad.landing_page_views, 2) if ad.landing_page_views > 0 and ad.spend > 0 else 0.0)
+        cost_per_ic = getattr(ad, "cost_per_ic", 0.0) or (round(ad.spend / ad.initiate_checkout, 2) if ad.initiate_checkout > 0 and ad.spend > 0 else 0.0)
+        checkout_rate = getattr(ad, "checkout_rate", 0.0) or (round((ad.initiate_checkout / ad.landing_page_views) * 100, 2) if ad.landing_page_views > 0 else 0.0)
+        checkout_to_sale_rate = round((sales_data["sales"] / ad.initiate_checkout) * 100, 2) if ad.initiate_checkout > 0 else 0.0
+        conversion_rate = round((sales_data["sales"] / ad.clicks) * 100, 2) if ad.clicks > 0 else 0.0
 
         results.append({
             "id": ad.id,
@@ -371,10 +402,16 @@ def merge_ads(
             "clicks": ad.clicks,
             "impressions": ad.impressions,
             "cpc": cpc,
+            "cpm": cpm,
             "ctr": ctr,
             "landing_page_views": ad.landing_page_views,
+            "cpv": cpv,
             "initiate_checkout": ad.initiate_checkout,
+            "cost_per_ic": cost_per_ic,
             "connect_rate": ad.connect_rate,
+            "checkout_rate": checkout_rate,
+            "checkout_conversion": checkout_to_sale_rate,
+            "conversion_rate": conversion_rate,
             "video_views": ad.video_views,
             "video_p25": ad.video_p25,
             "video_p50": ad.video_p50,
@@ -390,5 +427,6 @@ def merge_ads(
             "plays_vsl": 0,
             "play_rate": 0,
         })
+
 
     return results

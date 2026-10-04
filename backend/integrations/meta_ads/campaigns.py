@@ -17,6 +17,7 @@ INSIGHT_FIELDS = ",".join([
     "impressions",
     "clicks",
     "cpc",
+    "cpm",
     "ctr",
     "inline_link_clicks",
     "inline_link_click_ctr",
@@ -26,6 +27,7 @@ INSIGHT_FIELDS = ",".join([
     "video_p50_watched_actions",
     "video_p100_watched_actions",
 ])
+
 
 
 def _build_fields(date_start: str, date_end: str) -> str:
@@ -76,6 +78,16 @@ async def fetch_campaigns(
         if cpc == 0.0 and clicks > 0 and spend > 0:
             cpc = round(spend / clicks, 2)
 
+        # CPM com fallback calculado
+        cpm = safe_float(insight.get("cpm", 0))
+        if cpm == 0.0 and impr > 0 and spend > 0:
+            cpm = round((spend / impr) * 1000, 2)
+
+        # CPV (Custo por visualização de página / LPV) e Custo por IC
+        cpv = round(spend / lpv, 2) if lpv > 0 and spend > 0 else 0.0
+        cost_per_ic = round(spend / initiate, 2) if initiate > 0 and spend > 0 else 0.0
+        checkout_rate = round((initiate / lpv) * 100, 2) if lpv > 0 and initiate > 0 else 0.0
+
         # Métricas de Vídeo & Retenção de Funil
         video_views = safe_int(extract_action_value(actions, "video_view"))
         p25_arr = insight.get("video_p25_watched_actions", [])
@@ -104,11 +116,15 @@ async def fetch_campaigns(
             clicks=clicks,
             impressions=impr,
             cpc=cpc,
+            cpm=cpm,
             ctr=ctr,
             cpa=0.0,
             landing_page_views=lpv,
+            cpv=cpv,
             initiate_checkout=initiate,
+            cost_per_ic=cost_per_ic,
             connect_rate=calc_connect_rate(lpv, clicks),
+            checkout_rate=checkout_rate,
             video_views=video_views,
             video_p25=video_p25,
             video_p50=video_p50,
@@ -116,6 +132,7 @@ async def fetch_campaigns(
             hook_rate=hook_rate,
             body_rate=body_rate,
         ))
+
 
     return results
 

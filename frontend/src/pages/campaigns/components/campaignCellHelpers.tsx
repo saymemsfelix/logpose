@@ -25,6 +25,10 @@ export interface MetricRow {
   hookRate?: number;
   bodyRate?: number;
   videoViews?: number;
+  cpm?: number;
+  cpv?: number;
+  costPerIc?: number;
+  checkoutRate?: number;
 }
 
 /** Returns the CSS class for a KPI value given its color entry config */
@@ -92,6 +96,10 @@ export function getCellValue(
     ? (getKpiColor(c.cpa, kpiColors.cpa).includes("success") ? "down" : getKpiColor(c.cpa, kpiColors.cpa).includes("destructive") ? "up" : null)
     : (getCpaStatus(c.cpa, c.name) === "good" ? "down" : getCpaStatus(c.cpa, c.name) === "bad" ? "up" : null);
 
+  const calcCpm = c.cpm != null && c.cpm > 0 ? c.cpm : (c.impressions > 0 ? (c.spend / c.impressions) * 1000 : 0);
+  const calcCpv = c.cpv != null && c.cpv > 0 ? c.cpv : (c.landingPageViews > 0 ? c.spend / c.landingPageViews : 0);
+  const calcCostPerIc = c.costPerIc != null && c.costPerIc > 0 ? c.costPerIc : (c.initiateCheckout > 0 ? c.spend / c.initiateCheckout : 0);
+
   const map: Record<string, React.ReactNode> = {
     spend: fmt(c.spend),
     sales: c.sales,
@@ -126,6 +134,21 @@ export function getCellValue(
     cpc: (
       <span className={cn("font-medium", getKpiColor(c.cpc, kpiColors?.cpc ?? null))}>
         R$ {c.cpc.toFixed(2)}
+      </span>
+    ),
+    cpm: (
+      <span className="font-medium">
+        R$ {calcCpm.toFixed(2)}
+      </span>
+    ),
+    cpv: (
+      <span className="font-medium">
+        R$ {calcCpv.toFixed(2)}
+      </span>
+    ),
+    costPerIc: (
+      <span className="font-medium">
+        R$ {calcCostPerIc.toFixed(2)}
       </span>
     ),
     ctr: (
@@ -175,6 +198,36 @@ export function getFooterValue(data: MetricRow[], col: string): string {
       return spend > 0
         ? `${(data.reduce((s, c) => s + c.revenue, 0) / spend).toFixed(2)}x`
         : "—";
+    },
+    cpc: () => {
+      const spend = data.reduce((s, c) => s + c.spend, 0);
+      const clicks = data.reduce((s, c) => s + c.clicks, 0);
+      return clicks > 0 ? `R$ ${(spend / clicks).toFixed(2)}` : "—";
+    },
+    cpm: () => {
+      const impr = data.reduce((s, c) => s + c.impressions, 0);
+      const spend = data.reduce((s, c) => s + c.spend, 0);
+      return impr > 0 ? `R$ ${((spend / impr) * 1000).toFixed(2)}` : "—";
+    },
+    cpv: () => {
+      const lpv = data.reduce((s, c) => s + c.landingPageViews, 0);
+      const spend = data.reduce((s, c) => s + c.spend, 0);
+      return lpv > 0 ? `R$ ${(spend / lpv).toFixed(2)}` : "—";
+    },
+    costPerIc: () => {
+      const ic = data.reduce((s, c) => s + c.initiateCheckout, 0);
+      const spend = data.reduce((s, c) => s + c.spend, 0);
+      return ic > 0 ? `R$ ${(spend / ic).toFixed(2)}` : "—";
+    },
+    ctr: () => {
+      const impr = data.reduce((s, c) => s + c.impressions, 0);
+      const clicks = data.reduce((s, c) => s + c.clicks, 0);
+      return impr > 0 ? `${((clicks / impr) * 100).toFixed(2)}%` : "—";
+    },
+    connectRate: () => {
+      const clicks = data.reduce((s, c) => s + c.clicks, 0);
+      const lpv = data.reduce((s, c) => s + c.landingPageViews, 0);
+      return clicks > 0 ? `${((lpv / clicks) * 100).toFixed(1)}%` : "—";
     },
     clicks: () =>
       data.reduce((s, c) => s + c.clicks, 0).toLocaleString("pt-BR"),

@@ -366,30 +366,44 @@ export function notifyProfitStatus(profit: number, roas: number, salesCount: num
   const formattedProfit = new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
-  }).format(profit);
+  }).format(Math.abs(profit));
 
-  // 1. Voz estilo UTMify falando o lucro
+  // Se não há vendas nem gastos registrados
+  if (salesCount === 0 && profit === 0) {
+    return;
+  }
+
+  // 1. Voz inteligente com contexto real
   try {
-    if (profit >= 0) {
-      speakVoice(`Parabéns! Você está no lucro de ${formattedProfit} hoje!`);
-    } else {
-      speakVoice(`Atenção: Você está na perda de ${formattedProfit} hoje.`);
+    if (salesCount === 0 && profit < 0) {
+      speakVoice(`Atenção: Gastos de tráfego de ${formattedProfit} sem nenhuma venda registrada hoje.`);
+    } else if (profit > 0 && salesCount > 0) {
+      speakVoice(`Parabéns! Você está no lucro de ${formattedProfit} hoje com ${salesCount} vendas!`);
+    } else if (profit < 0) {
+      speakVoice(`Atenção: Balanço negativo de ${formattedProfit} hoje.`);
     }
   } catch (err) {
     console.warn("Falha na fala:", err);
   }
 
   // 2. Notificação nativa no celular
-  if (profit >= 0) {
-    showNativeNotification(`📈 Ninja Tracker: Lucro de ${formattedProfit}!`, {
-      body: `Você está no LUCRO hoje com ${salesCount} vendas (ROAS ${roas.toFixed(2)}x). Bora escalar! 🚀`,
+  if (salesCount === 0 && profit < 0) {
+    showNativeNotification(`🚨 Alerta de Tráfego: Gastos sem vendas`, {
+      body: `Você investiu ${formattedProfit} hoje em anúncios sem conversão. Verifique suas campanhas!`,
+      tag: "ninja-traffic-alert",
+      vibrate: [300, 100, 300, 100, 400],
+      data: { url: "/dashboard" },
+    } as unknown as NotificationOptions);
+  } else if (profit > 0 && salesCount > 0) {
+    showNativeNotification(`📈 Ninja Tracker: Lucro de +${formattedProfit}!`, {
+      body: `Você está no LUCRO real com ${salesCount} vendas (ROAS ${roas.toFixed(2)}x). Bora escalar! 🚀`,
       tag: "ninja-daily-profit",
       vibrate: [150, 100, 250],
       data: { url: "/dashboard" },
     } as unknown as NotificationOptions);
   } else {
     showNativeNotification(`⚠️ Ninja Tracker: Atenção às Métricas`, {
-      body: `Balanço atual: ${formattedProfit} (${salesCount} vendas). Fique atento aos custos de tráfego.`,
+      body: `Balanço atual: -${formattedProfit} (${salesCount} vendas). Fique atento aos custos de tráfego.`,
       tag: "ninja-daily-profit",
       vibrate: [250, 100, 250],
       data: { url: "/dashboard" },

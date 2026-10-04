@@ -171,7 +171,12 @@ def _handle_kpis(db, date_start, date_end, **kwargs):
         f"Profit: R${k['profit']:,.2f} | ROAS: {k['roas']}x | "
         f"CPA: R${k['cpa']:,.2f} | Ticket: R${k['average_ticket']:,.2f} | "
         f"Margem: {k['profit_margin']}% | "
-        f"Vendas: {k['total_sales']} | "
+        f"Vendas: {k['total_sales']} (Aprovação: {k['approval_rate']}%) | "
+        f"Impressões: {k['total_impressions']:,} | CPM: R${k['cpm']:,.2f} | "
+        f"Cliques: {k['total_clicks']:,} | CPC: R${k['cpc']:,.2f} | CTR: {k['ctr']}% | "
+        f"LPV (Pageviews): {k['pageviews']:,} | CPV: R${k['cpv']:,.2f} | Connect Rate: {k['connect_rate']}% | "
+        f"IC: {k['initiate_checkout']:,} | Custo por IC: R${k['cost_per_ic']:,.2f} | "
+        f"Taxa Checkout: {k['checkout_rate']}% | Conv. Checkout: {k['checkout_conversion_rate']}% | "
         f"Chargebacks: {k['chargeback_count']} ({k['chargeback_rate']}%)"
     )
 
@@ -200,13 +205,18 @@ def _handle_meta_campaigns(db, date_start, date_end, **kwargs):
     lines = []
     for item in data[:15]:
         st = "(ATIVA) 🟢" if getattr(item, "status", "") == "active" else "(DESATIVADA) 🟡"
+        cpm = getattr(item, "cpm", 0.0) or (round((item.spend / item.impressions) * 1000, 2) if item.impressions > 0 and item.spend > 0 else 0.0)
+        cpv = getattr(item, "cpv", 0.0) or (round(item.spend / item.landing_page_views, 2) if item.landing_page_views > 0 and item.spend > 0 else 0.0)
         lines.append(
             f"{st} [ID:{item.id}] {item.name} | "
             f"Budget: R${item.budget:,.0f} | Spend: R${item.spend:,.2f} | "
+            f"Impr: {item.impressions:,} | CPM: R${cpm:,.2f} | "
             f"Clicks: {item.clicks} | CPC: R${item.cpc:,.2f} | "
             f"CTR: {item.ctr:.2f}% | LPV: {item.landing_page_views} | "
+            f"CPV: R${cpv:,.2f} | Connect: {item.connect_rate:.1f}% | "
             f"Init Checkout: {item.initiate_checkout}"
         )
     total = sum(i.spend for i in data)
     lines.append(f"Total spend: R${total:,.2f} | Total: {len(data)}")
     return "\n".join(lines)
+

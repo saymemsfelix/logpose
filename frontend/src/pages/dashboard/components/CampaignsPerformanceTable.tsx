@@ -45,21 +45,23 @@ export function CampaignsPerformanceTable({
                 <th className="pb-2 text-right font-medium">Lucro</th>
                 <th className="pb-2 text-right font-medium">Vendas</th>
                 <th className="pb-2 text-right font-medium">ROAS</th>
-                <th className="pb-2 text-right font-medium">ROI</th>
+                <th className="pb-2 text-right font-medium">CPM</th>
+                <th className="pb-2 text-right font-medium">CPC</th>
+                <th className="pb-2 text-right font-medium">LPV</th>
+                <th className="pb-2 text-right font-medium">IC</th>
               </tr>
             </thead>
             <tbody>
               {campaigns.map((camp, idx) => {
                 const profit = camp.profit ?? (camp.revenue - camp.spend);
                 const isProfitPositive = profit >= 0;
-                const roi = camp.spend > 0 ? profit / camp.spend : 0;
 
                 return (
                   <tr
                     key={idx}
                     className="border-t border-zinc-100 dark:border-zinc-800/60 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors"
                   >
-                    <td className="py-3 font-medium text-zinc-800 dark:text-zinc-200 max-w-[260px] truncate" title={camp.name}>
+                    <td className="py-3 font-medium text-zinc-800 dark:text-zinc-200 max-w-[220px] truncate" title={camp.name}>
                       {camp.name}
                     </td>
                     <td className="py-3 text-right tabular-nums text-zinc-600 dark:text-zinc-400">
@@ -71,7 +73,7 @@ export function CampaignsPerformanceTable({
                     <td
                       className={`py-3 text-right font-semibold tabular-nums ${
                         isProfitPositive
-                          ? "text-emerald-600 dark:text-emerald-400"
+                           ? "text-emerald-600 dark:text-emerald-400"
                           : "text-rose-600 dark:text-rose-400"
                       }`}
                     >
@@ -89,19 +91,23 @@ export function CampaignsPerformanceTable({
                     >
                       {camp.roas.toFixed(2)}x
                     </td>
-                    <td
-                      className={`py-3 text-right font-medium tabular-nums ${
-                        roi >= 0
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-rose-600 dark:text-rose-400"
-                      }`}
-                    >
-                      {roi.toFixed(2)}x
+                    <td className="py-3 text-right tabular-nums text-zinc-600 dark:text-zinc-400">
+                      {camp.cpm ? formatCurrency(camp.cpm) : "—"}
+                    </td>
+                    <td className="py-3 text-right tabular-nums text-zinc-600 dark:text-zinc-400">
+                      {camp.cpc ? formatCurrency(camp.cpc) : "—"}
+                    </td>
+                    <td className="py-3 text-right tabular-nums text-zinc-600 dark:text-zinc-400">
+                      {camp.landing_page_views ? camp.landing_page_views.toLocaleString("pt-BR") : "—"}
+                    </td>
+                    <td className="py-3 text-right tabular-nums text-zinc-600 dark:text-zinc-400">
+                      {camp.initiate_checkout ? camp.initiate_checkout.toLocaleString("pt-BR") : "—"}
                     </td>
                   </tr>
                 );
               })}
             </tbody>
+
           </table>
         </div>
       )}

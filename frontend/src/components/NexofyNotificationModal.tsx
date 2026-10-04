@@ -136,19 +136,10 @@ export function NexofyNotificationModal({
     } else if (testType === "profit") {
       playSaleCashSound();
       vibrateSale();
-      try {
-        speakVoice("Hoje deu bom, patrão! R$ 230,15 de lucro até agora!");
-      } catch {}
       await subscribeToPushNotifications();
       await sendTestPushNotification("profit");
-      showNativeNotification("Hoje deu bom, patrão 😎", {
-        body: "R$ 230,15 de lucro até agora.",
-        tag: "test-profit",
-        vibrate: [200, 100, 200, 100, 300],
-        data: { url: "/dashboard" },
-      } as unknown as NotificationOptions);
-      toast.success("😎 Hoje deu bom, patrão 😎", {
-        description: "Pop-up de lucro enviado para o celular com sucesso!",
+      toast.success("📊 Pop-up de Performance enviado!", {
+        description: "Notificação inteligente com métricas reais enviada para o seu celular!",
         duration: 5000,
       });
     } else {
@@ -497,10 +488,10 @@ export function NexofyNotificationModal({
                 className="py-2.5 px-3 rounded-lg border border-indigo-500/40 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 font-semibold text-xs flex flex-col items-center justify-center gap-1 transition-all shadow-sm cursor-pointer active:scale-95 disabled:opacity-50"
               >
                 <div className="flex items-center gap-1.5 font-bold">
-                  <span>😎</span>
-                  <span>Hoje deu bom</span>
+                  <span>📊</span>
+                  <span>Resumo do Dia</span>
                 </div>
-                <span className="text-[10px] text-indigo-400/80 font-normal">R$ 230,15 de lucro</span>
+                <span className="text-[10px] text-indigo-400/80 font-normal">Pop-up inteligente ao vivo</span>
               </button>
             </div>
           </div>

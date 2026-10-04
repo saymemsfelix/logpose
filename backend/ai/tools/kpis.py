@@ -48,19 +48,26 @@ def query_kpis(days_back: int = 30) -> str:
         kpis = calc_kpis(base, meta_summary)
 
         return (
-            f"📊 KPIs dos últimos {days_back} dias:\n"
+            f"📊 KPIs dos últimos {days_back} dias (Padrão UTMify):\n"
             f"💰 Faturamento: R$ {kpis['total_revenue']:,.2f}\n"
             f"📢 Investimento (Ads): R$ {kpis['total_spend']:,.2f}\n"
-            f"💵 Lucro: R$ {kpis['profit']:,.2f}\n"
-            f"📈 ROAS: {kpis['roas']}x\n"
+            f"💵 Lucro Líquido: R$ {kpis['profit']:,.2f}\n"
+            f"📈 ROAS: {kpis['roas']}x | ROI: {kpis['roi']}x\n"
             f"🎯 CPA: R$ {kpis['cpa']:,.2f}\n"
             f"🎫 Ticket Médio: R$ {kpis['average_ticket']:,.2f}\n"
             f"📊 Margem de Lucro: {kpis['profit_margin']}%\n"
-            f"🔄 Taxa de Conversão: {kpis['conversion_rate']}%\n"
-            f"🛒 Vendas Totais: {kpis['total_sales']}\n"
+            f"🛒 Vendas Aprovadas: {kpis['total_sales']} (Aprovação: {kpis['approval_rate']}%)\n"
+            f"👁️ Impressões: {kpis['total_impressions']:,} | CPM: R$ {kpis['cpm']:,.2f}\n"
+            f"🖱️ Cliques: {kpis['total_clicks']:,} | CPC: R$ {kpis['cpc']:,.2f} | CTR: {kpis['ctr']}%\n"
+            f"📄 Visualizações de Página (LPV): {kpis['pageviews']:,} | CPV: R$ {kpis['cpv']:,.2f}\n"
+            f"🔗 Connect Rate: {kpis['connect_rate']}%\n"
+            f"🛍️ Início de Checkout (IC): {kpis['initiate_checkout']:,} | Custo por IC: R$ {kpis['cost_per_ic']:,.2f}\n"
+            f"⚡ Taxa Checkout (LPV→IC): {kpis['checkout_rate']}% | Conv. Checkout→Venda: {kpis['checkout_conversion_rate']}%\n"
+            f"🔄 Taxa de Conversão Global: {kpis['conversion_rate']}%\n"
             f"⚠️ Chargebacks: {kpis['chargeback_count']} "
             f"(R$ {kpis['chargeback_amount']:,.2f} — {kpis['chargeback_rate']}%)\n"
             f"↩️ Reembolsos: {kpis['refunded_count']}"
         )
+
     finally:
         db.close()

@@ -17,6 +17,7 @@ INSIGHT_FIELDS = ",".join([
     "impressions",
     "clicks",
     "cpc",
+    "cpm",
     "ctr",
     "inline_link_clicks",
     "inline_link_click_ctr",
@@ -72,7 +73,14 @@ async def fetch_ads(
         cpc = safe_float(insight.get("cost_per_unique_inline_link_click", 0)) or safe_float(insight.get("cpc", 0))
         if cpc == 0.0 and clicks > 0 and spend > 0:
             cpc = round(spend / clicks, 2)
-        impr = safe_int(insight.get("impressions", 0))
+
+        cpm = safe_float(insight.get("cpm", 0))
+        if cpm == 0.0 and impr > 0 and spend > 0:
+            cpm = round((spend / impr) * 1000, 2)
+
+        cpv = round(spend / lpv, 2) if lpv > 0 and spend > 0 else 0.0
+        cost_per_ic = round(spend / initiate, 2) if initiate > 0 and spend > 0 else 0.0
+        checkout_rate = round((initiate / lpv) * 100, 2) if lpv > 0 and initiate > 0 else 0.0
 
         # Métricas de Criativo & Retenção de Vídeo (Hook Rate & Body Rate)
         video_views = safe_int(extract_action_value(actions, "video_view"))
@@ -92,15 +100,19 @@ async def fetch_ads(
             name=ad.get("name", ""),
             status=_normalize_status(ad.get("status", "")),
             budget=0.0,  # Ads herdam budget do AdSet
-            spend=safe_float(insight.get("spend", 0)),
+            spend=spend,
             clicks=clicks,
             impressions=impr,
             cpc=cpc,
+            cpm=cpm,
             ctr=ctr,
             cpa=0.0,
             landing_page_views=lpv,
+            cpv=cpv,
             initiate_checkout=initiate,
+            cost_per_ic=cost_per_ic,
             connect_rate=calc_connect_rate(lpv, clicks),
+            checkout_rate=checkout_rate,
             video_views=video_views,
             video_p25=video_p25,
             video_p50=video_p50,
@@ -108,6 +120,7 @@ async def fetch_ads(
             hook_rate=hook_rate,
             body_rate=body_rate,
         ))
+
 
     return results
 

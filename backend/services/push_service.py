@@ -194,14 +194,19 @@ def send_recovery_push_notification(db: Session, event: StandardizedWebhookEvent
 
 
 def get_today_profit_metrics(db: Session) -> dict:
-    """Calcula faturamento, gasto de ads e lucro líquido do dia (timezone São Paulo)."""
-    from database.core.timezone import today_sp
+    """Calcula faturamento, gasto de ads em tempo real e lucro líquido do dia (timezone São Paulo)."""
+    from database.core.timezone import today_sp, today_sp_str
     from database.models.transaction import Transaction, TransactionStatus
+    from database.models.facebook_account import FacebookAccount
     from database.models.daily_ad_spend import DailyAdSpend
+    from ai.tools.universal import _run_meta
     from sqlalchemy import func
 
     try:
         today_date = today_sp()
+        today_str = today_sp_str()
+
+        # 1. Transações reais aprovadas de hoje
         txs = db.query(Transaction).filter(
             Transaction.status == TransactionStatus.APPROVED,
             func.date(Transaction.created_at) == today_date,
@@ -209,50 +214,142 @@ def get_today_profit_metrics(db: Session) -> dict:
         today_revenue = sum(float(t.amount or 0.0) for t in txs)
         today_sales = len(txs)
 
-        spends = db.query(DailyAdSpend).filter(
-            DailyAdSpend.spend_date == today_date
-        ).all()
-        today_spend = sum(float(s.spend or 0.0) for s in spends)
+        # 2. Busca gastos reais da Meta Ads ao vivo nas contas ativas
+        fb_accounts = db.query(FacebookAccount).filter(FacebookAccount.token_valid.is_(True)).all()
+        meta_spend = 0.0
+        meta_clicks = 0
+        meta_impr = 0
+        meta_lpv = 0
+        meta_ic = 0
+        has_meta = False
 
-        profit = round(today_revenue - today_spend, 2)
+        for acc in fb_accounts:
+            try:
+                summary = _run_meta(acc.access_token, acc.account_id, today_str, today_str, "account")
+                if summary:
+                    meta_spend += summary.spend
+                    meta_clicks += summary.clicks
+                    meta_impr += summary.impressions
+                    meta_lpv += summary.landing_page_views
+                    meta_ic += summary.initiate_checkout
+                    has_meta = True
+            except Exception as meta_err:
+                logger.warning(f"Aviso ao consultar Meta Ads hoje para conta {acc.label}: {meta_err}")
+
+        # 3. Fallback para gasto manual se não houver dados ao vivo de Meta
+        manual_row = db.query(DailyAdSpend).filter(DailyAdSpend.spend_date == today_date).first()
+        manual_spend = float(manual_row.spend or 0.0) if manual_row else 0.0
+        
+        if not has_meta or meta_spend == 0.0:
+            total_spend = manual_spend
+            total_clicks = manual_row.clicks if manual_row else meta_clicks
+            total_impr = manual_row.impressions if manual_row else meta_impr
+        else:
+            total_spend = meta_spend
+            total_clicks = meta_clicks
+            total_impr = meta_impr
+
+        # 4. Métricas consolidadas padrão UTMify / NexoFy
+        profit = round(today_revenue - total_spend, 2)
+        roas = round(today_revenue / total_spend, 2) if total_spend > 0 else 0.0
+        roi = round(profit / total_spend, 2) if total_spend > 0 else 0.0
+        cpa = round(total_spend / today_sales, 2) if today_sales > 0 else 0.0
+        cpm = round((total_spend / total_impr) * 1000, 2) if total_impr > 0 and total_spend > 0 else 0.0
+        cpc = round(total_spend / total_clicks, 2) if total_clicks > 0 and total_spend > 0 else 0.0
+        ctr = round((total_clicks / total_impr) * 100, 2) if total_impr > 0 and total_clicks > 0 else 0.0
+        cpv = round(total_spend / meta_lpv, 2) if meta_lpv > 0 and total_spend > 0 else 0.0
+        connect_rate = round((meta_lpv / total_clicks) * 100, 2) if total_clicks > 0 and meta_lpv > 0 else 0.0
+
         return {
             "revenue": today_revenue,
-            "spend": today_spend,
+            "spend": total_spend,
             "profit": profit,
             "sales": today_sales,
+            "roas": roas,
+            "roi": roi,
+            "cpa": cpa,
+            "clicks": total_clicks,
+            "impressions": total_impr,
+            "cpm": cpm,
+            "cpc": cpc,
+            "ctr": ctr,
+            "lpv": meta_lpv,
+            "cpv": cpv,
+            "connect_rate": connect_rate,
+            "ic": meta_ic,
         }
     except Exception as e:
-        logger.warning(f"Erro ao calcular lucro de hoje: {e}")
+        logger.warning(f"Erro ao calcular métricas de hoje: {e}")
         return {
             "revenue": 0.0,
             "spend": 0.0,
-            "profit": 230.15,
+            "profit": 0.0,
             "sales": 0,
+            "roas": 0.0,
+            "roi": 0.0,
+            "cpa": 0.0,
+            "clicks": 0,
+            "impressions": 0,
+            "cpm": 0.0,
+            "cpc": 0.0,
+            "ctr": 0.0,
+            "lpv": 0,
+            "cpv": 0.0,
+            "connect_rate": 0.0,
+            "ic": 0,
         }
 
 
 def send_daily_profit_push_notification(db: Session, admin_id: int | None = None) -> int:
     """
-    Dispara notificação de lucro do dia (estilo Nexofy):
-    'Hoje deu bom, patrão 😎 - R$ 230,15 de lucro até agora.'
+    Dispara notificação inteligente de lucro/performance do dia (estilo Nexofy & UTMify).
+    Avalia a saúde real: se estiver gastando sem vender, alerta! Se estiver no lucro, celebra!
     """
     metrics = get_today_profit_metrics(db)
     profit = metrics["profit"]
-    formatted_profit = f"R$ {abs(profit):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    revenue = metrics["revenue"]
+    spend = metrics["spend"]
+    sales = metrics["sales"]
+    roas = metrics["roas"]
+    clicks = metrics["clicks"]
+    cpm = metrics["cpm"]
 
-    if profit >= 0:
-        title = "Hoje deu bom, patrão 😎"
-        body = f"{formatted_profit} de lucro até agora."
+    formatted_profit = f"R$ {abs(profit):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    formatted_rev = f"R$ {revenue:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    formatted_spend = f"R$ {spend:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+    # ─── MOTOR DE INTELIGÊNCIA NATIVO (Zero mensagens enganosas) ───
+    if sales == 0 and spend > 0:
+        # Prejuízo sem vendas: Alerta crítico com cliques e CPM
+        title = f"🚨 Alerta de Tráfego: {formatted_spend} gastos sem vendas!"
+        body = f"Você investiu {formatted_spend} hoje ({clicks} cliques) e ainda não saiu nenhuma venda. Verifique seus anúncios!"
+        tag = "ninja-alert-no-sales"
+    elif sales > 0 and profit < 0:
+        # Prejuízo com vendas: Gastos superaram faturamento
+        title = f"⚠️ Atenção aos números (-{formatted_profit})"
+        body = f"Prejuízo de {formatted_profit} hoje. Faturamento: {formatted_rev} ({sales} vendas) | Gasto: {formatted_spend} | ROAS: {roas:.2f}x."
+        tag = "ninja-negative-profit"
+    elif sales > 0 and profit > 0:
+        # Lucro Real positivo!
+        title = f"Hoje deu bom, patrão! 😎 (+{formatted_profit})"
+        body = f"Lucro líquido: {formatted_profit} até agora! Faturamento: {formatted_rev} ({sales} vendas) | Gasto: {formatted_spend} (ROAS {roas:.2f}x)."
+        tag = "ninja-daily-profit"
+    elif sales > 0 and spend == 0:
+        # Vendas orgânicas sem custos de ads hoje
+        title = f"Hoje deu bom, patrão! 😎 (+{formatted_rev})"
+        body = f"Lucro 100% orgânico: {formatted_rev} em {sales} venda(s) hoje (sem gastos com anúncios)!"
+        tag = "ninja-organic-sales"
     else:
-        title = "Atenção aos números! ⚠️"
-        body = f"-{formatted_profit} de prejuízo hoje. Verifique seus anúncios."
+        # Sem movimentação no dia (0 gastos e 0 vendas): Não dispara falso alarme de lucro
+        logger.info("Resumo de lucro diário não disparado: R$ 0,00 gastos e 0 vendas até o momento.")
+        return 0
 
     payload = {
         "title": title,
         "body": body,
         "icon": "/icons/pwa-192.png",
         "badge": "/icons/pwa-192.png",
-        "tag": "ninja-daily-profit",
+        "tag": tag,
         "renotify": True,
         "requireInteraction": True,
         "vibrate": [200, 100, 200, 100, 300],
@@ -260,6 +357,11 @@ def send_daily_profit_push_notification(db: Session, admin_id: int | None = None
             "url": "/dashboard",
             "type": "daily_profit",
             "profit": profit,
+            "revenue": revenue,
+            "spend": spend,
+            "sales": sales,
+            "roas": roas,
+            "cpm": cpm,
         },
     }
 
@@ -269,7 +371,7 @@ def send_daily_profit_push_notification(db: Session, admin_id: int | None = None
         if send_web_push(sub, payload, db=db):
             sent += 1
 
-    logger.info(f"📊 Notificação de lucro diário enviada para {sent} dispositivos: {body}")
+    logger.info(f"📊 Pop-up inteligente de lucro/performance enviado para {sent} dispositivos: {title} | {body}")
     return sent
 
 
@@ -279,7 +381,7 @@ def send_test_push_notification(db: Session, admin_id: int | None = None, test_t
     Tipos suportados:
     - 'sale': 💰 Venda Aprovada
     - 'recovery': 😬 Essa quase foi (Recuperação)
-    - 'profit': 😎 Hoje deu bom, patrão (Lucro do dia)
+    - 'profit': 😎 Pop-up Inteligente de Performance / Lucro
     """
     query = db.query(PushSubscription)
     if admin_id is not None:
@@ -310,11 +412,35 @@ def send_test_push_notification(db: Session, admin_id: int | None = None, test_t
         }
     elif test_type == "profit":
         metrics = get_today_profit_metrics(db)
-        profit_val = metrics["profit"] if metrics["profit"] > 0 else 230.15
-        formatted_profit = f"R$ {profit_val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        sales = metrics["sales"]
+        spend = metrics["spend"]
+        profit = metrics["profit"]
+        revenue = metrics["revenue"]
+        roas = metrics["roas"]
+
+        # Se houver dados reais hoje, monta o pop-up com a inteligência real do dia
+        if sales > 0 or spend > 0:
+            formatted_profit = f"R$ {abs(profit):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            formatted_rev = f"R$ {revenue:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            formatted_spend = f"R$ {spend:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+            if sales == 0 and spend > 0:
+                title = f"🚨 Alerta de Tráfego: {formatted_spend} gastos sem vendas!"
+                body = f"Você investiu {formatted_spend} hoje ({metrics['clicks']} cliques) e ainda não saiu nenhuma venda. Verifique seus anúncios!"
+            elif profit < 0:
+                title = f"⚠️ Atenção aos números (-{formatted_profit})"
+                body = f"Prejuízo de {formatted_profit} hoje. Faturamento: {formatted_rev} ({sales} vendas) | Gasto: {formatted_spend} | ROAS: {roas:.2f}x."
+            else:
+                title = f"Hoje deu bom, patrão! 😎 (+{formatted_profit})"
+                body = f"Lucro líquido: {formatted_profit} até agora! Faturamento: {formatted_rev} ({sales} vendas) | Gasto: {formatted_spend} (ROAS {roas:.2f}x)."
+        else:
+            # Demonstração de alta fidelidade
+            title = "Hoje deu bom, patrão! 😎 (+R$ 230,15)"
+            body = "Demonstração de Lucro Real: R$ 230,15 de lucro líquido | Faturamento: R$ 430,00 (4 vendas) | Gasto: R$ 199,85 (ROAS 2.15x)"
+
         payload = {
-            "title": "Hoje deu bom, patrão 😎",
-            "body": f"{formatted_profit} de lucro até agora.",
+            "title": title,
+            "body": body,
             "icon": "/icons/pwa-192.png",
             "badge": "/icons/pwa-192.png",
             "tag": "ninja-test-profit",
@@ -325,8 +451,10 @@ def send_test_push_notification(db: Session, admin_id: int | None = None, test_t
                 "url": "/dashboard",
                 "test": True,
                 "type": "daily_profit",
+                "profit": profit,
             },
         }
+
     else:
         payload = {
             "title": "💰 NINJA TRACKER: Venda Aprovada!",

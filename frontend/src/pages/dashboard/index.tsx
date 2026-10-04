@@ -12,6 +12,7 @@ import { RevenueChart } from "./components/RevenueChart";
 import { PlatformChart } from "./components/PlatformChart";
 import { GlobalFilterBar } from "@/components/layout/GlobalFilterBar";
 import { useDashboard } from "@/hooks/use-dashboard";
+import { useDashboardPageData } from "@/hooks/useDashboardPageData";
 import { useSalesListener } from "@/hooks/use-sales-listener";
 import { fetchCustomersFilterOptions } from "@/services/customers";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,7 +23,9 @@ import type { UpsellOption } from "@/types/sale";
 
 export default function DashboardPage() {
   const { data, settings, loading, filters, setFilters, reload } = useDashboard();
+  useDashboardPageData(data, filters, settings);
   const { isEnabled: notificationsEnabled, toggleNotifications, testAlertSound, testPushNotification } = useSalesListener(reload);
+
   const navigate = useNavigate();
   const [products, setProducts] = useState<{ id: number; name: string }[]>([]);
   const [upsells, setUpsells] = useState<UpsellOption[]>([]);
@@ -74,8 +77,6 @@ export default function DashboardPage() {
         onToggleHideValues={() => setHideValues((v) => !v)}
         notificationsEnabled={notificationsEnabled}
         onToggleNotifications={toggleNotifications}
-        onTestSound={testAlertSound}
-        onTestPush={testPushNotification}
         onOpenNotificationModal={() => setIsNotifModalOpen(true)}
       />
 

@@ -95,16 +95,27 @@ async def fetch_meta_account_summary(
 
     cpc = round(total_spend / total_clicks, 2) if total_clicks > 0 else 0.0
     ctr = round((total_clicks / total_impressions) * 100, 2) if total_impressions > 0 else 0.0
+    cpm = round((total_spend / total_impressions) * 1000, 2) if total_impressions > 0 and total_spend > 0 else 0.0
+    cpv = round(total_spend / total_lpv, 2) if total_lpv > 0 and total_spend > 0 else 0.0
+    cost_per_ic = round(total_spend / total_ic, 2) if total_ic > 0 and total_spend > 0 else 0.0
+    connect_rate = round((total_lpv / total_clicks) * 100, 2) if total_clicks > 0 and total_lpv > 0 else 0.0
+    checkout_rate = round((total_ic / total_lpv) * 100, 2) if total_lpv > 0 and total_ic > 0 else 0.0
 
     return AccountInsightsSummary(
         spend=round(total_spend, 2),
         clicks=total_clicks,
         impressions=total_impressions,
         cpc=cpc,
+        cpm=cpm,
         ctr=ctr,
         landing_page_views=total_lpv,
+        cpv=cpv,
         initiate_checkout=total_ic,
+        cost_per_ic=cost_per_ic,
+        connect_rate=connect_rate,
+        checkout_rate=checkout_rate,
     ), None
+
 
 
 async def fetch_meta_campaigns_for_dashboard(

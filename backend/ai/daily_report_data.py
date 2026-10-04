@@ -95,13 +95,19 @@ def _fetch_campaigns_today(db: Session, ds: str, de: str) -> str:
     lines = []
     for item in data[:20]:
         st = "(ATIVA) 🟢" if getattr(item, "status", "") == "active" else "(DESATIVADA) 🟡"
+        cpm = getattr(item, "cpm", 0.0) or (round((item.spend / item.impressions) * 1000, 2) if item.impressions > 0 and item.spend > 0 else 0.0)
+        cpv = getattr(item, "cpv", 0.0) or (round(item.spend / item.landing_page_views, 2) if item.landing_page_views > 0 and item.spend > 0 else 0.0)
         lines.append(
             f"{st} [ID:{item.id}] {item.name} | Budget: R${item.budget:.0f}"
             f" | Spend: R${item.spend:.2f}"
+            f" | Impr: {item.impressions:,}"
+            f" | CPM: R${cpm:.2f}"
             f" | Clicks: {item.clicks}"
             f" | CPC: R${item.cpc:.2f}"
             f" | CTR: {item.ctr:.2f}%"
             f" | LPV: {item.landing_page_views}"
+            f" | CPV: R${cpv:.2f}"
+            f" | IC: {item.initiate_checkout}"
         )
 
     total_spend = sum(i.spend for i in data)
@@ -116,11 +122,15 @@ def format_daily_context(data: dict) -> str:
     wk = data["week_kpis"]
 
     sections = [
-        "# DADOS DO DIA ATUAL",
+        "# DADOS DO DIA ATUAL (Padrão UTMify)",
         f"Faturamento: R${k['total_revenue']:,.2f} | "
         f"Gastos Ads: R${k['total_spend']:,.2f} | "
-        f"Lucro: R${k['profit']:,.2f} | ROAS: {k['roas']}x | "
-        f"CPA: R${k['cpa']:,.2f} | Vendas: {k['total_sales']} | "
+        f"Lucro Líquido: R${k['profit']:,.2f} | ROAS: {k['roas']}x | ROI: {k.get('roi', 0)}x | "
+        f"CPA: R${k['cpa']:,.2f} | Vendas: {k['total_sales']} (Aprovação: {k.get('approval_rate', 0)}%) | "
+        f"Impressões: {k.get('total_impressions', 0):,} | CPM: R${k.get('cpm', 0):,.2f} | "
+        f"Cliques: {k.get('total_clicks', 0):,} | CPC: R${k.get('cpc', 0):,.2f} | CTR: {k.get('ctr', 0)}% | "
+        f"LPV (Pageviews): {k.get('pageviews', 0):,} | CPV: R${k.get('cpv', 0):,.2f} | "
+        f"Connect Rate: {k.get('connect_rate', 0)}% | IC: {k.get('initiate_checkout', 0):,} | "
         f"Ticket: R${k['average_ticket']:,.2f} | "
         f"Chargebacks: {k['chargeback_count']} ({k['chargeback_rate']}%)",
         "",
@@ -129,6 +139,7 @@ def format_daily_context(data: dict) -> str:
         f"Gastos: R${yk['total_spend']:,.2f} | "
         f"Lucro: R${yk['profit']:,.2f} | ROAS: {yk['roas']}x | "
         f"Vendas: {yk['total_sales']}",
+
         "",
         "# MÉDIA 7 DIAS",
         f"Faturamento: R${wk['total_revenue']:,.2f} | "

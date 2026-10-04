@@ -33,6 +33,10 @@ export function campaignToMetricRow(c: CampaignData): MetricRow & {
     hookRate: c.hook_rate ?? 0,
     bodyRate: c.body_rate ?? 0,
     videoViews: c.video_views ?? 0,
+    cpm: c.cpm,
+    cpv: c.cpv,
+    costPerIc: c.cost_per_ic,
+    checkoutRate: c.checkout_rate,
   };
 }
 
@@ -70,6 +74,10 @@ export function adsetToMetricRow(a: CampaignAdSetData): MetricRow & {
     hookRate: a.hook_rate ?? 0,
     bodyRate: a.body_rate ?? 0,
     videoViews: a.video_views ?? 0,
+    cpm: a.cpm,
+    cpv: a.cpv,
+    costPerIc: a.cost_per_ic,
+    checkoutRate: a.checkout_rate,
   };
 }
 
@@ -107,5 +115,9 @@ export function adToMetricRow(a: CampaignAdData): MetricRow & {
     hookRate: a.hook_rate ?? 0,
     bodyRate: a.body_rate ?? 0,
     videoViews: a.video_views ?? 0,
+    cpm: a.cpm,
+    cpv: a.cpv,
+    costPerIc: a.cost_per_ic,
+    checkoutRate: a.checkout_rate,
   };
 }
