@@ -196,7 +196,7 @@ export function NexofyNotificationModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[92vh] p-0 overflow-hidden flex flex-col bg-[#0B0F19] text-white border-zinc-800 shadow-2xl">
+      <DialogContent className="sm:max-w-2xl max-w-2xl max-h-[92vh] p-0 overflow-hidden flex flex-col bg-[#0B0F19] text-white border-zinc-800 shadow-2xl">
         {/* Banner Superior Vermelho (Idêntico ao da Nexofy) */}
         <div className="bg-red-600 text-white px-4 py-2.5 flex items-center justify-between text-xs sm:text-sm font-medium shrink-0">
           <div className="flex items-center gap-2 min-w-0">

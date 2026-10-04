@@ -317,7 +317,7 @@ export function WhatsAppRecoveryModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl bg-[#0f172a]/95 border-border/50 backdrop-blur-xl shadow-2xl p-6 sm:p-7 text-foreground">
+      <DialogContent className="sm:max-w-3xl max-w-3xl w-[96vw] max-h-[92vh] overflow-y-auto bg-[#0b1320] border-zinc-800 shadow-2xl p-5 sm:p-7 text-foreground">
         <DialogHeader className="space-y-1.5 pb-2 border-b border-border/40">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
@@ -325,7 +325,7 @@ export function WhatsAppRecoveryModal({
                 <RiWhatsappFill className="size-5" />
               </div>
               <div>
-                <DialogTitle className="text-lg font-semibold tracking-tight text-white flex items-center gap-2">
+                <DialogTitle className="text-lg font-semibold tracking-tight text-white flex items-center gap-2 flex-wrap">
                   Recuperação WhatsApp 1-Click
                   <Badge variant="outline" className="text-[11px] font-normal border-[#25D366]/40 text-[#25D366] bg-[#25D366]/10">
                     Live Direct Response
@@ -340,39 +340,41 @@ export function WhatsAppRecoveryModal({
         </DialogHeader>
 
         {/* Lead Summary Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-xl bg-slate-900/60 border border-border/40 text-xs">
-          <div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-3.5 rounded-xl bg-slate-900/80 border border-border/40 text-xs">
+          <div className="min-w-0">
             <div className="text-[10px] text-muted-foreground uppercase font-medium">Cliente</div>
-            <div className="font-semibold text-white truncate">{lead.customerName}</div>
-            <div className="text-[11px] text-muted-foreground truncate">{lead.customerEmail}</div>
+            <div className="font-semibold text-white truncate" title={lead.customerName}>{lead.customerName}</div>
+            <div className="text-[11px] text-muted-foreground truncate" title={lead.customerEmail}>{lead.customerEmail}</div>
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="text-[10px] text-muted-foreground uppercase font-medium">WhatsApp / Tel</div>
             <input
               type="text"
               value={phoneInput}
               onChange={(e) => setPhoneInput(e.target.value)}
               placeholder="Digite com DDI (ex: 39340...)"
-              className="mt-0.5 w-full bg-slate-800/80 border border-border/60 rounded px-1.5 py-0.5 text-xs font-mono text-emerald-400 focus:outline-none focus:border-emerald-500"
+              className="mt-0.5 w-full bg-slate-800/80 border border-border/60 rounded px-2 py-1 text-xs font-mono text-emerald-400 focus:outline-none focus:border-emerald-500"
             />
             <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
               {cleanPhone ? (
                 <span>wa.me/<strong className="text-emerald-300">+{cleanPhone}</strong></span>
               ) : (
-                <span className="text-amber-400">Insira o número</span>
+                <span className="text-amber-400">Insira o número com DDI</span>
               )}
             </div>
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="text-[10px] text-muted-foreground uppercase font-medium">Evento & Valor</div>
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 mt-0.5">
-              {eventBadgeText}
-            </Badge>
-            <div className="font-mono font-bold text-white text-[11px] mt-0.5">
-              R$ {lead.amount.toFixed(2)}
+            <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                {eventBadgeText}
+              </Badge>
+              <span className="font-mono font-bold text-white text-[12px]">
+                R$ {lead.amount.toFixed(2)}
+              </span>
             </div>
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="text-[10px] text-muted-foreground uppercase font-medium">Produto</div>
             <div className="font-medium text-slate-200 truncate mt-0.5" title={lead.product}>
               {lead.product}
@@ -397,14 +399,14 @@ export function WhatsAppRecoveryModal({
                   key={lang}
                   type="button"
                   onClick={() => handleLanguageChange(lang)}
-                  className={`flex items-center gap-2 p-2.5 rounded-lg border text-left transition-all ${
+                  className={`flex items-center gap-2 p-2.5 rounded-lg border text-left transition-all cursor-pointer ${
                     isSelected
                       ? "border-emerald-500/60 bg-emerald-500/10 text-white shadow-sm ring-1 ring-emerald-500/30"
                       : "border-border/40 bg-slate-900/40 text-slate-300 hover:bg-slate-800/60 hover:border-border"
                   }`}
                 >
                   <span className="text-xl leading-none">{info.flag}</span>
-                  <div className="overflow-hidden">
+                  <div className="overflow-hidden min-w-0 flex-1">
                     <div className="text-xs font-medium truncate">{info.name}</div>
                     <div className="text-[10px] text-muted-foreground">{info.countryCode}</div>
                   </div>
@@ -429,14 +431,14 @@ export function WhatsAppRecoveryModal({
                   key={strat}
                   type="button"
                   onClick={() => handleStrategyChange(strat)}
-                  className={`flex items-start gap-2.5 p-2.5 rounded-lg border text-left transition-all ${
+                  className={`flex items-start gap-2.5 p-2.5 rounded-lg border text-left transition-all cursor-pointer ${
                     isSelected
                       ? "border-emerald-500/60 bg-emerald-500/10 text-white shadow-sm ring-1 ring-emerald-500/30"
                       : "border-border/40 bg-slate-900/40 text-slate-300 hover:bg-slate-800/60 hover:border-border"
                   }`}
                 >
                   <Icon className={`size-4 mt-0.5 shrink-0 ${isSelected ? "text-emerald-400" : "text-muted-foreground"}`} />
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <div className="text-xs font-semibold">{info.title}</div>
                     <div className="text-[10px] text-muted-foreground leading-tight mt-0.5">
                       {info.subtitle}
@@ -458,27 +460,32 @@ export function WhatsAppRecoveryModal({
             <button
               type="button"
               onClick={() => setCustomText(generateCopy(selectedLang, selectedStrategy, lead))}
-              className="text-[11px] text-muted-foreground hover:text-emerald-400 underline underline-offset-2 transition-colors"
+              className="text-[11px] text-muted-foreground hover:text-emerald-400 underline underline-offset-2 transition-colors cursor-pointer"
             >
               Restaurar Original
             </button>
           </div>
 
           <div className="relative rounded-xl border border-emerald-500/20 bg-[#0b141a] p-4 shadow-inner">
-            <div className="absolute top-3 right-3 flex items-center gap-1 text-[10px] text-emerald-400/80 font-mono">
-              <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              WhatsApp Web Format
+            <div className="flex items-center justify-between pb-2 mb-2 border-b border-emerald-500/10 text-[11px] text-emerald-400/90 font-mono">
+              <span className="flex items-center gap-1.5">
+                <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
+                WhatsApp Web Format
+              </span>
+              <span className="text-[10px] text-zinc-400 font-sans">
+                {cleanPhone ? `Destinatário: +${cleanPhone}` : "⚠️ Digite o número acima"}
+              </span>
             </div>
 
             {/* Simulated Chat Bubble */}
-            <div className="bg-[#005c4b] text-white rounded-lg rounded-tl-none p-3 shadow-md max-w-full text-xs font-sans leading-relaxed whitespace-pre-wrap selection:bg-emerald-300 selection:text-slate-900">
+            <div className="bg-[#005c4b] text-white rounded-lg rounded-tl-none p-3.5 shadow-md max-w-full text-xs font-sans leading-relaxed whitespace-pre-wrap selection:bg-emerald-300 selection:text-slate-900">
               <Textarea
                 value={customText}
                 onChange={(e) => setCustomText(e.target.value)}
-                className="w-full bg-transparent border-0 p-0 text-xs text-white placeholder-slate-300 focus-visible:ring-0 resize-none min-h-[110px]"
+                className="w-full bg-transparent border-0 p-0 text-xs text-white placeholder-slate-300 focus-visible:ring-0 resize-none min-h-[120px]"
                 placeholder="Escreva ou edite a mensagem..."
               />
-              <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-emerald-200/80">
+              <div className="flex items-center justify-end gap-1 mt-1.5 text-[10px] text-emerald-200/80">
                 <span>{new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                 <span className="text-sky-300 font-bold">✓✓</span>
               </div>
@@ -487,7 +494,7 @@ export function WhatsAppRecoveryModal({
         </div>
 
         {/* Modal Actions */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-3 border-t border-border/40">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-border/40 shrink-0">
           <div className="w-full sm:w-auto">
             {onMarkRecovered && !lead.recovered && (
               <Button
@@ -495,7 +502,7 @@ export function WhatsAppRecoveryModal({
                 size="sm"
                 onClick={handleMarkAsRecovered}
                 disabled={isMarking}
-                className="w-full sm:w-auto border-border/60 hover:bg-slate-800 text-xs text-slate-300"
+                className="w-full sm:w-auto border-border/60 hover:bg-slate-800 text-xs text-slate-300 cursor-pointer"
               >
                 <RiCheckboxCircleLine className="size-3.5 mr-1.5 text-emerald-400" />
                 {isMarking ? "Salvando..." : "Marcar como Recuperado"}
@@ -503,12 +510,12 @@ export function WhatsAppRecoveryModal({
             )}
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
             <Button
               variant="outline"
               size="sm"
               onClick={handleCopy}
-              className="flex-1 sm:flex-none border-border/60 hover:bg-slate-800 text-xs"
+              className="flex-1 sm:flex-none border-border/60 hover:bg-slate-800 text-xs cursor-pointer"
             >
               {copied ? (
                 <>
@@ -527,7 +534,7 @@ export function WhatsAppRecoveryModal({
               size="sm"
               onClick={handleOpenWhatsApp}
               disabled={!cleanPhone}
-              className="flex-1 sm:flex-none bg-[#25D366] hover:bg-[#20ba5a] text-slate-950 font-semibold text-xs shadow-lg shadow-[#25D366]/20 transition-all"
+              className="flex-1 sm:flex-none bg-[#25D366] hover:bg-[#20ba5a] text-slate-950 font-bold text-xs shadow-lg shadow-[#25D366]/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2"
             >
               <RiWhatsappFill className="size-4 mr-1.5" />
               Abrir no WhatsApp
