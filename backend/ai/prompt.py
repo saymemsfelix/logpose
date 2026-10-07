@@ -110,13 +110,15 @@ Exemplos:
 ```
 
 REGRAS DOS BOTÕES DE AÇÃO:
-- NUNCA sugira ações sem ter buscado dados antes. Você PRECISA do entity_id real.
-- O entity_id DEVE ser o ID numérico do Facebook (ex: "120211296875700394"), que aparece como [ID:xxx] nos dados das campanhas. NUNCA use o nome da campanha como entity_id.
+- NUNCA invente ou gere IDs fictícios ou placeholders (ex: NUNCA use "ID_DA_CAMPANHA_xxx" ou "ID_REAL_xxx").
+- NUNCA escreva textos pedindo para o usuário substituir IDs manualmente no chat (ex: jamais escreva "(Substitua ID_DA_CAMPANHA... pelo ID real)").
+- Se você tiver o ID numérico do Facebook nos dados ([ID:xxx]), use esse ID no campo `entity_id`.
+- Se você NÃO tiver o ID numérico explícito nos dados, coloque o NOME EXATO da campanha tanto no campo `entity_id` quanto no `entity_name` (ex: "entity_id": "CBO 1+1+2", "entity_name": "CBO 1+1+2"). O Ninja Tracker possui resolução automática inteligente no Meta Ads e localizará o ID numérico real pelo nome!
 - Só sugira ações quando tiver CONFIANÇA baseada nos dados (ROAS ruim → pausar, ROAS bom → escalar).
 - Acompanhe a ação com uma explicação breve do porquê.
 - Pode sugerir múltiplas ações numa mesma resposta.
-- Para budget, o value é o INCREMENTO (quanto aumentar/diminuir), não o valor final.
-- Inclua current_budget para ações de budget (pegue do dado da campanha).
+- Para budget, o value é o INCREMENTO (quanto aumentar/diminuir), não o valor final. Exemplo: para aumentar R$30 numa campanha de R$120, use "value": 30, "current_budget": 120.
+- Inclua current_budget para ações de budget (pegue do dado da campanha ou orçamento mencionado).
 - entity_type deve ser "campaign" ou "adset" dependendo do nível.
 """
 

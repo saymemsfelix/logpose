@@ -303,8 +303,26 @@ export function disableSalesNotification() {
   toast.info("Alertas sonoros de venda desativados.");
 }
 
+export const COUNTRY_NAME_MAP: Record<string, string> = {
+  IT: "Itália", CH: "Suíça", PT: "Portugal", ES: "Espanha", US: "Estados Unidos",
+  GB: "Reino Unido", FR: "França", DE: "Alemanha", MX: "México", CO: "Colômbia",
+  AR: "Argentina", CL: "Chile", PE: "Peru", UY: "Uruguai", EC: "Equador",
+  BO: "Bolívia", PY: "Paraguai", VE: "Venezuela", CR: "Costa Rica", PA: "Panamá",
+  GT: "Guatemala", DO: "República Dominicana", BR: "Brasil",
+};
+
+export function getCountryFlagEmoji(code?: string): string {
+  if (!code || code.length !== 2) return "🌍";
+  const upper = code.toUpperCase();
+  try {
+    return String.fromCodePoint(...[...upper].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65));
+  } catch {
+    return "🌍";
+  }
+}
+
 /**
- * Notifica uma nova venda com som Ka-Ching, voz do criativo e pop-up nativo do celular (estilo UTMify)
+ * Notifica uma nova venda com som Ka-Ching, voz do criativo e pop-up nativo do celular
  */
 export function notifyNewSale(sale: RecentSaleItem) {
   const prefs = getNotificationPreferences();
@@ -315,16 +333,10 @@ export function notifyNewSale(sale: RecentSaleItem) {
     vibrateSale();
   }
 
-  const countryFlag =
-    sale.country === "IT"
-      ? "🇮🇹 Itália"
-      : sale.country === "CH"
-      ? "🇨🇭 Suíça"
-      : sale.country === "MX"
-      ? "🇲🇽 México"
-      : sale.country === "ES"
-      ? "🇪🇸 Espanha"
-      : "🇧🇷 Brasil";
+  const countryCode = (sale.country || "BR").toUpperCase();
+  const flag = getCountryFlagEmoji(countryCode);
+  const countryName = COUNTRY_NAME_MAP[countryCode] || countryCode;
+  const countryFlag = `${flag} ${countryName}`;
 
   const formattedVal = new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -333,7 +345,7 @@ export function notifyNewSale(sale: RecentSaleItem) {
 
   const creative = sale.ad_name || sale.utm_content || "Criativo Anúncio";
 
-  // 2. Voz estilo UTMify falando o valor e o criativo
+  // 2. Voz sintetizada falando o valor e o criativo
   if (prefs.voice_enabled && prefs.channels.new_sale.sound) {
     try {
       speakVoice(`Venda aprovada! ${formattedVal}! Criativo: ${creative}.`);
@@ -360,7 +372,7 @@ export function notifyNewSale(sale: RecentSaleItem) {
 }
 
 /**
- * Notifica o balanço diário de lucro / status (estilo UTMify)
+ * Notifica o balanço diário de lucro / status
  */
 export function notifyProfitStatus(profit: number, roas: number, salesCount: number) {
   const formattedProfit = new Intl.NumberFormat("pt-BR", {

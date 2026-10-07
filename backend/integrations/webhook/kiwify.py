@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+﻿from typing import Any, Dict, Optional
 import logging
 from integrations.webhook.schemas import StandardizedWebhookEvent
 from database.models.transaction import TransactionStatus, PaymentPlatform
@@ -135,6 +135,31 @@ def parse_kiwify_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebhoo
         product_price_cents = commissions.get("product_base_price", 0)
         product_price = float(product_price_cents) / 100.0 if product_price_cents else 0.0
 
+        cust_mobile = str(customer_info.get("mobile", "") or "").replace("+", "").replace(" ", "").replace("-", "")
+        kiwify_country = "BR"
+        if cust_mobile.startswith("41"):
+            kiwify_country = "CH"
+        elif cust_mobile.startswith("39"):
+            kiwify_country = "IT"
+        elif cust_mobile.startswith("351"):
+            kiwify_country = "PT"
+        elif cust_mobile.startswith("34"):
+            kiwify_country = "ES"
+        elif cust_mobile.startswith("52"):
+            kiwify_country = "MX"
+        elif cust_mobile.startswith("57"):
+            kiwify_country = "CO"
+        elif cust_mobile.startswith("54"):
+            kiwify_country = "AR"
+        elif cust_mobile.startswith("56"):
+            kiwify_country = "CL"
+        elif cust_mobile.startswith("1") and len(cust_mobile) >= 11:
+            kiwify_country = "US"
+        elif cust_mobile.startswith("55"):
+            kiwify_country = "BR"
+        elif payload.get("country"):
+            kiwify_country = str(payload.get("country"))[:2].upper()
+
         return StandardizedWebhookEvent(
             external_id=str(payload.get("order_id", "") or payload.get("id", "")),
             platform=PaymentPlatform.KIWIFY,
@@ -150,6 +175,7 @@ def parse_kiwify_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebhoo
             customer_name=customer_info.get("full_name", ""),
             customer_cpf=customer_info.get("CPF", ""),
             customer_phone=customer_info.get("mobile", ""),
+            customer_country=kiwify_country,
             utm_source=utm_source,
             utm_medium=utm_medium,
             utm_campaign=utm_campaign,

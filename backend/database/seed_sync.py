@@ -42,18 +42,8 @@ def seed_sync_data(engine):
                 fb.token_valid = True
                 db.commit()
 
-            # 2. Inicializar Gasto de Anúncios de Hoje somente se não existir
-            today_date = today_sp()
-            spend_row = db.query(DailyAdSpend).filter(DailyAdSpend.spend_date == today_date).first()
-            if not spend_row:
-                spend_row = DailyAdSpend(
-                    spend_date=today_date,
-                    spend=438.92,
-                    clicks=174,
-                    impressions=3513,
-                )
-                db.add(spend_row)
-                db.commit()
+            # 2. Gasto de Anúncios: Preservar dados reais cadastrados pelo usuário ou Meta Ads (nunca gerar gasto fake no boot)
+            pass
 
             # 3. Preservar todas as transações reais (nunca gerar transações fakes no boot)
             # As transações reais entram 100% via Webhook ou importação CSV da Hotmart.

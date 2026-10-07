@@ -19,11 +19,11 @@ export function UtmsTab() {
   const metaUrlParams =
     "utm_source=FB&utm_campaign={{campaign.name}}|{{campaign.id}}&utm_medium={{adset.name}}|{{adset.id}}&utm_content={{ad.name}}|{{ad.id}}&utm_term={{ad.id}}&src={{ad.id}}";
 
-  // Script de repasse automático de UTMs para páginas de vendas / presell / VSLs
+  // Script de repasse automático de UTMs blindado para páginas de vendas / presell / VSLs
   const utmScriptCode = `<script>
 /**
- * NINJA'S TRACKER - Script de Rastreamento Avançado de UTMs
- * Suporta botões normais, botões atrasados (pitch delay de VSL/VTurb) e popups.
+ * NINJA'S TRACKER - Rastreamento Blindado Hotmart & Meta Ads
+ * Suporta botões normais, botões atrasados (pitch delay de VSL/VTurb), popups e iframes.
  * Cole antes do fechamento da tag </head> da sua página de vendas.
  */
 (function() {
@@ -48,8 +48,9 @@ export function UtmsTab() {
       }
     });
 
+    // Garante parâmetros nativos vitais da Hotmart (src e sck)
     if (!data['src']) {
-      data['src'] = data['utm_term'] || data['utm_source'] || 'FB';
+      data['src'] = data['utm_term'] || data['utm_content'] || data['utm_source'] || 'FB';
     }
     if (!data['sck'] && data['utm_campaign']) {
       data['sck'] = data['utm_campaign'] + (data['utm_content'] ? '|' + data['utm_content'] : '');
@@ -58,94 +59,89 @@ export function UtmsTab() {
     return data;
   }
 
-  function buildQueryString(data) {
-    var parts = [];
-    for (var k in data) {
-      if (data[k]) {
-        parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(data[k]));
-      }
-    }
-    return parts.join('&');
-  }
-
-  function appendToUrl(url, qs) {
-    if (!qs || !url) return url;
-    try {
-      var parsed = new URL(url, window.location.href);
-      var params = new URLSearchParams(qs);
-      params.forEach(function(v, k) {
-        if (!parsed.searchParams.has(k)) {
-          parsed.searchParams.set(k, v);
-        }
-      });
-      return parsed.toString();
-    } catch(e) {
-      var sep = url.indexOf('?') !== -1 ? '&' : '?';
-      return url + sep + qs;
-    }
-  }
-
-  function isCheckoutLink(href) {
+  function isCheckoutUrl(href) {
     if (!href) return false;
     var lower = href.toLowerCase();
     return (
-      lower.indexOf('kiwify.com.br') !== -1 ||
-      lower.indexOf('pay.kiwify.com.br') !== -1 ||
       lower.indexOf('hotmart.com') !== -1 ||
       lower.indexOf('pay.hotmart.com') !== -1 ||
+      lower.indexOf('kiwify.com.br') !== -1 ||
+      lower.indexOf('pay.kiwify.com.br') !== -1 ||
       lower.indexOf('payt.net.br') !== -1 ||
       lower.indexOf('checkout') !== -1 ||
       lower.indexOf('pagamento') !== -1
     );
   }
 
-  function updateLinks() {
-    var data = getStoredParams();
-    var qs = buildQueryString(data);
-    if (!qs) return;
+  function appendToUrl(url, data) {
+    if (!url) return url;
+    try {
+      var parsed = new URL(url, window.location.href);
+      for (var k in data) {
+        if (data[k]) {
+          parsed.searchParams.set(k, data[k]);
+        }
+      }
+      return parsed.toString();
+    } catch(e) {
+      var parts = [];
+      for (var k in data) {
+        if (data[k]) {
+          parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(data[k]));
+        }
+      }
+      var qs = parts.join('&');
+      if (!qs) return url;
+      var sep = url.indexOf('?') !== -1 ? '&' : '?';
+      return url + sep + qs;
+    }
+  }
 
+  function updateAllLinks() {
+    var data = getStoredParams();
     var links = document.querySelectorAll('a[href]');
     for (var i = 0; i < links.length; i++) {
       var a = links[i];
       var href = a.getAttribute('href');
-      if (href && isCheckoutLink(href) && !a.getAttribute('data-ninja-utm')) {
-        a.setAttribute('href', appendToUrl(href, qs));
-        a.setAttribute('data-ninja-utm', '1');
+      if (href && isCheckoutUrl(href)) {
+        var updated = appendToUrl(href, data);
+        if (a.getAttribute('href') !== updated) {
+          a.setAttribute('href', updated);
+          a.href = updated;
+        }
       }
     }
   }
 
-  // Interceptador de clique global para botões dinâmicos ou atrasados (VTurb, pitch delay)
+  // Interceptador global em fase de captura (true) - prioridade máxima ao clicar
   document.addEventListener('click', function(e) {
     var target = e.target;
     while (target && target !== document) {
-      if (target.tagName === 'A' && target.href && isCheckoutLink(target.href)) {
+      if (target.tagName === 'A' && target.href && isCheckoutUrl(target.href)) {
         var data = getStoredParams();
-        var qs = buildQueryString(data);
-        if (qs) {
-          target.href = appendToUrl(target.href, qs);
-        }
+        var finalUrl = appendToUrl(target.href, data);
+        target.href = finalUrl;
+        target.setAttribute('href', finalUrl);
         break;
       }
       target = target.parentElement;
     }
   }, true);
 
-  // Executa no carregamento e monitora novos elementos injetados (VSL pitch delay)
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
-      updateLinks();
+      updateAllLinks();
       initObserver();
     });
   } else {
-    updateLinks();
+    updateAllLinks();
     initObserver();
   }
 
   function initObserver() {
     if (window.MutationObserver) {
       var observer = new MutationObserver(function() {
-        updateLinks();
+        updateAllLinks();
       });
       observer.observe(document.body || document.documentElement, {
         childList: true,

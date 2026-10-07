@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+﻿from typing import Any, Dict, Optional
 import logging
 from integrations.webhook.schemas import StandardizedWebhookEvent
 from database.models.transaction import TransactionStatus, PaymentPlatform
@@ -92,6 +92,32 @@ def parse_payt_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebhookE
                     
             return str(val) if val else None
 
+        cust_phone = str(customer.get("phone", "") or "").replace("+", "").replace(" ", "").replace("-", "")
+        addr = customer.get("address") if isinstance(customer.get("address"), dict) else {}
+        payt_country = "BR"
+        if addr.get("country"):
+            payt_country = str(addr.get("country"))[:2].upper()
+        elif cust_phone.startswith("41"):
+            payt_country = "CH"
+        elif cust_phone.startswith("39"):
+            payt_country = "IT"
+        elif cust_phone.startswith("351"):
+            payt_country = "PT"
+        elif cust_phone.startswith("34"):
+            payt_country = "ES"
+        elif cust_phone.startswith("52"):
+            payt_country = "MX"
+        elif cust_phone.startswith("57"):
+            payt_country = "CO"
+        elif cust_phone.startswith("54"):
+            payt_country = "AR"
+        elif cust_phone.startswith("56"):
+            payt_country = "CL"
+        elif cust_phone.startswith("1") and len(cust_phone) >= 11:
+            payt_country = "US"
+        elif cust_phone.startswith("55"):
+            payt_country = "BR"
+
         return StandardizedWebhookEvent(
             external_id=str(tx_id),
             platform=PaymentPlatform.PAYT,
@@ -108,6 +134,7 @@ def parse_payt_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebhookE
             customer_name=customer.get("name", ""),
             customer_cpf=customer.get("doc", ""),
             customer_phone=customer.get("phone", ""),
+            customer_country=payt_country,
             utm_source=extract_param("utm_source"),
             utm_medium=extract_param("utm_medium"),
             utm_campaign=extract_param("utm_campaign"),

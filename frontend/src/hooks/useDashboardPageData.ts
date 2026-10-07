@@ -5,7 +5,7 @@ import type { DashboardFilters } from "@/hooks/use-dashboard";
 import type { CompanySettings } from "@/types/company";
 
 /**
- * Hook para registrar todos os dados e métricas do Dashboard (incluindo todas as métricas padrão UTMify:
+ * Hook para registrar todos os dados e métricas do Dashboard (incluindo todas as métricas avançadas:
  * CPM, CPC, CTR, LPV, CPV, Connect Rate, IC, Cost per IC, etc.) no PageDataContext.
  * Dessa forma, a IA do Ninja Tracker tem acesso instantâneo e completo a cada número do Dashboard.
  */
@@ -49,7 +49,7 @@ export function useDashboardPageData(
     const filtersDesc = `Preset: ${filters.preset || "custom"} | Período: ${filters.startDate || "N/A"} a ${filters.endDate || "N/A"} | Plataforma: ${filters.platform || "Todas"}`;
 
     const lines: string[] = [
-      `📊 DADOS ATUAIS DO DASHBOARD (Padrão UTMify & NexoFy)`,
+      `📊 DADOS ATUAIS DO DASHBOARD (Ninja Tracker)`,
       `Filtros: ${filtersDesc}`,
       ``,
       `--- 1. FINANCEIRO & VENDAS ---`,
@@ -65,7 +65,7 @@ export function useDashboardPageData(
       `• Vendas Pendentes: ${k.pending_count ?? 0} (R$ ${(k.pending_amount ?? 0).toFixed(2)})`,
       `• Chargebacks: ${k.chargeback_count ?? 0} (Taxa: ${(k.chargeback_rate ?? 0).toFixed(2)}%)`,
       ``,
-      `--- 2. TRÁFEGO & LEILÃO (Meta Ads / UTMify) ---`,
+      `--- 2. TRÁFEGO & LEILÃO (Meta Ads / Ninja Tracker) ---`,
       `• Gastos com Anúncios (Spend): R$ ${k.total_spend.toFixed(2)}`,
       `• Impressões Totais: ${totalImpr.toLocaleString("pt-BR")}`,
       `• CPM (Custo por Mil Impressões): R$ ${cpm.toFixed(2)}`,
@@ -73,7 +73,7 @@ export function useDashboardPageData(
       `• CPC (Custo por Clique): R$ ${cpc.toFixed(2)}`,
       `• CTR (Taxa de Cliques): ${ctr.toFixed(2)}%`,
       ``,
-      `--- 3. FUNIL DE CONVERSÃO & PÁGINAS (UTMify) ---`,
+      `--- 3. FUNIL DE CONVERSÃO & PÁGINAS (Ninja Tracker) ---`,
       `• Visualizações de Página (LPV): ${lpv.toLocaleString("pt-BR")}`,
       `• CPV (Custo por Visualização de LP): R$ ${cpv.toFixed(2)}`,
       `• Connect Rate (LPV / Cliques): ${connectRate.toFixed(1)}%`,

@@ -102,14 +102,23 @@ export function MobileAIChat({ isOpen, onClose }: MobileAIChatProps) {
 
   const handleExecuteAction = useCallback(
     async (action: AiAction) => {
-      const result = await executeAiAction(action);
-      const feedbackText = `✅ Ação executada com sucesso: ${result.message}. Continue a análise.`;
-      const feedbackMsg: ChatMessage = { role: "user", content: feedbackText };
-      setMessages((prev) => {
-        const updated = [...prev, feedbackMsg];
-        sendToAI(feedbackText, updated.slice(0, -1));
-        return updated;
-      });
+      try {
+        const result = await executeAiAction(action);
+        const feedbackText = `✅ Ação executada com sucesso no Meta Ads: ${result.message}.`;
+        const feedbackMsg: ChatMessage = { role: "user", content: feedbackText };
+        setMessages((prev) => {
+          const updated = [...prev, feedbackMsg];
+          sendToAI(feedbackText, updated.slice(0, -1));
+          return updated;
+        });
+      } catch (err: any) {
+        const errMsg = err?.message || "Erro ao executar ação no Facebook Ads";
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: `⚠️ Não foi possível aplicar a alteração: ${errMsg}` },
+        ]);
+        throw err;
+      }
     },
     [sendToAI]
   );

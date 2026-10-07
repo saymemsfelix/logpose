@@ -150,18 +150,18 @@ export function NexofyNotificationModal({
       }
       if (prefs.voice_enabled) {
         try {
-          speakVoice("Venda aprovada! R$ 97,00! Criativo: CBO teste criativo. Parabéns, você está no lucro de R$ 111,00 hoje!");
+          speakVoice("Teste de áudio Ninja Tracker. Alertas sonoros, de voz e notificações ativados com sucesso.");
         } catch {}
       }
       await subscribeToPushNotifications();
       await sendTestPushNotification("sale");
-      showNativeNotification("💰 Nova Venda Aprovada: R$ 97,00!", {
-        body: "🎨 Criativo: CBO teste criativo\n📦 120 Diagnosi Visive • Pix Compensado",
+      showNativeNotification("🔔 [TESTE] Simulação Ninja Tracker", {
+        body: "🎨 Criativo: CBO teste criativo\n📦 Simulação de Venda • Alertas 100% Ativos",
         tag: "test-sale",
         vibrate: [200, 100, 200, 100, 300],
       } as unknown as NotificationOptions);
-      toast.success("🎉 VENDA APROVADA: R$ 97,00!", {
-        description: "Pop-up de venda aprovada enviado com sucesso!",
+      toast.success("🔔 Notificação de teste enviada!", {
+        description: "Pop-up de teste enviado para validar o funcionamento do seu dispositivo!",
         duration: 5000,
       });
     }
@@ -188,23 +188,6 @@ export function NexofyNotificationModal({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-2xl max-w-2xl max-h-[92vh] p-0 overflow-hidden flex flex-col bg-[#0B0F19] text-white border-zinc-800 shadow-2xl">
-        {/* Banner Superior Vermelho (Idêntico ao da Nexofy) */}
-        <div className="bg-red-600 text-white px-4 py-2.5 flex items-center justify-between text-xs sm:text-sm font-medium shrink-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <AlertTriangle className="size-4 shrink-0 text-white" />
-            <span className="truncate">
-              Você está no plano PRO. Todos os alertas de vendas e push estão disponíveis.
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => toast.info("Sua conta já possui acesso ilimitado aos alertas do SFY / Ninja Tracker!")}
-            className="bg-white text-red-600 font-bold px-3 py-1 rounded text-xs hover:bg-zinc-100 transition-colors shrink-0 shadow-sm cursor-pointer ml-2"
-          >
-            Fazer upgrade
-          </button>
-        </div>
-
         {/* Header do Pop-up */}
         <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-zinc-800/80 shrink-0">
           <div className="flex items-center gap-3">

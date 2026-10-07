@@ -1,4 +1,4 @@
-"""
+﻿"""
 Agregações para o dashboard: revenue diário, plataformas, vendas por hora.
 """
 from sqlalchemy import func, extract
@@ -175,15 +175,28 @@ def _country_distribution(base, db):
         "PT": ("PT", "Portugal"),
         "ES": ("ES", "Espanha"),
         "US": ("US", "Estados Unidos"),
+        "CA": ("CA", "Canadá"),
         "GB": ("GB", "Reino Unido"),
         "FR": ("FR", "França"),
         "DE": ("DE", "Alemanha"),
+        "NL": ("NL", "Holanda"),
+        "BE": ("BE", "Bélgica"),
+        "AT": ("AT", "Áustria"),
+        "IE": ("IE", "Irlanda"),
         "MX": ("MX", "México"),
+        "CO": ("CO", "Colômbia"),
         "AR": ("AR", "Argentina"),
         "CL": ("CL", "Chile"),
-        "CO": ("CO", "Colômbia"),
         "PE": ("PE", "Peru"),
         "UY": ("UY", "Uruguai"),
+        "EC": ("EC", "Equador"),
+        "BO": ("BO", "Bolívia"),
+        "PY": ("PY", "Paraguai"),
+        "VE": ("VE", "Venezuela"),
+        "CR": ("CR", "Costa Rica"),
+        "PA": ("PA", "Panamá"),
+        "GT": ("GT", "Guatemala"),
+        "DO": ("DO", "República Dominicana"),
         "BR": ("BR", "Brasil"),
     }
 
@@ -192,7 +205,12 @@ def _country_distribution(base, db):
 
     for tx in approved_txs:
         p_name = (tx.product_name or "").lower()
-        is_italian_offer = any(k in p_name for k in ["diagnosi", "visive", "hardware", "software", "pinout", "multimetro", "solda", "atlante"])
+        is_italian_offer = any(k in p_name for k in [
+            "diagnosi", "visive", "hardware", "software", "pinout", "multimetro", "solda", "saldatura", "atlante", "tornitura", "fresatura", "navigazione", "mappe"
+        ])
+        is_spanish_offer = any(k in p_name for k in [
+            "atlas", "escrituras", "latam", "español", "espanhol"
+        ])
 
         phone = ""
         cust_country = ""
@@ -205,43 +223,64 @@ def _country_distribution(base, db):
 
         raw_c = str(getattr(tx, "country", "") or "").strip().upper()
 
-        if raw_c == "CH" or cust_country == "CH" or phone.startswith("41"):
-            c_code, c_name = COUNTRY_MAP["CH"]
-        elif raw_c == "IT" or cust_country == "IT" or phone.startswith("39"):
-            c_code, c_name = COUNTRY_MAP["IT"]
-        elif is_italian_offer and not phone.startswith("55"):
-            c_code, c_name = COUNTRY_MAP["IT"]
-        elif raw_c in COUNTRY_MAP:
+        if raw_c in COUNTRY_MAP:
             c_code, c_name = COUNTRY_MAP[raw_c]
         elif cust_country in COUNTRY_MAP:
             c_code, c_name = COUNTRY_MAP[cust_country]
-        elif phone:
-            if phone.startswith("39"):
-                c_code, c_name = COUNTRY_MAP["IT"]
-            elif phone.startswith("41"):
-                c_code, c_name = COUNTRY_MAP["CH"]
-            elif phone.startswith("351"):
-                c_code, c_name = COUNTRY_MAP["PT"]
-            elif phone.startswith("34"):
-                c_code, c_name = COUNTRY_MAP["ES"]
-            elif phone.startswith("1") and len(phone) >= 11:
-                c_code, c_name = COUNTRY_MAP["US"]
-            elif phone.startswith("44"):
-                c_code, c_name = COUNTRY_MAP["GB"]
-            elif phone.startswith("33"):
-                c_code, c_name = COUNTRY_MAP["FR"]
-            elif phone.startswith("49"):
-                c_code, c_name = COUNTRY_MAP["DE"]
-            elif phone.startswith("52"):
-                c_code, c_name = COUNTRY_MAP["MX"]
-            elif phone.startswith("54"):
-                c_code, c_name = COUNTRY_MAP["AR"]
-            elif phone.startswith("55"):
-                c_code, c_name = COUNTRY_MAP["BR"]
-            else:
-                c_code, c_name = COUNTRY_MAP["IT"] if is_italian_offer else COUNTRY_MAP["BR"]
+        elif raw_c and len(raw_c) == 2:
+            c_code, c_name = (raw_c, raw_c)
+        elif cust_country and len(cust_country) == 2:
+            c_code, c_name = (cust_country, cust_country)
+        elif phone.startswith("41"):
+            c_code, c_name = COUNTRY_MAP["CH"]
+        elif phone.startswith("39"):
+            c_code, c_name = COUNTRY_MAP["IT"]
+        elif phone.startswith("351"):
+            c_code, c_name = COUNTRY_MAP["PT"]
+        elif phone.startswith("34"):
+            c_code, c_name = COUNTRY_MAP["ES"]
+        elif phone.startswith("52"):
+            c_code, c_name = COUNTRY_MAP["MX"]
+        elif phone.startswith("57"):
+            c_code, c_name = COUNTRY_MAP["CO"]
+        elif phone.startswith("54"):
+            c_code, c_name = COUNTRY_MAP["AR"]
+        elif phone.startswith("56"):
+            c_code, c_name = COUNTRY_MAP["CL"]
+        elif phone.startswith("51"):
+            c_code, c_name = COUNTRY_MAP["PE"]
+        elif phone.startswith("598"):
+            c_code, c_name = COUNTRY_MAP["UY"]
+        elif phone.startswith("593"):
+            c_code, c_name = COUNTRY_MAP["EC"]
+        elif phone.startswith("591"):
+            c_code, c_name = COUNTRY_MAP["BO"]
+        elif phone.startswith("595"):
+            c_code, c_name = COUNTRY_MAP["PY"]
+        elif phone.startswith("58"):
+            c_code, c_name = COUNTRY_MAP["VE"]
+        elif phone.startswith("506"):
+            c_code, c_name = COUNTRY_MAP["CR"]
+        elif phone.startswith("507"):
+            c_code, c_name = COUNTRY_MAP["PA"]
+        elif phone.startswith("502"):
+            c_code, c_name = COUNTRY_MAP["GT"]
+        elif phone.startswith("33"):
+            c_code, c_name = COUNTRY_MAP["FR"]
+        elif phone.startswith("49"):
+            c_code, c_name = COUNTRY_MAP["DE"]
+        elif phone.startswith("44"):
+            c_code, c_name = COUNTRY_MAP["GB"]
+        elif phone.startswith("1") and len(phone) >= 11:
+            c_code, c_name = COUNTRY_MAP["US"]
+        elif phone.startswith("55"):
+            c_code, c_name = COUNTRY_MAP["BR"]
+        elif is_italian_offer:
+            c_code, c_name = COUNTRY_MAP["IT"]
+        elif is_spanish_offer:
+            c_code, c_name = COUNTRY_MAP["MX"]
         else:
-            c_code, c_name = COUNTRY_MAP["IT"] if is_italian_offer else COUNTRY_MAP["BR"]
+            c_code, c_name = COUNTRY_MAP["BR"]
 
         if c_code not in country_counts:
             country_counts[c_code] = {"code": c_code, "name": c_name, "sales": 0, "revenue": 0.0}

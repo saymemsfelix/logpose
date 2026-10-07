@@ -7,6 +7,16 @@ export interface SfyCountryProps {
   hideValues?: boolean;
 }
 
+export function getCountryFlag(code?: string): string {
+  if (!code || code.length !== 2) return "🌐";
+  const upper = code.toUpperCase();
+  try {
+    return String.fromCodePoint(...[...upper].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65));
+  } catch {
+    return "🌐";
+  }
+}
+
 export function SfyCountry({ countries = [], hideValues = false }: SfyCountryProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -172,7 +182,7 @@ export function SfyCountry({ countries = [], hideValues = false }: SfyCountryPro
                   <div className="flex items-center justify-between text-[13px]">
                     <div className="flex items-center gap-2 font-medium text-zinc-900 dark:text-zinc-100">
                       <span className="text-base">
-                        {c.code === "BR" ? "🇧🇷" : c.code === "IT" ? "🇮🇹" : c.code === "CH" ? "🇨🇭" : c.code === "PT" ? "🇵🇹" : c.code === "ES" ? "🇪🇸" : c.code === "US" ? "🇺🇸" : c.code === "FR" ? "🇫🇷" : c.code === "DE" ? "🇩🇪" : c.code === "GB" ? "🇬🇧" : c.code === "MX" ? "🇲🇽" : c.code === "AR" ? "🇦🇷" : "🌐"}
+                        {getCountryFlag(c.code)}
                       </span>
                       <span>{c.name}</span>
                     </div>

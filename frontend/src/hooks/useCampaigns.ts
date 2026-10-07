@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from "react";
+import { toast } from "sonner";
 import { useCachedQuery } from "./useCachedQuery";
 import {
   fetchCampaignsData,
@@ -104,9 +105,25 @@ export function useCampaigns(dateStart: string, dateEnd: string) {
       // Silent reload — table stays visible, no loading spinner
       await silentReload();
       clearOverride(entityId, "status");
+
+      const entityLabel = entityType === "campaign" ? "Campanha" : entityType === "adset" ? "Conjunto" : "Anúncio";
+      if (active) {
+        toast.success(`${entityLabel} ativado com sucesso!`, {
+          description: entityName || undefined,
+          duration: 3000,
+        });
+      } else {
+        toast.info(`${entityLabel} pausado`, {
+          description: entityName || undefined,
+          duration: 3000,
+        });
+      }
     } catch {
       // Revert on error only
       clearOverride(entityId, "status");
+      toast.error("Erro ao alterar status", {
+        description: "Não foi possível sincronizar o status no Meta Ads.",
+      });
     } finally {
       toggleInProgressRef.current.delete(entityId);
     }
@@ -134,8 +151,25 @@ export function useCampaigns(dateStart: string, dateEnd: string) {
       // Silent reload — no loading spinner
       await silentReload();
       clearOverride(entityId, "budget");
+
+      const formatted = new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      }).format(dailyBudget);
+
+      toast.success("Valor da campanha atualizado!", {
+        description: entityName
+          ? `${entityName} alterada para ${formatted}/dia`
+          : `Orçamento atualizado para ${formatted}/dia`,
+        duration: 3500,
+      });
     } catch {
       clearOverride(entityId, "budget");
+      toast.error("Erro ao atualizar orçamento", {
+        description: "Não foi possível atualizar o valor no Meta Ads. Tente novamente.",
+      });
     }
   };
 

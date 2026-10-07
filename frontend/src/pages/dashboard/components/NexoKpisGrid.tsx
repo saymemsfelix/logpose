@@ -60,14 +60,14 @@ export function NexoKpisGrid({
   const approvalRate = kpis.approval_rate ?? (totalOrders > 0 ? (kpis.total_sales / totalOrders) * 100 : 0);
   const avgTicket = kpis.average_ticket || (kpis.total_sales > 0 ? kpis.total_revenue / kpis.total_sales : 0);
 
-  // Métricas completas de Tráfego & Leilão (Padrão UTMify)
+  // Métricas de Tráfego & Leilão
   const totalImpr = kpis.total_impressions ?? 0;
   const totalClicks = kpis.total_clicks ?? 0;
   const cpm = kpis.cpm ?? (totalImpr > 0 && kpis.total_spend > 0 ? (kpis.total_spend / totalImpr) * 1000 : 0);
   const cpc = kpis.cpc ?? (totalClicks > 0 && kpis.total_spend > 0 ? kpis.total_spend / totalClicks : 0);
   const ctr = kpis.ctr ?? (totalImpr > 0 && totalClicks > 0 ? (totalClicks / totalImpr) * 100 : 0);
 
-  // Métricas completas de Funil & Páginas (Padrão UTMify)
+  // Métricas de Funil & Páginas
   const lpv = kpis.pageviews ?? kpis.landing_page_views ?? 0;
   const cpv = kpis.cpv ?? (lpv > 0 && kpis.total_spend > 0 ? kpis.total_spend / lpv : 0);
   const connectRate = kpis.connect_rate ?? (totalClicks > 0 && lpv > 0 ? (lpv / totalClicks) * 100 : 0);
@@ -93,7 +93,6 @@ export function NexoKpisGrid({
     subtext: string | null;
     colorClass: string;
     hasToggle: boolean;
-    badge?: string;
   }
 
   const allCards: CardItem[] = [
@@ -209,7 +208,7 @@ export function NexoKpisGrid({
       hasToggle: true,
     },
 
-    // ─── 2. Tráfego & Leilão (Meta Ads / UTMify) ───
+    // ─── 2. Tráfego & Leilão ───
     {
       id: "spend",
       category: "traffic",
@@ -227,7 +226,6 @@ export function NexoKpisGrid({
       subtext: cpm > 45 ? "Leilão concorrido" : cpm > 0 ? "Custo por 1k impressões" : "Aguardando dados",
       colorClass: cpm > 0 && cpm <= 30 ? "text-emerald-600 dark:text-emerald-400 font-semibold" : cpm > 50 ? "text-rose-600 dark:text-rose-400 font-semibold" : "text-zinc-900 dark:text-zinc-100",
       hasToggle: true,
-      badge: "UTMify",
     },
     {
       id: "cpc",
@@ -237,7 +235,6 @@ export function NexoKpisGrid({
       subtext: cpc > 0 ? "Custo por clique no link" : null,
       colorClass: cpc > 0 && cpc <= 1.80 ? "text-emerald-600 dark:text-emerald-400" : cpc > 3.0 ? "text-rose-600 dark:text-rose-400" : "text-zinc-900 dark:text-zinc-100",
       hasToggle: true,
-      badge: "UTMify",
     },
     {
       id: "ctr",
@@ -247,7 +244,6 @@ export function NexoKpisGrid({
       subtext: ctr >= 2.0 ? "Criativo com alta atração" : ctr > 0 ? "Taxa de cliques / views" : null,
       colorClass: ctr >= 2.0 ? "text-emerald-600 dark:text-emerald-400 font-medium" : ctr > 0 && ctr < 1.0 ? "text-amber-600 dark:text-amber-400" : "text-zinc-900 dark:text-zinc-100",
       hasToggle: true,
-      badge: "UTMify",
     },
     {
       id: "clicks",
@@ -268,7 +264,7 @@ export function NexoKpisGrid({
       hasToggle: false,
     },
 
-    // ─── 3. Funil & Páginas (UTMify Funnel) ───
+    // ─── 3. Funil & Páginas ───
     {
       id: "lpv",
       category: "funnel",
@@ -277,7 +273,6 @@ export function NexoKpisGrid({
       subtext: "Pessoas que abriram a página",
       colorClass: "text-zinc-900 dark:text-zinc-100 font-semibold",
       hasToggle: false,
-      badge: "UTMify",
     },
     {
       id: "cpv",
@@ -287,7 +282,6 @@ export function NexoKpisGrid({
       subtext: cpv > 0 ? "Custo por visualização de LP" : null,
       colorClass: cpv > 0 && cpv <= 2.0 ? "text-emerald-600 dark:text-emerald-400 font-medium" : cpv > 3.5 ? "text-amber-600 dark:text-amber-400" : "text-zinc-900 dark:text-zinc-100",
       hasToggle: true,
-      badge: "UTMify",
     },
     {
       id: "connect_rate",
@@ -297,7 +291,6 @@ export function NexoKpisGrid({
       subtext: connectRate >= 75 ? "Página carrega rápido" : connectRate > 0 && connectRate < 60 ? "Atenção: LP lenta" : "Cliques → Pageviews",
       colorClass: connectRate >= 75 ? "text-emerald-600 dark:text-emerald-400 font-medium" : connectRate > 0 && connectRate < 65 ? "text-rose-600 dark:text-rose-400 font-medium" : "text-zinc-900 dark:text-zinc-100",
       hasToggle: true,
-      badge: "UTMify",
     },
     {
       id: "ic",
@@ -307,7 +300,6 @@ export function NexoKpisGrid({
       subtext: "Cliques no botão de compra",
       colorClass: "text-zinc-900 dark:text-zinc-100 font-medium",
       hasToggle: false,
-      badge: "UTMify",
     },
     {
       id: "cost_per_ic",
@@ -317,7 +309,6 @@ export function NexoKpisGrid({
       subtext: "Gasto / Inícios de checkout",
       colorClass: "text-zinc-900 dark:text-zinc-100",
       hasToggle: true,
-      badge: "UTMify",
     },
     {
       id: "checkout_rate",
@@ -327,7 +318,6 @@ export function NexoKpisGrid({
       subtext: "% de visitantes que vão pro checkout",
       colorClass: checkoutRate >= 12 ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-900 dark:text-zinc-100",
       hasToggle: true,
-      badge: "UTMify",
     },
     {
       id: "checkout_conv",
@@ -337,7 +327,6 @@ export function NexoKpisGrid({
       subtext: "% de checkouts convertidos",
       colorClass: checkoutConvRate >= 20 ? "text-emerald-600 dark:text-emerald-400 font-medium" : checkoutConvRate > 0 && checkoutConvRate < 10 ? "text-rose-600 dark:text-rose-400" : "text-zinc-900 dark:text-zinc-100",
       hasToggle: true,
-      badge: "UTMify",
     },
     {
       id: "cvr_global",
@@ -347,7 +336,6 @@ export function NexoKpisGrid({
       subtext: "Cliques → Vendas Aprovadas",
       colorClass: conversionRate >= 2.0 ? "text-emerald-600 dark:text-emerald-400 font-medium" : "text-zinc-900 dark:text-zinc-100",
       hasToggle: true,
-      badge: "UTMify",
     },
   ];
 
@@ -364,7 +352,7 @@ export function NexoKpisGrid({
 
   return (
     <div className="space-y-3">
-      {/* Barra de Filtro de Abas das Métricas (Padrão UTMify Pro) */}
+      {/* Barra de Filtro de Abas das Métricas (Padrão Ninja Tracker Pro) */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200/80 dark:border-zinc-800/80 pb-2.5">
         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
           <button
@@ -432,10 +420,7 @@ export function NexoKpisGrid({
           </button>
         </div>
 
-        <div className="hidden sm:flex items-center gap-2 text-[11px] text-zinc-400">
-          <span className="inline-block size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span>Métricas completas UTMify integradas</span>
-        </div>
+
       </div>
 
       {/* Grid de Cards Responsivo de Alta Performance */}
@@ -451,11 +436,6 @@ export function NexoKpisGrid({
                       {card.title}
                     </span>
                     <div className="flex items-center gap-1 shrink-0">
-                      {card.badge && (
-                        <span className="text-[9px] font-mono font-medium px-1 py-0.2 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                          {card.badge}
-                        </span>
-                      )}
                       {card.hasToggle && (
                         <button
                           type="button"

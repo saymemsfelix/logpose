@@ -4,11 +4,11 @@ import './index.css'
 import App from './App.tsx'
 import { registerServiceWorker } from './lib/pwa.ts'
 
-// Limpar caches antigos do service worker (LogPose / SFY / v1 -> NINJA'S TRACKER v2)
+// Limpar caches antigos do service worker (manter apenas o mais recente v5)
 if (typeof window !== 'undefined' && 'caches' in window) {
   caches.keys().then((names) => {
     names.forEach((name) => {
-      if (name !== 'ninjastracker-v2') {
+      if (name !== 'ninjastracker-v5') {
         caches.delete(name);
       }
     });

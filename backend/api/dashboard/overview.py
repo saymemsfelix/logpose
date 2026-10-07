@@ -124,11 +124,9 @@ async def dashboard_overview(
                 DailyAdSpend.spend_date <= d_end.date(),
             )
         manual_rows = manual_q.all()
-        # Se não encontrou por data exata (ex: preset customizado ou all), pega o último registro cadastrado como fallback
-        if not manual_rows:
-            latest = db.query(DailyAdSpend).order_by(DailyAdSpend.spend_date.desc()).first()
-            if latest:
-                manual_rows = [latest]
+        # Se preset for 'all' (sem intervalo de datas), busca todas as linhas de DailyAdSpend
+        if not d_start and not d_end:
+            manual_rows = db.query(DailyAdSpend).all()
 
         if manual_rows:
             tot_spend = sum(m.spend for m in manual_rows)

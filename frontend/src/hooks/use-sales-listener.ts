@@ -41,10 +41,10 @@ export function useSalesListener(onNewSale?: () => void) {
     playSaleCashSound();
     vibrateSale();
     try {
-      speakVoice("Venda aprovada! R$ 97,00! Criativo: CBO teste criativo. Parabéns, você está no lucro de R$ 111,00 hoje!");
+      speakVoice("Teste de áudio Ninja Tracker. Alertas sonoros, de voz e notificações ativados com sucesso.");
     } catch {}
-    toast.success("🪙 Ka-ching + Voz testados!", {
-      description: "É assim que vai apitar e falar no seu celular a cada venda e status de lucro!",
+    toast.success("🪙 Alerta de Som e Voz Testados!", {
+      description: "É assim que vai apitar e falar no seu dispositivo a cada venda e status real do dashboard!",
     });
   };
 

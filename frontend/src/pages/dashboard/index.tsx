@@ -87,7 +87,7 @@ export default function DashboardPage() {
         onRefreshDashboard={reload}
       />
 
-      {/* Banner de Ativação Mobile de Alertas Estilo UTMify */}
+      {/* Banner de Ativação Mobile de Alertas Ninja's Tracker */}
       {!notificationsEnabled && !bannerDismissed && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 sm:p-4 rounded-xl border border-blue-500/30 bg-gradient-to-r from-blue-950/60 via-slate-900/80 to-indigo-950/50 text-white shadow-xl shadow-blue-950/20 backdrop-blur-md">
           <div className="flex items-center gap-3 w-full sm:w-auto">

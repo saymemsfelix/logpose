@@ -72,8 +72,7 @@ export function UtmParamsGuide() {
             <div>
               <h4 className="text-sm font-semibold">Parâmetros UTM</h4>
               <p className="text-[11px] text-muted-foreground">
-                Configure no Facebook Ads · Compatível com{" "}
-                <span className="font-semibold text-foreground/70">UTMify</span>
+                Configure no Facebook Ads · Padrão Oficial Ninja Tracker
               </p>
             </div>
             <Button

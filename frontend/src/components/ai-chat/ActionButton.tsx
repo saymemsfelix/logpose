@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import {
   RiArrowUpLine, RiArrowDownLine, RiPauseLine, RiPlayLine, RiMoneyDollarCircleLine,
   RiCheckLine, RiLoader4Line,
@@ -63,9 +64,12 @@ export function ActionButton({ action, onExecute, disabled }: ActionButtonProps)
     try {
       await onExecute(action);
       setStatus("done");
-    } catch {
+      toast.success(`✅ Ação executada com sucesso no Meta Ads!`);
+    } catch (err: any) {
       setStatus("error");
-      setTimeout(() => setStatus("idle"), 2000);
+      const errorMsg = err?.message || "Erro ao conectar com o Meta Ads";
+      toast.error(errorMsg);
+      setTimeout(() => setStatus("idle"), 3500);
     }
   };
 

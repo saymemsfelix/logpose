@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+﻿from typing import Any, Dict, Optional
 import uuid
 import logging
 from integrations.webhook.schemas import StandardizedWebhookEvent
@@ -245,52 +245,112 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
 
         clean_phone = str(phone or "").replace("+", "").replace(" ", "").replace("-", "").strip()
 
+        # Resolução Completa e Confiável de País
         customer_country = "BR"
-        if country_candidate in ["CH", "CHE", "SWITZERLAND", "SUIÇA", "SUICA", "SVIZZERA", "SCHWEIZ", "SUISSE"] or clean_phone.startswith("41") or currency == "CHF":
-            customer_country = "CH"
-        elif country_candidate in ["IT", "ITA", "ITALY", "ITÁLIA", "ITALIA"] or clean_phone.startswith("39") or (currency == "EUR" and not clean_phone.startswith("351") and not clean_phone.startswith("34") and not clean_phone.startswith("41")):
-            customer_country = "IT"
-        elif country_candidate in ["PT", "PRT", "PORTUGAL"] or clean_phone.startswith("351"):
-            customer_country = "PT"
-        elif country_candidate in ["ES", "ESP", "SPAIN", "ESPANHA", "ESPAÑA"] or clean_phone.startswith("34"):
-            customer_country = "ES"
-        elif country_candidate in ["US", "USA", "ESTADOS UNIDOS", "UNITED STATES"] or (clean_phone.startswith("1") and len(clean_phone) >= 11):
-            customer_country = "US"
-        elif country_candidate in ["GB", "GBR", "REINO UNIDO", "UNITED KINGDOM"] or clean_phone.startswith("44"):
-            customer_country = "GB"
-        elif country_candidate in ["FR", "FRA", "FRANÇA", "FRANCE"] or clean_phone.startswith("33"):
-            customer_country = "FR"
-        elif country_candidate in ["DE", "DEU", "ALEMANHA", "GERMANY"] or clean_phone.startswith("49"):
-            customer_country = "DE"
-        elif country_candidate in ["MX", "MEX", "MÉXICO", "MEXICO"] or clean_phone.startswith("52"):
-            customer_country = "MX"
-        elif country_candidate in ["AR", "ARG", "ARGENTINA"] or clean_phone.startswith("54"):
-            customer_country = "AR"
-        elif country_candidate in ["BR", "BRA", "BRASIL", "BRAZIL"] or clean_phone.startswith("55"):
-            customer_country = "BR"
-        elif country_candidate:
-            customer_country = country_candidate[:2]
+        COUNTRY_NAMES_TO_ISO = {
+            "SWITZERLAND": "CH", "SUIÇA": "CH", "SUICA": "CH", "SVIZZERA": "CH", "SCHWEIZ": "CH", "SUISSE": "CH", "CHE": "CH",
+            "ITALY": "IT", "ITÁLIA": "IT", "ITALIA": "IT", "ITA": "IT",
+            "SPAIN": "ES", "ESPANHA": "ES", "ESPAÑA": "ES", "ESP": "ES",
+            "PORTUGAL": "PT", "PRT": "PT",
+            "UNITED STATES": "US", "ESTADOS UNIDOS": "US", "USA": "US",
+            "UNITED KINGDOM": "GB", "REINO UNIDO": "GB", "GBR": "GB",
+            "FRANCE": "FR", "FRANÇA": "FR", "FRA": "FR",
+            "GERMANY": "DE", "ALEMANHA": "DE", "DEU": "DE",
+            "MEXICO": "MX", "MÉXICO": "MX", "MEX": "MX",
+            "COLOMBIA": "CO", "COLÔMBIA": "CO", "COL": "CO",
+            "ARGENTINA": "AR", "ARG": "AR",
+            "CHILE": "CL", "CHL": "CL",
+            "PERU": "PE", "PERÚ": "PE", "PER": "PE",
+            "URUGUAY": "UY", "URUGUAI": "UY", "URY": "UY",
+            "ECUADOR": "EC", "EQUADOR": "EC", "ECU": "EC",
+            "BOLIVIA": "BO", "BOLÍVIA": "BO", "BOL": "BO",
+            "PARAGUAY": "PY", "PARAGUAI": "PY", "PRY": "PY",
+            "VENEZUELA": "VE", "VEN": "VE",
+            "COSTA RICA": "CR", "CRI": "CR",
+            "PANAMA": "PA", "PANAMÁ": "PA", "PAN": "PA",
+            "GUATEMALA": "GT", "GTM": "GT",
+            "DOMINICAN REPUBLIC": "DO", "REPUBLICA DOMINICANA": "DO", "DOM": "DO",
+            "BRAZIL": "BR", "BRASIL": "BR", "BRA": "BR",
+        }
 
-        # Se o produto tem nome italiano (ex: Diagnosi Visive), mas o comprador não é da Suíça ou outro país identificado
-        if customer_country in ["BR", ""] and any(w in prod_name.lower() for w in ["diagnosi", "guida", "visive", "hardware e software", "solda"]):
+        # 1. Se veio do endereço/cadastro da Hotmart, prioridade máxima
+        if country_candidate:
+            if country_candidate in COUNTRY_NAMES_TO_ISO:
+                customer_country = COUNTRY_NAMES_TO_ISO[country_candidate]
+            elif len(country_candidate) == 2:
+                customer_country = country_candidate
+            elif len(country_candidate) == 3 and country_candidate in COUNTRY_NAMES_TO_ISO:
+                customer_country = COUNTRY_NAMES_TO_ISO[country_candidate]
+        # 2. Se não veio no endereço, verifica DDI internacional do telefone
+        elif clean_phone:
             if clean_phone.startswith("41"):
                 customer_country = "CH"
-            else:
+            elif clean_phone.startswith("39"):
                 customer_country = "IT"
+            elif clean_phone.startswith("351"):
+                customer_country = "PT"
+            elif clean_phone.startswith("34"):
+                customer_country = "ES"
+            elif clean_phone.startswith("52"):
+                customer_country = "MX"
+            elif clean_phone.startswith("57"):
+                customer_country = "CO"
+            elif clean_phone.startswith("54"):
+                customer_country = "AR"
+            elif clean_phone.startswith("56"):
+                customer_country = "CL"
+            elif clean_phone.startswith("51"):
+                customer_country = "PE"
+            elif clean_phone.startswith("598"):
+                customer_country = "UY"
+            elif clean_phone.startswith("593"):
+                customer_country = "EC"
+            elif clean_phone.startswith("591"):
+                customer_country = "BO"
+            elif clean_phone.startswith("595"):
+                customer_country = "PY"
+            elif clean_phone.startswith("58"):
+                customer_country = "VE"
+            elif clean_phone.startswith("506"):
+                customer_country = "CR"
+            elif clean_phone.startswith("507"):
+                customer_country = "PA"
+            elif clean_phone.startswith("502"):
+                customer_country = "GT"
+            elif clean_phone.startswith("33"):
+                customer_country = "FR"
+            elif clean_phone.startswith("49"):
+                customer_country = "DE"
+            elif clean_phone.startswith("44"):
+                customer_country = "GB"
+            elif clean_phone.startswith("1") and len(clean_phone) >= 11:
+                customer_country = "US"
+            elif clean_phone.startswith("55"):
+                customer_country = "BR"
+
+        # 3. Se ainda for BR ou não identificado, verifica moeda e nicho do infoproduto
+        prod_lower = prod_name.lower()
+        is_italian = any(w in prod_lower for w in ["diagnosi", "guida", "visive", "hardware e software", "solda", "saldatura", "tornitura", "fresatura", "navigazione", "mappe", "pinout", "multimetro"])
+        is_spanish = any(w in prod_lower for w in ["atlas", "escrituras", "latam", "español", "espanhol"])
+
+        if customer_country in ["BR", ""] and is_italian:
+            customer_country = "CH" if clean_phone.startswith("41") or currency == "CHF" else "IT"
+        elif customer_country in ["BR", ""] and is_spanish:
+            customer_country = "MX" if currency in ["USD", "MXN"] else "ES"
+        elif customer_country in ["BR", ""] and currency == "EUR":
+            customer_country = "IT" if is_italian else "ES"
+        elif customer_country in ["BR", ""] and currency == "CHF":
+            customer_country = "CH"
+
         # Conversão de Moeda Estrangeira (EUR / USD / CHF) para BRL (Moeda Base do Dashboard)
-        # Hotmart envia valores na moeda da transação (ex: 14.21 EUR, 4.60 EUR).
-        # Para refletir com exatidão o faturamento em Reais e confrontar com os gastos de anúncios,
-        # convertemos para BRL usando a taxa oficial de repasse da Hotmart (~5.1865 BRL/EUR).
+        # Hotmart envia valores na moeda da transação (ex: 14.21 EUR, 4.60 EUR, 97.00 EUR).
         if amount > 0:
             if currency == "EUR" or (not currency and customer_country in ["IT", "PT", "ES", "FR", "DE"]):
-                if amount < 50.0:  # Valor em Euro do infoproduto
-                    amount = round(amount * 5.1865, 2)
-            elif currency == "USD" or (not currency and customer_country in ["US"]):
-                if amount < 50.0:
-                    amount = round(amount * 5.45, 2)
+                amount = round(amount * 5.1865, 2)
+            elif currency == "USD" or (not currency and customer_country in ["US", "MX", "CO", "CL", "PE", "EC"]):
+                amount = round(amount * 5.45, 2)
             elif currency == "CHF" or (not currency and customer_country in ["CH"]):
-                if amount < 50.0:
-                    amount = round(amount * 5.50, 2)
+                amount = round(amount * 5.50, 2)
 
         # Extração de código de oferta e URL do checkout Hotmart
         offer_info = purchase.get("offer") or data.get("offer") or {}

@@ -122,7 +122,7 @@ def format_daily_context(data: dict) -> str:
     wk = data["week_kpis"]
 
     sections = [
-        "# DADOS DO DIA ATUAL (Padrão UTMify)",
+        "# DADOS DO DIA ATUAL (Padrão Ninja Tracker)",
         f"Faturamento: R${k['total_revenue']:,.2f} | "
         f"Gastos Ads: R${k['total_spend']:,.2f} | "
         f"Lucro Líquido: R${k['profit']:,.2f} | ROAS: {k['roas']}x | ROI: {k.get('roi', 0)}x | "

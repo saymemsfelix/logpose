@@ -1,4 +1,4 @@
-import os
+﻿import os
 import json
 import logging
 from typing import Any
@@ -97,18 +97,20 @@ def send_sale_push_notification(db: Session, event: StandardizedWebhookEvent) ->
     amount = float(event.amount) if event.amount is not None else 0.0
     formatted_amount = f"R$ {amount:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
-    # 2. Bandeira do País
+def get_country_flag(country_code: str) -> str:
+    """Retorna o emoji da bandeira para qualquer código ISO de 2 letras do mundo."""
+    if not country_code or len(country_code) != 2:
+        return "🌍"
+    code = country_code.upper()
+    try:
+        return chr(0x1F1E6 + ord(code[0]) - ord('A')) + chr(0x1F1E6 + ord(code[1]) - ord('A'))
+    except Exception:
+        return "🌍"
+
+
+    # 2. Bandeira do País (suporte universal para todos os países)
     country = getattr(event, "customer_country", "") or getattr(event, "country", "") or "BR"
-    flags = {
-        "IT": "🇮🇹",
-        "CH": "🇨🇭",
-        "ES": "🇪🇸",
-        "MX": "🇲🇽",
-        "US": "🇺🇸",
-        "PT": "🇵🇹",
-        "BR": "🇧🇷",
-    }
-    flag = flags.get(country.upper(), "🌍")
+    flag = get_country_flag(country)
 
     # 3. Criativo e Produto
     creative = event.utm_content or event.utm_campaign or "Anúncio Direto"
@@ -194,25 +196,30 @@ def send_recovery_push_notification(db: Session, event: StandardizedWebhookEvent
 
 
 def get_today_profit_metrics(db: Session) -> dict:
-    """Calcula faturamento, gasto de ads em tempo real e lucro líquido do dia (timezone São Paulo)."""
-    from database.core.timezone import today_sp, today_sp_str
+    """Calcula faturamento, gasto de ads em tempo real e lucro líquido do dia em perfeita sincronia com o Dashboard (São Paulo)."""
+    from database.core.timezone import now_sp, today_sp, today_sp_str
     from database.models.transaction import Transaction, TransactionStatus
     from database.models.facebook_account import FacebookAccount
     from database.models.daily_ad_spend import DailyAdSpend
     from ai.tools.universal import _run_meta
-    from sqlalchemy import func
 
     try:
+        now = now_sp()
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = now.replace(hour=23, minute=59, second=59, microsecond=999999)
         today_date = today_sp()
         today_str = today_sp_str()
 
-        # 1. Transações reais aprovadas de hoje
+        # 1. Transações reais aprovadas de hoje (mesmo filtro exato de horário do Dashboard)
         txs = db.query(Transaction).filter(
             Transaction.status == TransactionStatus.APPROVED,
-            func.date(Transaction.created_at) == today_date,
+            Transaction.created_at >= today_start,
+            Transaction.created_at <= today_end,
         ).all()
-        today_revenue = sum(float(t.amount or 0.0) for t in txs)
-        today_sales = len(txs)
+        # Filtra transações com valor real > 0 para faturamento
+        valid_sales = [t for t in txs if float(t.amount or 0.0) > 0]
+        today_revenue = sum(float(t.amount or 0.0) for t in valid_sales)
+        today_sales = len(valid_sales)
 
         # 2. Busca gastos reais da Meta Ads ao vivo nas contas ativas
         fb_accounts = db.query(FacebookAccount).filter(FacebookAccount.token_valid.is_(True)).all()
@@ -226,7 +233,7 @@ def get_today_profit_metrics(db: Session) -> dict:
         for acc in fb_accounts:
             try:
                 summary = _run_meta(acc.access_token, acc.account_id, today_str, today_str, "account")
-                if summary:
+                if summary and summary.spend > 0:
                     meta_spend += summary.spend
                     meta_clicks += summary.clicks
                     meta_impr += summary.impressions
@@ -236,7 +243,7 @@ def get_today_profit_metrics(db: Session) -> dict:
             except Exception as meta_err:
                 logger.warning(f"Aviso ao consultar Meta Ads hoje para conta {acc.label}: {meta_err}")
 
-        # 3. Fallback para gasto manual se não houver dados ao vivo de Meta
+        # 3. Fallback estrito para gasto manual apenas do dia de hoje (sem pegar gastos de outros dias)
         manual_row = db.query(DailyAdSpend).filter(DailyAdSpend.spend_date == today_date).first()
         manual_spend = float(manual_row.spend or 0.0) if manual_row else 0.0
         
@@ -334,11 +341,16 @@ def send_daily_profit_push_notification(db: Session, admin_id: int | None = None
         title = f"Hoje deu bom, patrão! 😎 (+{formatted_profit})"
         body = f"Lucro líquido: {formatted_profit} até agora! Faturamento: {formatted_rev} ({sales} vendas) | Gasto: {formatted_spend} (ROAS {roas:.2f}x)."
         tag = "ninja-daily-profit"
-    elif sales > 0 and spend == 0:
-        # Vendas orgânicas sem custos de ads hoje
+    elif sales > 0 and spend == 0 and revenue > 0:
+        # Vendas orgânicas sem custos de ads hoje com faturamento real
         title = f"Hoje deu bom, patrão! 😎 (+{formatted_rev})"
         body = f"Lucro 100% orgânico: {formatted_rev} em {sales} venda(s) hoje (sem gastos com anúncios)!"
         tag = "ninja-organic-sales"
+    elif sales > 0 and revenue == 0:
+        # Pedidos sem valor financeiro (trials ou testes)
+        title = f"Pedidos do Dia: {sales} registrado(s)"
+        body = f"{sales} pedido(s) sem faturamento direto hoje."
+        tag = "ninja-zero-rev-sales"
     else:
         # Sem movimentação no dia (0 gastos e 0 vendas): Não dispara falso alarme de lucro
         logger.info("Resumo de lucro diário não disparado: R$ 0,00 gastos e 0 vendas até o momento.")
@@ -434,9 +446,9 @@ def send_test_push_notification(db: Session, admin_id: int | None = None, test_t
                 title = f"Hoje deu bom, patrão! 😎 (+{formatted_profit})"
                 body = f"Lucro líquido: {formatted_profit} até agora! Faturamento: {formatted_rev} ({sales} vendas) | Gasto: {formatted_spend} (ROAS {roas:.2f}x)."
         else:
-            # Demonstração de alta fidelidade
-            title = "Hoje deu bom, patrão! 😎 (+R$ 230,15)"
-            body = "Demonstração de Lucro Real: R$ 230,15 de lucro líquido | Faturamento: R$ 430,00 (4 vendas) | Gasto: R$ 199,85 (ROAS 2.15x)"
+            # Demonstração honesta de teste sem inventar vendas falsas
+            title = "Hoje deu bom, patrão! 😎 [TESTE]"
+            body = "Teste de Pop-up de Lucro Real: Este pop-up é enviado nos horários programados com o lucro líquido e faturamento real do seu Dashboard."
 
         payload = {
             "title": title,

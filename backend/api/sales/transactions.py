@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+﻿from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime, timedelta
@@ -290,7 +290,7 @@ def get_latest_sales(
             "utm_campaign": t.utm_campaign,
             "utm_source": t.utm_source,
             "ad_name": _extract_ad_name(t.utm_content),
-            "country": getattr(t, "country", None) or ("IT" if any(k in (t.product_name or "").lower() for k in ["diagnosi", "visive", "hardware"]) else "BR"),
+            "country": getattr(t, "country", None) or ("IT" if any(k in (t.product_name or "").lower() for k in ["diagnosi", "visive", "hardware", "software", "pinout", "multimetro", "solda", "saldatura", "tornitura", "fresatura", "navigazione", "mappe"]) else ("ES" if any(k in (t.product_name or "").lower() for k in ["atlas", "escrituras", "latam"]) else "BR")),
             "created_at": t.created_at.isoformat() if t.created_at else None,
         }
         for t in rows

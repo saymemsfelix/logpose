@@ -98,17 +98,26 @@ export function AIChatBubble({
 
   /** Executa ação da AI e envia feedback para continuar conversa */
   const handleExecuteAction = useCallback(async (action: AiAction) => {
-    const result = await executeAiAction(action);
+    try {
+      const result = await executeAiAction(action);
 
-    // Feedback como mensagem do "usuário" para a AI continuar
-    const feedbackText = `✅ Ação executada com sucesso: ${result.message}. Continue a análise.`;
-    const feedbackMsg: ChatMessage = { role: "user", content: feedbackText };
-    setMessages((prev) => {
-      const updated = [...prev, feedbackMsg];
-      // Enviar para AI processar automaticamente
-      sendToAI(feedbackText, updated.slice(0, -1));
-      return updated;
-    });
+      // Feedback como mensagem do "usuário" para a AI continuar
+      const feedbackText = `✅ Ação executada com sucesso no Meta Ads: ${result.message}.`;
+      const feedbackMsg: ChatMessage = { role: "user", content: feedbackText };
+      setMessages((prev) => {
+        const updated = [...prev, feedbackMsg];
+        // Enviar para AI processar automaticamente
+        sendToAI(feedbackText, updated.slice(0, -1));
+        return updated;
+      });
+    } catch (err: any) {
+      const errMsg = err?.message || "Erro ao executar ação no Facebook Ads";
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: `⚠️ Não foi possível aplicar a alteração: ${errMsg}` },
+      ]);
+      throw err;
+    }
   }, [sendToAI]);
 
   const handleClear = () => {

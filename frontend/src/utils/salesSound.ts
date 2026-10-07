@@ -101,7 +101,7 @@ export function vibrateSale() {
 }
 
 /**
- * Sintetizador de Fala (Text-to-Speech) no estilo UTMify.
+ * Sintetizador de Fala (Text-to-Speech) Ninja's Tracker.
  * Fala em voz alta as vendas, criativo e status de lucro.
  */
 export function speakVoice(text: string) {

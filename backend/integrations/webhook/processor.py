@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 from sqlalchemy.orm import Session
 
 from integrations.webhook.schemas import StandardizedWebhookEvent
@@ -158,6 +158,10 @@ def process_webhook_event(db: Session, event: StandardizedWebhookEvent):
         if original_tx:
             amount_to_save = original_tx.amount
     
+    tx_country = event.customer_country or getattr(customer, "country", None) or "BR"
+    if event.customer_country and not getattr(customer, "country", None):
+        customer.country = event.customer_country
+
     new_tx = Transaction(
         external_id=event.external_id,
         platform=event.platform,
@@ -176,7 +180,7 @@ def process_webhook_event(db: Session, event: StandardizedWebhookEvent):
         webhook_slug=event.webhook_slug,
         checkout_url=event.checkout_url,
         order_bumps=event.order_bumps,
-        country=event.customer_country,
+        country=tx_country,
     )
     db.add(new_tx)
     
