@@ -137,14 +137,20 @@ export function useCampaigns(dateStart: string, dateEnd: string) {
     budgetBefore?: number,
     metrics?: Record<string, number>,
   ) => {
-    if (!activeAccountId) return;
+    const targetAccountId = activeAccountId ?? accounts[0]?.id;
+    if (!targetAccountId) {
+      toast.error("Conta de anúncios não selecionada", {
+        description: "Aguarde o carregamento ou selecione uma conta de anúncios no filtro.",
+      });
+      return;
+    }
     setOptimisticOverrides((prev) => ({
       ...prev,
       [entityId]: { ...prev[entityId], budget: dailyBudget },
     }));
     try {
       await updateBudget(
-        activeAccountId, entityId, entityType, dailyBudget,
+        targetAccountId, entityId, entityType, dailyBudget,
         entityName, budgetBefore, metrics,
       );
       invalidateCacheByPrefix("campaigns");
@@ -159,11 +165,11 @@ export function useCampaigns(dateStart: string, dateEnd: string) {
         maximumFractionDigits: 2,
       }).format(dailyBudget);
 
-      toast.success("Valor da campanha atualizado!", {
+      toast.success("Orçamento alterado com sucesso!", {
         description: entityName
-          ? `${entityName} alterada para ${formatted}/dia`
-          : `Orçamento atualizado para ${formatted}/dia`,
-        duration: 3500,
+          ? `${entityName} • Novo valor: ${formatted}/dia`
+          : `Novo orçamento definido para ${formatted}/dia`,
+        duration: 4000,
       });
     } catch {
       clearOverride(entityId, "budget");
