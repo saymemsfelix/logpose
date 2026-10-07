@@ -5,6 +5,7 @@ import {
   RiCheckLine, RiLoader4Line,
 } from "@remixicon/react";
 import type { AiAction } from "@/services/integrations";
+import { invalidateCacheByPrefix } from "@/lib/queryCache";
 
 interface ActionButtonProps {
   action: AiAction;
@@ -64,6 +65,8 @@ export function ActionButton({ action, onExecute, disabled }: ActionButtonProps)
     try {
       await onExecute(action);
       setStatus("done");
+      invalidateCacheByPrefix("campaigns");
+      invalidateCacheByPrefix("dashboard");
       toast.success(`✅ Ação executada com sucesso no Meta Ads!`);
     } catch (err: any) {
       setStatus("error");

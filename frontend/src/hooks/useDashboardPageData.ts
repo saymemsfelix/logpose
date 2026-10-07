@@ -88,7 +88,7 @@ export function useDashboardPageData(
       lines.push(``, `--- TOP CAMPANHAS HOJE ---`);
       for (const camp of data.top_campaigns) {
         lines.push(
-          `• ${camp.name} | Gasto: R$${camp.spend.toFixed(2)} | Fat: R$${camp.revenue.toFixed(2)} | Lucro: R$${camp.profit.toFixed(2)} | Vendas: ${camp.sales} | ROAS: ${camp.roas.toFixed(2)}x | CPM: R$${(camp.cpm ?? 0).toFixed(2)} | CPC: R$${(camp.cpc ?? 0).toFixed(2)} | CTR: ${(camp.ctr ?? 0).toFixed(2)}% | LPV: ${camp.landing_page_views ?? 0} | IC: ${camp.initiate_checkout ?? 0}`
+          `• Campanha: ${camp.name} | Gasto: R$${camp.spend.toFixed(2)} | Fat: R$${camp.revenue.toFixed(2)} | Lucro: R$${camp.profit.toFixed(2)} | Vendas: ${camp.sales} | ROAS: ${camp.roas.toFixed(2)}x | CPM: R$${(camp.cpm ?? 0).toFixed(2)} | CPC: R$${(camp.cpc ?? 0).toFixed(2)} | CTR: ${(camp.ctr ?? 0).toFixed(2)}% | LPV: ${camp.landing_page_views ?? 0} | IC: ${camp.initiate_checkout ?? 0}`
         );
       }
     }

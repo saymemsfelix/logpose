@@ -87,7 +87,7 @@ function buildCampaignsSummary(
   for (const c of campaigns) {
     const roas = c.spend > 0 ? (c.revenue / c.spend).toFixed(2) : "0.00";
     lines.push(
-      `• ${c.name} [${c.status}] | Gasto: R$${c.spend.toFixed(2)} | Fat: R$${c.revenue.toFixed(2)} | Lucro: R$${c.profit.toFixed(2)} | Vendas: ${c.sales} | ROAS: ${roas}x | CPA: R$${c.cpa.toFixed(2)} | Clicks: ${c.clicks} | CTR: ${c.ctr.toFixed(2)}%`
+      `• [ID:${c.id}] ${c.name} [${c.status}] | Budget: R$${(c.budget || 0).toFixed(2)}/dia (${c.budget_type || "CBO"}) | Gasto: R$${c.spend.toFixed(2)} | Fat: R$${c.revenue.toFixed(2)} | Lucro: R$${c.profit.toFixed(2)} | Vendas: ${c.sales} | ROAS: ${roas}x | CPA: R$${c.cpa.toFixed(2)} | Clicks: ${c.clicks} | CTR: ${c.ctr.toFixed(2)}%`
     );
   }
 

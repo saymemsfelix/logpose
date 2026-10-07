@@ -59,8 +59,10 @@ async def execute_ai_action(
         )
 
     effective_current_budget = payload.current_budget
-    if (not effective_current_budget or effective_current_budget <= 0) and meta_current_budget:
+    if meta_current_budget and meta_current_budget > 0:
         effective_current_budget = meta_current_budget
+    elif not effective_current_budget or effective_current_budget <= 0:
+        effective_current_budget = 0.0
 
     action = payload.action
     result_msg = ""
@@ -88,9 +90,12 @@ async def execute_ai_action(
         if action == "increase_budget":
             new_budget = effective_current_budget + payload.value
         elif action == "decrease_budget":
-            new_budget = max(1, effective_current_budget - payload.value)
+            new_budget = max(6.0, effective_current_budget - payload.value)
         else:
             new_budget = payload.value
+
+        # Garantir valor mínimo de R$ 6,00 (mínimo exigido pelo Meta Ads)
+        new_budget = max(6.0, new_budget)
 
         result = await update_budget(
             access_token=fb_account.access_token,

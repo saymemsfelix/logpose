@@ -83,7 +83,7 @@ Para isso, inclua um bloco de código com a linguagem `action` contendo JSON.
 
 Formato:
 ```action
-{"action": "TIPO", "entity_id": "ID", "entity_type": "campaign ou adset", "entity_name": "Nome", "value": VALOR, "current_budget": BUDGET_ATUAL}
+{"action": "TIPO", "entity_id": "ID_REAL_OU_NOME", "entity_type": "campaign ou adset", "entity_name": "Nome da Campanha", "value": VALOR, "current_budget": BUDGET_ATUAL}
 ```
 
 Tipos de ação disponíveis:
@@ -96,30 +96,30 @@ Tipos de ação disponíveis:
 Exemplos:
 1. Escalar campanha:
 ```action
-{"action": "increase_budget", "entity_id": "120211296875700394", "entity_type": "campaign", "entity_name": "VENDAS - BR - Broad", "value": 100, "current_budget": 200}
+{"action": "increase_budget", "entity_id": "VENDAS - BR - Broad", "entity_type": "campaign", "entity_name": "VENDAS - BR - Broad", "value": 100, "current_budget": 200}
 ```
 
 2. Pausar campanha ruim:
 ```action
-{"action": "pause", "entity_id": "120211296875700394", "entity_type": "campaign", "entity_name": "VENDAS - BR - Interesses"}
+{"action": "pause", "entity_id": "VENDAS - BR - Interesses", "entity_type": "campaign", "entity_name": "VENDAS - BR - Interesses"}
 ```
 
-3. Diminuir orçamento:
+3. Ativar campanha pausada:
 ```action
-{"action": "decrease_budget", "entity_id": "120211296875700394", "entity_type": "campaign", "entity_name": "VENDAS - BR - LLA", "value": 50, "current_budget": 300}
+{"action": "activate", "entity_id": "BIDCAP", "entity_type": "campaign", "entity_name": "BIDCAP"}
 ```
 
-REGRAS DOS BOTÕES DE AÇÃO:
-- NUNCA invente ou gere IDs fictícios ou placeholders (ex: NUNCA use "ID_DA_CAMPANHA_xxx" ou "ID_REAL_xxx").
-- NUNCA escreva textos pedindo para o usuário substituir IDs manualmente no chat (ex: jamais escreva "(Substitua ID_DA_CAMPANHA... pelo ID real)").
-- Se você tiver o ID numérico do Facebook nos dados ([ID:xxx]), use esse ID no campo `entity_id`.
-- Se você NÃO tiver o ID numérico explícito nos dados, coloque o NOME EXATO da campanha tanto no campo `entity_id` quanto no `entity_name` (ex: "entity_id": "CBO 1+1+2", "entity_name": "CBO 1+1+2"). O Ninja Tracker possui resolução automática inteligente no Meta Ads e localizará o ID numérico real pelo nome!
+REGRAS CRÍTICAS DOS BOTÕES DE AÇÃO:
+- NUNCA invente números de ID aleatórios!
+- Se você tiver a tag `[ID:123456789]` nos dados da página/campanhas, use esse número no campo `entity_id`.
+- Se você NÃO tiver o ID numérico explícito nos dados, coloque O NOME EXATO DA CAMPANHA no campo `entity_id` (ex: "entity_id": "CBO 1+1+2", "entity_name": "CBO 1+1+2"). O Ninja Tracker possui resolução inteligente automática que localiza e vincula o ID real no Meta Ads pelo nome!
+- NUNCA gere placeholders de texto como "ID_DA_CAMPANHA_xxx" ou "ID_REAL_xxx".
+- NUNCA escreva textos no chat pedindo para o usuário substituir IDs manualmente (ex: JAMAIS escreva "(Substitua ID_DA_CAMPANHA... pelo ID real)"). O botão gerado DEVE ser 100% funcional imediatamente com o clique do usuário!
 - Só sugira ações quando tiver CONFIANÇA baseada nos dados (ROAS ruim → pausar, ROAS bom → escalar).
 - Acompanhe a ação com uma explicação breve do porquê.
-- Pode sugerir múltiplas ações numa mesma resposta.
-- Para budget, o value é o INCREMENTO (quanto aumentar/diminuir), não o valor final. Exemplo: para aumentar R$30 numa campanha de R$120, use "value": 30, "current_budget": 120.
-- Inclua current_budget para ações de budget (pegue do dado da campanha ou orçamento mencionado).
-- entity_type deve ser "campaign" ou "adset" dependendo do nível.
+- Para budget, o value é o INCREMENTO (quanto aumentar/diminuir). Exemplo: para aumentar R$30 numa campanha com orçamento atual de R$120, use "value": 30, "current_budget": 120.
+- Sempre inclua current_budget para ações de budget (pegue do orçamento atual da campanha).
+- entity_type deve ser "campaign" ou "adset".
 """
 
 PAGE_CONTEXT_INSTRUCTION = """IMPORTANTE — DADOS PRÉ-CARREGADOS DA PÁGINA:
