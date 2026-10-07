@@ -137,12 +137,14 @@ def _match_transactions_advanced(
     """
     matched_ids = set()
     matched_txs = []
+    matched_by_id = set()
 
     # 1. Match por ID
     for tx in grouped[id_key].get(str(entity_id), []):
         if tx.id not in matched_ids:
             matched_ids.add(tx.id)
             matched_txs.append(tx)
+            matched_by_id.add(tx.id)
 
     norm_entity = _normalize_key(entity_name)
     entity_tokens = _extract_tokens(entity_name)
@@ -171,7 +173,16 @@ def _match_transactions_advanced(
                     matched_ids.add(tx.id)
                     matched_txs.append(tx)
 
-    no_id_count = sum(1 for tx in matched_txs if not getattr(tx, "utm_campaign", None) or "|" not in getattr(tx, "utm_campaign", ""))
+    # Vendas sem ID são apenas as que não foram vinculadas por ID e não possuem ID decodificável na UTM
+    no_id_count = 0
+    for tx in matched_txs:
+        if tx.id in matched_by_id:
+            continue
+        camp_raw = getattr(tx, "utm_campaign", None) or getattr(tx, "src", None)
+        _, camp_id = parse_utm_campaign(camp_raw)
+        if not camp_id:
+            no_id_count += 1
+
     return matched_txs, no_id_count
 
 
