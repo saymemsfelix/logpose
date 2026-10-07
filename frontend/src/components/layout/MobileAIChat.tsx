@@ -104,7 +104,9 @@ export function MobileAIChat({ isOpen, onClose }: MobileAIChatProps) {
     async (action: AiAction) => {
       try {
         const result = await executeAiAction(action);
-        const feedbackText = `✅ Ação executada com sucesso no Meta Ads: ${result.message}.`;
+        const feedbackText = action.scheduled_at
+          ? `⏰ Ação agendada com sucesso no Ninja AI: ${result.message}`
+          : `✅ Ação executada com sucesso no Meta Ads: ${result.message}.`;
         const feedbackMsg: ChatMessage = { role: "user", content: feedbackText };
         setMessages((prev) => {
           const updated = [...prev, feedbackMsg];
@@ -174,13 +176,16 @@ function MobileAIChatHeader({
           <RiArrowLeftLine className="size-5" />
         </button>
         <div className="flex items-center gap-2.5">
-          <div className="rounded-lg bg-blue-500/10 p-1.5">
-            <RiMessageAi3Line className="size-4 text-blue-500" />
+          <div className="rounded-lg bg-emerald-500/10 p-1.5">
+            <RiMessageAi3Line className="size-4 text-emerald-500" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold">Ninja AI</h3>
+            <h3 className="text-sm font-semibold flex items-center gap-1.5">
+              Ninja AI
+              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-500 font-mono font-medium">PRO</span>
+            </h3>
             <p className="text-[10px] text-muted-foreground">
-              Assistente Inteligente
+              Estrategista de Tráfego & Escala
             </p>
           </div>
         </div>

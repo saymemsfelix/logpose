@@ -16,6 +16,7 @@ from database.models.campaign_marker import CampaignMarker, MarkerType
 from database.models.refund_reason import RefundReason
 from database.models.gemini_account import GeminiAccount
 from database.models.campaign_action import CampaignAction, ActionType
+from database.models.scheduled_campaign_action import ScheduledCampaignAction
 from database.models.stripe_account import StripeAccount
 from database.models.product_alias import ProductAlias
 from database.models.push_subscription import PushSubscription
@@ -50,6 +51,7 @@ __all__ = [
     "GeminiAccount",
     "CampaignAction",
     "ActionType",
+    "ScheduledCampaignAction",
     "StripeAccount",
     "ProductAlias",
     "PushSubscription",

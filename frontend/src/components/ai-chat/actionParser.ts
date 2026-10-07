@@ -44,6 +44,9 @@ export function parseActionBlocks(text: string): {
         entity_name: json.entity_name || json.entity_id,
         value: json.value,
         current_budget: json.current_budget,
+        scheduled_at: json.scheduled_at,
+        schedule_label: json.schedule_label,
+        label: json.label,
       };
       actions.push(action);
       segments.push({ type: "action", content: match[0], action });

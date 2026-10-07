@@ -2,7 +2,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import {
   RiArrowUpLine, RiArrowDownLine, RiPauseLine, RiPlayLine, RiMoneyDollarCircleLine,
-  RiCheckLine, RiLoader4Line,
+  RiCheckLine, RiLoader4Line, RiTimeLine,
 } from "@remixicon/react";
 import type { AiAction } from "@/services/integrations";
 import { invalidateCacheByPrefix } from "@/lib/queryCache";
@@ -57,7 +57,23 @@ export function ActionButton({ action, onExecute, disabled }: ActionButtonProps)
   const config = ACTION_CONFIG[action.action];
   if (!config) return null;
 
-  const Icon = config.icon;
+  const isScheduled = !!action.scheduled_at;
+  const Icon = isScheduled ? RiTimeLine : config.icon;
+
+  const getButtonLabel = () => {
+    if (action.label) return action.label;
+    if (isScheduled) {
+      const scheduleInfo = action.schedule_label ? ` para ${action.schedule_label}` : "";
+      if (action.action === "increase_budget") {
+        return `⏰ Agendar +R$${action.value}${scheduleInfo} → ${action.entity_name}`;
+      }
+      if (action.action === "pause") {
+        return `⏰ Agendar pausa${scheduleInfo} → ${action.entity_name}`;
+      }
+      return `⏰ Agendar${scheduleInfo} → ${action.entity_name}`;
+    }
+    return config.label(action);
+  };
 
   const handleClick = async () => {
     if (status !== "idle") return;
@@ -67,7 +83,13 @@ export function ActionButton({ action, onExecute, disabled }: ActionButtonProps)
       setStatus("done");
       invalidateCacheByPrefix("campaigns");
       invalidateCacheByPrefix("dashboard");
-      toast.success(`✅ Ação executada com sucesso no Meta Ads!`);
+      if (isScheduled) {
+        toast.success(
+          `⏰ Ação agendada com sucesso para ${action.schedule_label || "o horário programado"}!`
+        );
+      } else {
+        toast.success(`✅ Ação executada com sucesso no Meta Ads!`);
+      }
     } catch (err: any) {
       setStatus("error");
       const errorMsg = err?.message || "Erro ao conectar com o Meta Ads";
@@ -77,6 +99,15 @@ export function ActionButton({ action, onExecute, disabled }: ActionButtonProps)
   };
 
   if (status === "done") {
+    if (isScheduled) {
+      return (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 text-blue-600 dark:text-blue-400 text-xs font-medium">
+          <RiTimeLine className="size-3.5" />
+          <span>⏰ Agendado ({action.schedule_label || "horário programado"})</span>
+        </div>
+      );
+    }
+
     return (
       <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-medium">
         <RiCheckLine className="size-3.5" />
@@ -99,7 +130,7 @@ export function ActionButton({ action, onExecute, disabled }: ActionButtonProps)
         <Icon className="size-3.5" />
       )}
       <span className="break-words text-left">
-        {status === "error" ? "❌ Erro, tente novamente" : config.label(action)}
+        {status === "error" ? "❌ Erro, tente novamente" : getButtonLabel()}
       </span>
     </button>
   );

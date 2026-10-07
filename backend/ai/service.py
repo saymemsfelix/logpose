@@ -6,7 +6,7 @@ Suporta page_context para usar dados pré-carregados da página.
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
-from ai.prompt import SYSTEM_PROMPT, PAGE_CONTEXT_INSTRUCTION
+from ai.prompt import get_system_prompt, SYSTEM_PROMPT, PAGE_CONTEXT_INSTRUCTION
 from ai.tools import ALL_TOOLS
 from ai.tools.query_tool import query_business_data
 
@@ -186,7 +186,7 @@ async def _run_with_page_context(
     """Responde usando dados pré-carregados da página (1 call só)."""
     llm = build_llm_no_tools(api_key, model)
 
-    system = f"{SYSTEM_PROMPT}{user_block}\n\n{PAGE_CONTEXT_INSTRUCTION}"
+    system = f"{get_system_prompt()}{user_block}\n\n{PAGE_CONTEXT_INSTRUCTION}"
     if learning_data:
         system += _build_learning_block(learning_data)
     messages = [SystemMessage(content=system)]
@@ -210,7 +210,7 @@ async def _run_with_tools(
     """Executa: LLM decide tool calls → executa tool → LLM responde."""
     llm = build_llm(api_key, model)
 
-    system_prompt = f"{SYSTEM_PROMPT}{user_block}"
+    system_prompt = f"{get_system_prompt()}{user_block}"
     if learning_data:
         system_prompt += _build_learning_block(learning_data)
     messages = [SystemMessage(content=system_prompt)]

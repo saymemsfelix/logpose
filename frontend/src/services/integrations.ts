@@ -290,6 +290,9 @@ export interface AiAction {
   entity_name: string;
   value?: number;
   current_budget?: number;
+  scheduled_at?: string;
+  schedule_label?: string;
+  label?: string;
   metrics?: Record<string, number>;
 }
 

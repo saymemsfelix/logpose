@@ -118,9 +118,37 @@ async def _scheduled_profit_notifier_loop():
             logger.warning(f"Aviso no loop de notificações de lucro: {e}")
         await asyncio.sleep(60)
 
+async def _scheduled_ai_campaign_actions_loop():
+    """Verifica e executa ações de campanhas agendadas pelo Ninja AI (aumento de orçamento, pausas, etc.)."""
+    from database.models.scheduled_campaign_action import ScheduledCampaignAction
+    from api.campaigns.ai_action import execute_single_scheduled_action
+
+    while True:
+        try:
+            db = SessionLocal()
+            try:
+                current_time = now_sp()
+                pending_actions = (
+                    db.query(ScheduledCampaignAction)
+                    .filter(
+                        ScheduledCampaignAction.status == "pending",
+                        ScheduledCampaignAction.scheduled_for <= current_time,
+                    )
+                    .all()
+                )
+                for item in pending_actions:
+                    logger.info(f"⏰ [Ninja AI Scheduler] Disparando ação agendada ID {item.id} para {item.entity_name} ({item.action})")
+                    await execute_single_scheduled_action(db, item)
+            finally:
+                db.close()
+        except Exception as e:
+            logger.warning(f"Aviso no loop de ações agendadas Ninja AI: {e}")
+        await asyncio.sleep(30)
+
 @app.on_event("startup")
 async def start_background_workers():
     asyncio.create_task(_scheduled_profit_notifier_loop())
+    asyncio.create_task(_scheduled_ai_campaign_actions_loop())
 
 # Health check endpoints para o Render (suporta GET e HEAD)
 @app.get("/health")
