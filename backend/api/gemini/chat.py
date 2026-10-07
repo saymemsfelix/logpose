@@ -55,7 +55,7 @@ async def chat_with_ai(
         account = GeminiAccount(
             name="Ninja Gemini Oficial",
             api_key=default_k,
-            model="gemini-2.5-flash-lite",
+            model="gemini-flash-latest",
         )
         db.add(account)
         db.commit()

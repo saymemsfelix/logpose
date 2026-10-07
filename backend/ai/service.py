@@ -72,8 +72,8 @@ def _build_user_instructions_block(ai_instructions: dict | None) -> str:
 import logging
 logger = logging.getLogger(__name__)
 
-FALLBACK_MODEL = "gemini-2.5-flash-lite"
-SECONDARY_FALLBACK = "gemini-2.5-flash"
+FALLBACK_MODEL = "gemini-flash-latest"
+SECONDARY_FALLBACK = "gemini-flash-lite-latest"
 
 
 def _sanitize_model(model: str | None) -> str:
@@ -81,8 +81,8 @@ def _sanitize_model(model: str | None) -> str:
     m = (model or "").strip()
     if not m:
         return FALLBACK_MODEL
-    # Modelos 2.0-flash-lite e 2.5-pro descontinuados pela Google
-    if "2.0" in m or "2.5-pro" in m:
+    # Modelos 1.5, 2.0 e 2.5-flash-lite descontinuados pela Google
+    if "1.5" in m or "2.0" in m or "2.5-flash-lite" in m or "2.5-pro" in m:
         return FALLBACK_MODEL
     if not m.startswith("gemini-"):
         m = f"gemini-{m}"
@@ -139,7 +139,7 @@ async def run_agent(
     clean_model = _sanitize_model(model)
 
     candidates = [clean_model]
-    for m in [FALLBACK_MODEL, SECONDARY_FALLBACK, "gemini-1.5-flash"]:
+    for m in [FALLBACK_MODEL, SECONDARY_FALLBACK, "gemini-2.5-flash"]:
         if m not in candidates:
             candidates.append(m)
 
@@ -166,7 +166,12 @@ async def run_agent(
                 continue
             raise
 
-    raise last_error or Exception("Nenhum modelo Gemini respondeu com sucesso.")
+    if last_error:
+        err_str = str(last_error)
+        if "RESOURCE_EXHAUSTED" in err_str or "429" in err_str or "Quota exceeded" in err_str:
+            raise Exception("Cota diária gratuita do Gemini esgotada no Google AI Studio (limite do plano gratuito). Para uso ilimitado, vincule um cartão de pagamento no Google AI Studio (custa menos de R$ 0,01 por uso) ou cadastre uma nova API Key nas configurações.")
+        raise last_error
+    raise Exception("Nenhum modelo Gemini respondeu com sucesso.")
 
 
 async def _run_with_page_context(
