@@ -30,32 +30,42 @@ def classify_recovery_type(event: StandardizedWebhookEvent) -> RecoveryType:
     """Classifica o tipo de recuperação baseado nos dados do evento."""
     if event.status == TransactionStatus.TRIAL:
         return RecoveryType.TRIAL
-        
+
     orig = (event.original_status or "").lower()
     pm = (event.payment_method or "").lower()
     ps = (event.payment_status or "").lower()
+    country = (event.customer_country or "").strip().upper()
+
+    # Mercados internacionais (Itália, Europa, EUA, etc.): NÃO existe PIX nem Boleto!
+    is_international = country not in ["", "BR"]
 
     if orig in ["lost_cart", "abandoned"]:
         return RecoveryType.ABANDONED_CART
 
-    if pm == "pix":
-        if ps == "refused" or orig == "canceled" or "waiting" in orig or "waiting" in ps:
-            return RecoveryType.UNPAID_PIX
-            
-    if pm in ["credit_card", "creditcard"]:
-        if ps == "refused" or orig == "canceled":
-            return RecoveryType.DECLINED_CARD
+    if pm in ["credit_card", "creditcard", "card", "carta", "cartao"]:
+        return RecoveryType.DECLINED_CARD
 
-    if "waiting" in orig or "waiting" in ps or pm in ["billet", "boleto"]:
+    if pm == "pix":
+        if is_international:
+            return RecoveryType.DECLINED_CARD
         return RecoveryType.UNPAID_PIX
 
-    if ps == "refused" or orig == "canceled":
+    if pm in ["billet", "boleto"]:
+        return RecoveryType.DECLINED_CARD if is_international else RecoveryType.UNPAID_PIX
+
+    if ps in ["refused", "declined", "recusado"] or orig in ["canceled", "cancelled", "cancelado"]:
         return RecoveryType.DECLINED_CARD
+
+    if "waiting" in orig or "waiting" in ps:
+        # Na Itália/Europa, transação aguardando é 3DS banking pendente ou tentativa de cartão
+        if is_international:
+            return RecoveryType.DECLINED_CARD
+        return RecoveryType.UNPAID_PIX
 
     if event.amount == 0:
         return RecoveryType.ABANDONED_CART
-        
-    return RecoveryType.ABANDONED_CART
+
+    return RecoveryType.DECLINED_CARD if is_international else RecoveryType.ABANDONED_CART
 
 
 def create_recovery_if_pending(

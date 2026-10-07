@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { RiCheckboxCircleLine, RiTimeLine, RiWhatsappFill } from "@remixicon/react";
+import { RiCheckboxCircleLine, RiTimeLine, RiWhatsappFill, RiMailSendLine } from "@remixicon/react";
 import type { RecoveryRow, ChannelConfig } from "@/services/recovery";
 import { PaginationBar } from "@/components/PaginationBar";
 
@@ -150,7 +150,9 @@ export function RecoveryTable({
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="text-[10px] font-medium">
-                        {typeLabels[row.type] || row.type}
+                        {country !== "BR" && row.type === "unpaid_pix"
+                          ? "Cartão Recusado"
+                          : typeLabels[row.type] || row.type}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right tabular-nums font-semibold text-white">
@@ -177,11 +179,24 @@ export function RecoveryTable({
                         <button
                           type="button"
                           onClick={() => onOpenWhatsApp(row)}
-                          title="Abrir Recuperação no WhatsApp"
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-[#25D366]/15 hover:bg-[#25D366]/25 border border-[#25D366]/30 text-[#25D366] transition-all hover:scale-[1.02] active:scale-[0.98]"
+                          title={row.customerPhone ? "Abrir Recuperação no WhatsApp" : "Abrir Recuperação por E-mail"}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] ${
+                            row.customerPhone
+                              ? "bg-[#25D366]/15 hover:bg-[#25D366]/25 border border-[#25D366]/30 text-[#25D366]"
+                              : "bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/30 text-sky-400"
+                          }`}
                         >
-                          <RiWhatsappFill className="size-3.5" />
-                          <span>WhatsApp</span>
+                          {row.customerPhone ? (
+                            <>
+                              <RiWhatsappFill className="size-3.5" />
+                              <span>WhatsApp</span>
+                            </>
+                          ) : (
+                            <>
+                              <RiMailSendLine className="size-3.5" />
+                              <span>E-mail</span>
+                            </>
+                          )}
                         </button>
                         {onToggleStatus && (
                           <button

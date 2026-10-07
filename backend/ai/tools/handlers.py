@@ -101,8 +101,15 @@ def _handle_recovery(db, date_start, date_end, **kwargs):
         total_lost += lost
         total_rec += recov
         rate = round(len(rec) / len(items) * 100, 1)
+
+        label_name = names.get(rtype.value, rtype.value)
+        # Se os itens forem de fora do Brasil (Itália, etc.), não é PIX
+        is_intl = any((getattr(r, "customer_country", None) or "").upper() not in ["", "BR"] for r in items)
+        if is_intl and rtype == RecoveryType.UNPAID_PIX:
+            label_name = "Cartão Recusado (Pendência 3DS)"
+
         lines.append(
-            f"{names.get(rtype.value, rtype.value)}: {len(items)} | "
+            f"{label_name}: {len(items)} | "
             f"Valor: R${lost:,.2f} | Recuperado: R${recov:,.2f} ({rate}%)"
         )
     lines.append(

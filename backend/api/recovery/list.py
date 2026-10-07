@@ -284,6 +284,11 @@ def list_recoveries(
 
 def _recovery_to_row(r: Recovery, channel: str, phone: str | None = None, country: str | None = None) -> dict:
     resolved_amount = _resolve_amount(r.amount, r.product_name)
+    resolved_country = country or getattr(r, "customer_country", None) or None
+    raw_type = r.type.value if r.type else "abandoned_cart"
+    # Se o cliente for internacional ou produto italiano, não existe PIX
+    if (resolved_country or "").strip().upper() not in ["", "BR"] and raw_type == "unpaid_pix":
+        raw_type = "declined_card"
     return {
         "id": f"r-{r.id}",
         "rawId": r.id,
@@ -291,9 +296,9 @@ def _recovery_to_row(r: Recovery, channel: str, phone: str | None = None, countr
         "customerName": r.customer_name or "—",
         "customerEmail": r.customer_email or "—",
         "customerPhone": phone or getattr(r, "customer_phone", None) or None,
-        "customerCountry": country or getattr(r, "customer_country", None) or None,
+        "customerCountry": resolved_country,
         "product": r.product_name or "—",
-        "type": r.type.value if r.type else "abandoned_cart",
+        "type": raw_type,
         "amount": resolved_amount,
         "recovered": bool(r.recovered),
         "channel": channel,
