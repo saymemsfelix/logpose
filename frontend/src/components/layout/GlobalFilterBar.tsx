@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { DashboardFilters, DatePreset } from "@/hooks/use-dashboard";
 import type { CompanySettings } from "@/types/company";
@@ -178,13 +179,27 @@ export function GlobalFilterBar({
           <Switch
             id="opcost-toggle"
             checked={filters.opCostsEnabled}
-            onCheckedChange={(v) => onFiltersChange({ ...filters, opCostsEnabled: v })}
+            onCheckedChange={(v) => {
+              onFiltersChange({ ...filters, opCostsEnabled: v });
+              if (v && opCostsTotal === 0) {
+                toast.info("Nenhum custo operacional cadastrado", {
+                  description: "Cadastre seus custos fixos na aba Empresa (ferramentas, equipe, etc.) para deduzi-los do Lucro Real.",
+                  duration: 5000,
+                });
+              }
+            }}
             className="scale-90"
           />
-          {filters.opCostsEnabled && opCostsTotal > 0 && (
-            <span className="text-xs font-semibold text-destructive tabular-nums">
-              -R${opCostsTotal.toLocaleString("pt-BR")}
-            </span>
+          {filters.opCostsEnabled && (
+            opCostsTotal > 0 ? (
+              <span className="text-xs font-semibold text-destructive tabular-nums">
+                -R${opCostsTotal.toLocaleString("pt-BR")}
+              </span>
+            ) : (
+              <span className="text-[11px] font-medium text-muted-foreground/80 tabular-nums" title="Cadastre seus custos fixos na aba Empresa">
+                (R$ 0)
+              </span>
+            )
           )}
         </div>
         {activeCount > 0 && (
