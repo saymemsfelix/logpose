@@ -16,7 +16,7 @@ interface PixelItem {
 
 export function PixelsTab() {
   const [allowedDomains, setAllowedDomains] = useState(() => {
-    return localStorage.getItem("sfy_allowed_domains") || localStorage.getItem("logpose_allowed_domains") || "novidadesonline.net";
+    return localStorage.getItem("ninja_allowed_domains") || localStorage.getItem("sfy_allowed_domains") || "novidadesonline.net";
   });
   const [copiedScript, setCopiedScript] = useState(false);
 

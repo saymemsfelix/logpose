@@ -46,12 +46,10 @@ def classify_recovery_type(event: StandardizedWebhookEvent) -> RecoveryType:
         return RecoveryType.DECLINED_CARD
 
     if pm == "pix":
-        if is_international:
-            return RecoveryType.DECLINED_CARD
         return RecoveryType.UNPAID_PIX
 
     if pm in ["billet", "boleto"]:
-        return RecoveryType.DECLINED_CARD if is_international else RecoveryType.UNPAID_PIX
+        return RecoveryType.UNPAID_PIX
 
     if ps in ["refused", "declined", "recusado"] or orig in ["canceled", "cancelled", "cancelado"]:
         return RecoveryType.DECLINED_CARD

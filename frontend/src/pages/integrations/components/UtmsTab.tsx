@@ -155,7 +155,7 @@ export function UtmsTab() {
   const hotmartEp = endpoints.find((e) => e.platform.toLowerCase() === "hotmart");
   const origin = typeof window !== "undefined" && window.location.origin
     ? window.location.origin
-    : "https://logpose-1zuu.onrender.com";
+    : "";
   const hotmartWebhookUrl = hotmartEp
     ? `${origin}/api/webhook/hotmart/${hotmartEp.slug}`
     : `${origin}/api/webhook/hotmart/uq_GVXf_vUiq9m0wAyUeb4SND0EjmQl8`;

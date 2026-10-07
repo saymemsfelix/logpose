@@ -286,9 +286,6 @@ def _recovery_to_row(r: Recovery, channel: str, phone: str | None = None, countr
     resolved_amount = _resolve_amount(r.amount, r.product_name)
     resolved_country = country or getattr(r, "customer_country", None) or None
     raw_type = r.type.value if r.type else "abandoned_cart"
-    # Se o cliente for internacional ou produto italiano, não existe PIX
-    if (resolved_country or "").strip().upper() not in ["", "BR"] and raw_type == "unpaid_pix":
-        raw_type = "declined_card"
     return {
         "id": f"r-{r.id}",
         "rawId": r.id,
