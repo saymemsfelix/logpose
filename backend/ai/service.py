@@ -139,10 +139,9 @@ async def run_agent(
     clean_model = _sanitize_model(model)
 
     candidates = [clean_model]
-    if FALLBACK_MODEL not in candidates:
-        candidates.append(FALLBACK_MODEL)
-    if SECONDARY_FALLBACK not in candidates:
-        candidates.append(SECONDARY_FALLBACK)
+    for m in [FALLBACK_MODEL, SECONDARY_FALLBACK, "gemini-1.5-flash"]:
+        if m not in candidates:
+            candidates.append(m)
 
     last_error = None
     for cand in candidates:
@@ -155,8 +154,15 @@ async def run_agent(
         except Exception as exc:
             err_msg = str(exc)
             last_error = exc
-            if "NOT_FOUND" in err_msg or "404" in err_msg or "no longer available" in err_msg:
-                logger.warning(f"Modelo {cand} falhou com 404/NOT_FOUND. Tentando próximo modelo...")
+            if (
+                "NOT_FOUND" in err_msg
+                or "404" in err_msg
+                or "no longer available" in err_msg
+                or "RESOURCE_EXHAUSTED" in err_msg
+                or "429" in err_msg
+                or "Quota exceeded" in err_msg
+            ):
+                logger.warning(f"Modelo {cand} indisponível ou quota excedida. Tentando próximo modelo...")
                 continue
             raise
 
