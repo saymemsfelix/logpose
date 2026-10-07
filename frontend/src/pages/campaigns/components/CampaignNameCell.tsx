@@ -83,11 +83,19 @@ export function CampaignNameCell({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="inline-flex items-center gap-0.5 text-[10px] text-[var(--color-warning)] cursor-help">
-                    <RiQuestionLine className="size-3" />
+                    <RiQuestionLine className="size-3.5" />
                   </span>
                 </TooltipTrigger>
-                <TooltipContent>
-                  <p>{noIdSales} venda(s) sem ID — rastreadas apenas pelo nome</p>
+                <TooltipContent className="max-w-xs space-y-1.5 p-3 text-left">
+                  <p className="font-semibold text-amber-500 text-xs flex items-center gap-1">
+                    ✓ {noIdSales} venda(s) rastreada(s) pelo nome
+                  </p>
+                  <p className="text-[11px] text-zinc-300 leading-relaxed">
+                    Essas vendas foram atribuídas com sucesso a esta campanha pelo nome. Para um rastreamento 100% blindado por ID (que não quebra mesmo se renomear a campanha), use nos Parâmetros de URL do Meta Ads:
+                  </p>
+                  <code className="block rounded bg-zinc-900 px-2 py-1 font-mono text-[10px] text-cyan-400 select-all break-all border border-zinc-800">
+                    utm_campaign={"{{"}campaign.name{"}}"}|{"{{"}campaign.id{"}}"}
+                  </code>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
