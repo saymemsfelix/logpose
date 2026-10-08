@@ -128,6 +128,158 @@ function cleanCustomerPhone(
   return digits;
 }
 
+// Catálogo mestre dos infoprodutos e suas URLs de checkout/oferta no novidadesonline.net
+export interface ProductCatalogItem {
+  id: string;
+  displayName: string;
+  matchPatterns: string[];
+  offerUrl: string;
+}
+
+export const PRODUCT_OFFER_CATALOG: ProductCatalogItem[] = [
+  {
+    id: "120_diagnosi_hardware_software",
+    displayName: "120 Diagnosi Visive per Hardware e Software",
+    matchPatterns: ["120 diagnosi", "diagnosi visive", "hardware e software", "diagnosi", "hardware"],
+    offerUrl: "https://novidadesonline.net/120DiagnosiVisiveHardwareeSoftware/",
+  },
+  {
+    id: "patologie_della_pittura",
+    displayName: "Patologie della Pittura",
+    matchPatterns: ["patologie della pittura", "patologie", "pittura", "patologias da pintura", "pintura"],
+    offerUrl: "https://novidadesonline.net/patologie-della-pittura/",
+  },
+  {
+    id: "100_guide_tornitura_fresatura",
+    displayName: "100 Guide Parametri Tornitura e Fresatura",
+    matchPatterns: ["tornitura", "fresatura", "parametri tornitura", "100 guide"],
+    offerUrl: "https://novidadesonline.net/100GuideParametriTornituraeFresaturaItaliano/",
+  },
+  {
+    id: "100_mappe_navigazione_aerea",
+    displayName: "100 Mappe Visive di Navigazione Aerea",
+    matchPatterns: ["navigazione aerea", "mappe visive", "navigazione", "aerea"],
+    offerUrl: "https://novidadesonline.net/100MappeVisivediNavigazioneAereaItaliano/",
+  },
+  {
+    id: "impianti_idrosanitari",
+    displayName: "Impianti Idrosanitari",
+    matchPatterns: ["impianti idrosanitari", "idrosanitari", "idrosanitario", "impianti"],
+    offerUrl: "https://novidadesonline.net/ImpiantiIdrosanitariItaliano/",
+  },
+  {
+    id: "impermepro_visivo",
+    displayName: "ImpermePro Visivo",
+    matchPatterns: ["impermepro", "impermeabilizzazione", "imperme", "impermeabili"],
+    offerUrl: "https://novidadesonline.net/ImpermeProVisivoItaliano/",
+  },
+  {
+    id: "prontuario_visivo_saldatura",
+    displayName: "Prontuario Visivo della Saldatura",
+    matchPatterns: ["saldatura", "prontuario", "saldature", "visivo della saldatura"],
+    offerUrl: "https://novidadesonline.net/ProntuarioVisivodellaSaldatura/",
+  },
+  {
+    id: "atlas_escrituras_latam",
+    displayName: "Atlas de las Escrituras Latam",
+    matchPatterns: ["atlas", "escrituras", "atlas de las escrituras", "latam"],
+    offerUrl: "https://novidadesonline.net/AtlasdelasEscriturasLatam/",
+  },
+];
+
+export function findCatalogItemForProduct(productName?: string | null): ProductCatalogItem | undefined {
+  if (!productName) return undefined;
+  const pNorm = productName
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  return PRODUCT_OFFER_CATALOG.find((item) =>
+    item.matchPatterns.some((pattern) => {
+      const patNorm = pattern
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+      return pNorm.includes(patNorm);
+    })
+  );
+}
+
+export function getProductStorageKey(productName?: string | null): string {
+  if (!productName) return "default_product";
+  const catalogItem = findCatalogItemForProduct(productName);
+  if (catalogItem) return catalogItem.id;
+
+  return (
+    productName
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]/g, "_")
+      .replace(/_+/g, "_")
+      .trim() || "default_product"
+  );
+}
+
+export type LinkResolutionSource =
+  | "catalog_auto"
+  | "custom_saved"
+  | "lead_checkout_url"
+  | "global_fallback"
+  | "empty";
+
+export interface LinkResolutionResult {
+  link: string;
+  source: LinkResolutionSource;
+  matchedCatalogItem?: ProductCatalogItem;
+}
+
+export function resolveDefaultProductLink(lead: RecoveryRow | null): LinkResolutionResult {
+  if (!lead) return { link: "", source: "empty" };
+
+  const storageKey = getProductStorageKey(lead.product);
+  const catalogItem = findCatalogItemForProduct(lead.product);
+
+  // 1. Link personalizado salvo previamente pelo usuário para este produto específico
+  const customSaved = localStorage.getItem(`ninja_prod_link_${storageKey}`);
+  if (customSaved && customSaved.trim().length > 0) {
+    return {
+      link: customSaved.trim(),
+      source: "custom_saved",
+      matchedCatalogItem: catalogItem,
+    };
+  }
+
+  // 2. Link direto de checkout vindo do webhook / lead
+  if (lead.checkoutUrl && lead.checkoutUrl.startsWith("http")) {
+    return {
+      link: lead.checkoutUrl.trim(),
+      source: "lead_checkout_url",
+      matchedCatalogItem: catalogItem,
+    };
+  }
+
+  // 3. Link oficial do catálogo reconhecido
+  if (catalogItem) {
+    return {
+      link: catalogItem.offerUrl,
+      source: "catalog_auto",
+      matchedCatalogItem: catalogItem,
+    };
+  }
+
+  // 4. Fallback global anterior
+  const globalFallback = localStorage.getItem("sfy_recovery_checkout_link") || "";
+  if (globalFallback && globalFallback.trim().length > 0) {
+    return {
+      link: globalFallback.trim(),
+      source: "global_fallback",
+    };
+  }
+
+  return { link: "", source: "empty" };
+}
+
 function generateWhatsAppCopy(
   lang: RecoveryLanguage,
   strategy: RecoveryStrategy,
@@ -138,48 +290,57 @@ function generateWhatsAppCopy(
   const firstName = (lead.customerName || "Cliente").trim().split(" ")[0];
   const product = (lead.product || "nosso treinamento").replace(/\.\.\.$/, "");
   const type = lead.type || "declined_card";
-  const linkText = checkoutLink ? `\n\n👉 Puoi completare qui in sicurezza: ${checkoutLink}` : "";
+  const linkToUse = checkoutLink?.trim() || "";
+  const itLinkCta = linkToUse
+    ? `\n\n👉 Se desideri completare subito il tuo acquisto e accedere al materiale, ecco il link sicuro:\n${linkToUse}`
+    : "";
+  const esLinkCta = linkToUse
+    ? `\n\n👉 Si deseas completar tu compra ahora y liberar tu acceso inmediato, aquí tienes el enlace seguro:\n${linkToUse}`
+    : "";
+  const ptLinkCta = linkToUse
+    ? `\n\n👉 Se quiser completar sua compra e liberar seu acesso agora, segue o link seguro:\n${linkToUse}`
+    : "";
 
   if (lang === "it") {
     if (strategy === "support") {
       if (type === "declined_card" || type === "unpaid_pix") {
-        return `Ciao ${firstName}! 👋 Ti contatto dal supporto di *${product}*.\n\nHo visto che il tuo pagamento con carta non è andato a buon fine. Nella maggior parte dei casi in Italia si tratta solo della verifica *3D Secure* da autorizzare nell'app della tua banca (PostePay, Intesa, UniCredit, ecc.).\n\nVuoi che verifichiamo insieme o preferisci provare un metodo alternativo (come un'altra carta o PayPal)? 🚀${linkText}`;
+        return `Ciao ${firstName}! 👋 Ti contatto dal supporto di *${product}*.\n\nHo visto che il tuo pagamento con carta non è andato a buon fine. Nella maggior parte dei casi in Italia si tratta solo della verifica *3D Secure* da autorizzare nell'app della tua banca (PostePay, Intesa, UniCredit, ecc.).${itLinkCta}\n\nVuoi che verifichiamo insieme o preferisci provare un metodo alternativo (come un'altra carta o PayPal)? 🚀\n\nQualsiasi dubbio sono a tua completa disposizione!\n_Equipe Info Courses_`;
       }
-      return `Ciao ${firstName}! 👋 Ti scrivo dal team di *${product}*.\n\nHo notato che avevi iniziato la registrazione ma l'ordine non è andato a buon fine. Hai riscontrato qualche difficoltà tecnica o hai bisogno di maggiori informazioni sul programma?\n\nSono qui per darti una mano ad accedere subito! 🚀${linkText}`;
+      return `Ciao ${firstName}! 👋 Ti scrivo dal team di *${product}*.\n\nHo notato che avevi iniziato l'iscrizione ma l'ordine è rimasto in sospeso. Hai riscontrato qualche difficoltà tecnica o hai dubbi sul programma?${itLinkCta}\n\nPer qualsiasi domanda sono a tua completa disposizione: ti basta rispondermi qui! 🚀\n\n_Equipe Info Courses_`;
     }
     if (strategy === "discount") {
-      return `Ciao ${firstName}! 🎉 So quanto ci tenevi ad accedere a *${product}*.\n\nPer venirti incontro oggi, ho fatto abilitare un coupon esclusivo con il *10% DI SCONTO* valido solo per le prossime 2 ore!\n\nPosso mandarti il link riservato con lo sconto già applicato? 🏷️${linkText}`;
+      return `Ciao ${firstName}! 🎉 So quanto ci tenevi ad accedere a *${product}*.\n\nPer venirti incontro oggi, ho fatto abilitare un coupon esclusivo con il *10% DI SCONTO* valido solo per le prossime 2 ore!${itLinkCta}\n\nApprofitta dell'offerta riservata prima della chiusura. Per qualsiasi dubbio sono qui a tua disposizione! 🏷️\n\n_Equipe Info Courses_`;
     }
     if (strategy === "urgency") {
-      return `Ciao ${firstName}, ti scrivo rapidamente: il tuo posto riservato a tariffa promozionale per *${product}* sta per scadere e verrà sbloccato a breve per la lista d'attesa.\n\nVolevo darti la precedenza prima che il prezzo torni regolare. Vuoi che ti riservi il link prima della chiusura? ⚡${linkText}`;
+      return `Ciao ${firstName}, ti scrivo rapidamente: la tua prenotazione a tariffa promozionale per *${product}* sta per scadere e il posto verrà presto sbloccato per la lista d'attesa.${itLinkCta}\n\nVolevo darti la precedenza prima che il preço torni regolare. Se hai bisogno di supporto, rispondimi subito! ⚡\n\n_Equipe Info Courses_`;
     }
   }
 
   if (lang === "es") {
     if (strategy === "support") {
-      return `¡Hola ${firstName}! 👋 Te escribo del soporte de *${product}*.\n\nNoté que el banco rechazó el intento de pago con tu tarjeta. Por lo general sucede por una verificación de seguridad preventiva en compras en línea.\n\n¿Deseas que te ayude a probar con otro método para asegurar tu acceso de inmediato? 🚀${linkText}`;
+      return `¡Hola ${firstName}! 👋 Te escribo del soporte de *${product}*.\n\nNoté que iniciaste tu registro pero la orden quedó pendiente. ¿Tuviste algún inconveniente técnico en el checkout o alguna duda sobre el programa?${esLinkCta}\n\n¡Cualquier duda estoy a tu completa disposición por aquí! 🚀\n\n_Equipo Info Courses_`;
     }
     if (strategy === "discount") {
-      return `¡Hola ${firstName}! 🎉 Sé lo importante que es para ti tener acceso a *${product}*.\n\nPara que no te quedes fuera hoy, conseguí un *CUPÓN EXCLUSIVO DEL 10% DE DESCUENTO* válido únicamente por las próximas 2 horas. 🏷️${linkText}`;
+      return `¡Hola ${firstName}! 🎉 Sé lo importante que es para ti tener acceso a *${product}*.\n\nPara que no te quedes fuera hoy, conseguí un *CUPÓN EXCLUSIVO DEL 10% DE DESCUENTO* válido únicamente por las próximas 2 horas.${esLinkCta}\n\n¡Cualquier duda estoy a la orden! 🏷️\n\n_Equipo Info Courses_`;
     }
     if (strategy === "urgency") {
-      return `Hola ${firstName}, te escribo con urgencia: tu reserva para *${product}* con el precio promocional está a punto de expirar en el sistema.\n\n¿Deseas asegurar tu lugar ahora mismo? ⚡${linkText}`;
+      return `Hola ${firstName}, te escribo con urgencia: tu reserva para *${product}* con el precio promocional está a punto de expirar en el sistema.${esLinkCta}\n\n¿Deseas asegurar tu lugar ahora mismo? ⚡\n\n_Equipo Info Courses_`;
     }
   }
 
   if (lang === "pt") {
     if (strategy === "support") {
-      return `Olá, ${firstName}! 👋 Vi que sua compra do *${product}* não foi autorizada pelo seu cartão. Geralmente isso ocorre por uma trava de segurança temporária no app do seu banco ou limite online.\n\nQuer que eu te gere um link alternativo para liberar seu acesso agora mesmo? 🚀${linkText}`;
+      return `Olá, ${firstName}! 👋 Vi que você iniciou seu pedido do *${product}*, mas ele ficou pendente. Teve alguma dificuldade técnica no checkout?${ptLinkCta}\n\nQualquer dúvida estou à sua inteira disposição, só me responder aqui! 🚀\n\n_Equipe Info Courses_`;
     }
     if (strategy === "discount") {
-      return `Oi, ${firstName}! 🎉 Separei um *CUPOM EXCLUSIVO DE 10% OFF* válido pelas próximas 2 horas para você garantir seu acesso ao *${product}*! 🏷️${linkText}`;
+      return `Oi, ${firstName}! 🎉 Separei um *CUPOM EXCLUSIVO DE 10% OFF* válido pelas próximas 2 horas para você garantir seu acesso ao *${product}*!${ptLinkCta}\n\nQualquer dúvida estou à disposição! 🏷️\n\n_Equipe Info Courses_`;
     }
     if (strategy === "urgency") {
-      return `Olá ${firstName}, sua vaga promocional para o *${product}* expira em instantes e voltará ao valor normal. Posso te enviar o link para garantir sua vaga antes do encerramento? ⚡${linkText}`;
+      return `Olá ${firstName}, sua vaga promocional para o *${product}* expira em instantes e voltará ao valor normal.${ptLinkCta}\n\nPosso te ajudar a garantir sua vaga antes do encerramento? ⚡\n\n_Equipe Info Courses_`;
     }
   }
 
-  return `Hallo ${firstName}! 👋 Deine Bestellung für ${product} wurde von der Bank abgebrochen. Bitte prüfe deine 3D-Secure App oder nutze diesen Link: ${checkoutLink || ""}`;
+  return `Hallo ${firstName}! 👋 Deine Bestellung für ${product} wurde noch nicht abgeschlossen. Hier ist dein sicherer Link: ${checkoutLink || ""}\n\nTeam Info Courses`;
 }
 
 function generateEmailCopy(
@@ -192,47 +353,122 @@ function generateEmailCopy(
   const firstName = (lead.customerName || "Cliente").trim().split(" ")[0];
   const product = (lead.product || "nosso treinamento").replace(/\.\.\.$/, "");
   const type = lead.type || "declined_card";
-  const linkSection = checkoutLink
-    ? `\n\n👉 Clicca qui per completare il tuo ordine in sicurezza:\n${checkoutLink}`
-    : "";
+  const linkToUse = checkoutLink?.trim() || "";
 
   if (lang === "it") {
     if (strategy === "support") {
       if (type === "declined_card" || type === "unpaid_pix") {
         return {
           subject: `⚠️ Problema con il tuo ordine per ${product} (Verifica Carta / 3D Secure)`,
-          body: `Gentile ${firstName},\n\nTi contattiamo dal supporto clienti di ${product}.\n\nAbbiamo notato che il tuo recente tentativo di pagamento con carta di credito/debito non è andato a buon fine.\n\nNella maggior parte dei casi in Italia, questo accade per uno dei seguenti motivi:\n1. Mancata autorizzazione della notifica 3D Secure nell'app della tua banca (PostePay, Intesa Sanpaolo, UniCredit, BNL, ecc.).\n2. Limite temporaneo per acquisti online sulla carta.\n\nIl tuo ordine è attualmente riservato a tuo nome.${linkSection}\n\nPuoi riprovare con la stessa carta autorizzando l'app, oppure provare con un'altra carta o PayPal.\n\nSe hai bisogno di qualsiasi assistenza, rispondi semplicemente a questa email e saremo felici di aiutarti!\n\nCordiali saluti,\nAssistenza Clienti - ${product}`,
+          body: `Gentile ${firstName},\n\nTi contattiamo dal supporto clienti di ${product}.\n\nAbbiamo notato che il tuo recente tentativo di pagamento con carta di credito/debito non è andato a buon fine.\n\nNella maggior parte dei casi in Italia, questo accade per uno dei seguenti motivi:\n1. Mancata autorizzazione della notifica 3D Secure nell'app della tua banca (PostePay, Intesa Sanpaolo, UniCredit, BNL, ecc.).\n2. Limite temporaneo per acquisti online sulla carta.\n\nIl tuo ordine è attualmente riservato a tuo nome.${
+            linkToUse
+              ? `\n\nSe desideri completare subito il tuo acquisto e accedere al materiale, trovi qui il link sicuro:\n👉 ${linkToUse}`
+              : ""
+          }\n\nPuoi riprovare con la stessa carta autorizzando l'app, oppure provare con un'altra carta o PayPal.\n\nSe hai bisogno di qualsiasi assistenza o hai domande, siamo a tua completa disposizione: ti basta rispondere direttamente a questa email.\n\nUn cordiale saluto,\nTeam ${product}\nEquipe Info Courses`,
         };
       }
       return {
         subject: `Hai completato la registrazione per ${product}?`,
-        body: `Gentile ${firstName},\n\nAbbiamo notato che hai iniziato l'iscrizione a ${product}, ma l'ordine è rimasto in sospeso.\n\nCi tenevamo a verificare se hai riscontrato qualche difficoltà tecnica durante il checkout o se hai domande sul programma.${linkSection}\n\nSiamo a tua completa disposizione: ti basta rispondere a questa email.\n\nUn cordiale saluto,\nTeam ${product}`,
+        body: `Gentile ${firstName},\n\nAbbiamo notato che hai iniziato l'iscrizione a ${product}, ma l'ordine è rimasto in sospeso.\n\nCi tenevamo a verificare se hai riscontrato qualche difficoltà tecnica durante il checkout o se hai domande sul programma.${
+          linkToUse
+            ? `\n\nSe desideri completare subito il tuo acquisto e accedere al materiale, trovi qui il link sicuro:\n👉 ${linkToUse}`
+            : ""
+        }\n\nSiamo a tua completa disposizione per qualsiasi dubbio o chiarimento: ti basta rispondere a questa email.\n\nUn cordiale saluto,\nTeam ${product}\nEquipe Info Courses`,
       };
     }
     if (strategy === "discount") {
       return {
         subject: `🎉 Buono Sconto Esclusivo del 10% per ${product}`,
-        body: `Ciao ${firstName},\n\nSappiamo quanto desideravi accedere a ${product}.\n\nPer venirti incontro oggi, abbiamo fatto abilitare dal sistema un COUPON ESCLUSIVO con il 10% DI SCONTO, valido esclusivamente per le prossime 2 ore.${linkSection}\n\nNon lasciarti scappare questa opportunità riservata!\n\nA presto,\nTeam ${product}`,
+        body: `Ciao ${firstName},\n\nSappiamo quanto desideravi accedere a ${product}.\n\nPer venirti incontro oggi, abbiamo fatto abilitare dal sistema un COUPON ESCLUSIVO con il 10% DI SCONTO, valido esclusivamente per le prossime 2 ore.${
+          linkToUse
+            ? `\n\nPuoi approfittare dell'offerta e completare il tuo ordine direttamente qui:\n👉 ${linkToUse}`
+            : ""
+        }\n\nNon lasciarti scappare questa opportunità riservata! Per qualsiasi dubbio o necessità, siamo a tua completa disposizione: rispondi pure a questa email.\n\nUn cordiale saluto,\nTeam ${product}\nEquipe Info Courses`,
       };
     }
     if (strategy === "urgency") {
       return {
         subject: `⚡ Ultimo Avviso: La tua prenotazione per ${product} sta per scadere`,
-        body: `Gentile ${firstName},\n\nTi informiamo che la tua prenotazione a tariffa promozionale per ${product} sta per scadere nel nostro sistema e il posto verrà presto riassegnato.${linkSection}\n\nSe desideri confermare il tuo accesso con le condizioni agevolate prima della chiusura, completa l'ordine adesso o rispondi a questa email.\n\nCordiali saluti,\nTeam ${product}`,
+        body: `Gentile ${firstName},\n\nTi informiamo che la tua prenotazione a tariffa promozionale per ${product} sta per scadere nel nostro sistema e il posto verrà presto riassegnato alla lista d'attesa.${
+          linkToUse
+            ? `\n\nSe desideri confermare il tuo accesso con le condizioni agevolate prima della chiusura, puoi completare l'ordine direttamente da questo link sicuro:\n👉 ${linkToUse}`
+            : ""
+        }\n\nSe hai bisogno di qualsiasi aiuto o chiarimento, rispondi semplicemente a questa email e saremo felici di assisterti.\n\nUn cordiale saluto,\nTeam ${product}\nEquipe Info Courses`,
       };
     }
   }
 
   if (lang === "es") {
-    return {
-      subject: `⚠️ Problema con el pago de tu orden para ${product}`,
-      body: `Hola ${firstName},\n\nNotamos que tu intento de pago con tarjeta para ${product} no fue autorizado por el banco. Por lo general ocurre por una verificación de seguridad en compras por internet.${linkSection}\n\nPuedes intentar nuevamente o responder este correo para recibir asistencia.\n\nSaludos,\nSoporte ${product}`,
-    };
+    if (strategy === "support") {
+      return {
+        subject: `¿Completaste tu registro para ${product}?`,
+        body: `Hola ${firstName},\n\nNotamos que iniciaste tu registro para ${product}, pero la orden quedó pendiente.\n\nQueríamos verificar si tuviste alguna dificultad técnica durante el checkout o si tienes preguntas sobre el programa.${
+          linkToUse
+            ? `\n\nSi deseas completar tu compra ahora y liberar tu acceso inmediato, aquí tienes el enlace seguro:\n👉 ${linkToUse}`
+            : ""
+        }\n\nCualquier duda que tengas, estamos a tu completa disposición: solo responde a este correo.\n\nAtentamente,\nEquipo Info Courses`,
+      };
+    }
+    if (strategy === "discount") {
+      return {
+        subject: `🎉 Cupón Exclusivo de 10% de Descuento para ${product}`,
+        body: `Hola ${firstName},\n\nSabemos cuánto deseabas acceder a ${product}.\n\nPara ayudarte hoy, activamos un CUPÓN EXCLUSIVO con el 10% DE DESCUENTO válido únicamente por las próximas 2 horas.${
+          linkToUse
+            ? `\n\nPuedes aprovechar la oferta y completar tu orden aquí:\n👉 ${linkToUse}`
+            : ""
+        }\n\n¡Cualquier duda, estamos a tu disposición!\n\nAtentamente,\nEquipo Info Courses`,
+      };
+    }
+    if (strategy === "urgency") {
+      return {
+        subject: `⚡ Último Aviso: Tu reserva para ${product} está por expirar`,
+        body: `Hola ${firstName},\n\nTe informamos que tu reserva con precio promocional para ${product} está a punto de expirar en nuestro sistema.${
+          linkToUse
+            ? `\n\nPara confirmar tu cupo antes del cierre, completa tu orden aquí:\n👉 ${linkToUse}`
+            : ""
+        }\n\nSi necesitas asistencia, responde directamente a este correo.\n\nAtentamente,\nEquipo Info Courses`,
+      };
+    }
+  }
+
+  if (lang === "pt") {
+    if (strategy === "support") {
+      return {
+        subject: `Você concluiu sua inscrição no ${product}?`,
+        body: `Olá, ${firstName}!\n\nNotamos que você iniciou sua inscrição no ${product}, mas o pedido ficou pendente.\n\nQueríamos verificar se você teve alguma dificuldade técnica durante o checkout ou se tem alguma dúvida sobre o conteúdo.${
+          linkToUse
+            ? `\n\nSe quiser completar sua compra e liberar seu acesso imediato, segue o link seguro:\n👉 ${linkToUse}`
+            : ""
+        }\n\nQualquer dúvida, estamos à sua inteira disposição: basta responder a este e-mail!\n\nAtenciosamente,\nEquipe Info Courses`,
+      };
+    }
+    if (strategy === "discount") {
+      return {
+        subject: `🎉 Cupom Exclusivo de 10% OFF para ${product}`,
+        body: `Oi, ${firstName}!\n\nSeparei um cupom especial de 10% OFF válido pelas próximas 2 horas para você garantir seu acesso ao ${product}!${
+          linkToUse
+            ? `\n\nAproveite e garanta sua vaga com desconto no link seguro abaixo:\n👉 ${linkToUse}`
+            : ""
+        }\n\nQualquer dúvida estou à disposição, só responder a este e-mail.\n\nAtenciosamente,\nEquipe Info Courses`,
+      };
+    }
+    if (strategy === "urgency") {
+      return {
+        subject: `⚡ Último Aviso: Sua vaga promocional no ${product} vai expirar`,
+        body: `Olá, ${firstName}!\n\nSua vaga com valor promocional para o ${product} expira em instantes no sistema e voltará ao valor original.${
+          linkToUse
+            ? `\n\nPara garantir sua vaga com condição especial antes do encerramento, acesse aqui:\n👉 ${linkToUse}`
+            : ""
+        }\n\nSe precisar de qualquer ajuda, basta responder a este e-mail.\n\nAtenciosamente,\nEquipe Info Courses`,
+      };
+    }
   }
 
   return {
-    subject: `⚠️ Informação sobre seu pedido para ${product}`,
-    body: `Olá ${firstName},\n\nVimos que sua compra de ${product} não foi autorizada pela operadora do cartão.${linkSection}\n\nVocê pode tentar novamente pelo link acima ou responder este e-mail para receber suporte direto.\n\nAbraços,\nEquipe ${product}`,
+    subject: `Deine Bestellung für ${product}`,
+    body: `Hallo ${firstName},\n\nwir haben festgestellt, dass deine Bestellung für ${product} noch nicht abgeschlossen wurde.\n\n${
+      linkToUse ? `Hier ist dein sicherer Link zum Abschließen:\n👉 ${linkToUse}\n\n` : ""
+    }Bei Fragen antworte einfach auf diese E-Mail.\n\nMit freundlichen Grüßen,\nTeam Info Courses`,
   };
 }
 
@@ -245,16 +481,20 @@ function generateSmsCopy(
   if (!lead) return "";
   const firstName = (lead.customerName || "Cliente").trim().split(" ")[0];
   const product = (lead.product || "ordine").replace(/\.\.\.$/, "");
-  const linkText = checkoutLink || "";
+  const linkText = checkoutLink?.trim() || "";
 
   if (lang === "it") {
     if (strategy === "discount") {
-      return `Ciao ${firstName}! Coupon 10% OFF attivo per ${product}. Completa qui prima della scadenza: ${linkText}`;
+      return `Ciao ${firstName}! Coupon 10% OFF attivo per ${product}. Completa qui prima della scadenza: ${linkText} - Equipe Info Courses`;
     }
-    return `Ciao ${firstName}, il pagamento per ${product} non e andato a buon fine. Completa il tuo ordine qui: ${linkText}`;
+    return `Ciao ${firstName}, completa il tuo ordine per ${product} con accesso immediato qui: ${linkText}. Dubbi? Rispondi pure. Equipe Info Courses`;
   }
 
-  return `Ola ${firstName}, seu pedido de ${product} esta pendente. Complete aqui: ${linkText}`;
+  if (lang === "es") {
+    return `Hola ${firstName}, completa tu orden para ${product} con acceso inmediato aqui: ${linkText}. Equipo Info Courses`;
+  }
+
+  return `Ola ${firstName}, seu pedido de ${product} esta pendente. Complete sua compra aqui: ${linkText} - Equipe Info Courses`;
 }
 
 export function WhatsAppRecoveryModal({
@@ -269,8 +509,10 @@ export function WhatsAppRecoveryModal({
 
   // Input states
   const [phoneInput, setPhoneInput] = useState("");
-  const [checkoutLink, setCheckoutLink] = useState(() => {
-    return localStorage.getItem("sfy_recovery_checkout_link") || "";
+  const [checkoutLink, setCheckoutLink] = useState("");
+  const [linkResolution, setLinkResolution] = useState<LinkResolutionResult>({
+    link: "",
+    source: "empty",
   });
 
   // Custom text states
@@ -294,30 +536,55 @@ export function WhatsAppRecoveryModal({
       const defaultChannel: RecoveryChannelTab = hasPhone ? "whatsapp" : "email";
       setActiveChannel(defaultChannel);
 
-      const savedLink = localStorage.getItem("sfy_recovery_checkout_link") || "";
-      setCheckoutLink(savedLink);
+      // Resolução inteligente do link do produto da oferta
+      const resolved = resolveDefaultProductLink(lead);
+      setLinkResolution(resolved);
+      const initialLink = resolved.link;
+      setCheckoutLink(initialLink);
 
-      // Populate templates
-      setCustomWhatsAppText(generateWhatsAppCopy(autoLang, "support", lead, savedLink));
-      const emailContent = generateEmailCopy(autoLang, "support", lead, savedLink);
+      // Popula templates pré-configurados
+      setCustomWhatsAppText(generateWhatsAppCopy(autoLang, "support", lead, initialLink));
+      const emailContent = generateEmailCopy(autoLang, "support", lead, initialLink);
       setCustomEmailSubject(emailContent.subject);
       setCustomEmailBody(emailContent.body);
-      setCustomSmsText(generateSmsCopy(autoLang, "support", lead, savedLink));
+      setCustomSmsText(generateSmsCopy(autoLang, "support", lead, initialLink));
 
       setCopied(false);
     }
   }, [lead]);
 
-  // Persist checkout link in localStorage and regenerate previews
+  // Persist checkout link in localStorage per product key & global fallback
   const handleCheckoutLinkChange = (newLink: string) => {
     setCheckoutLink(newLink);
     localStorage.setItem("sfy_recovery_checkout_link", newLink);
+
+    if (lead?.product) {
+      const storageKey = getProductStorageKey(lead.product);
+      localStorage.setItem(`ninja_prod_link_${storageKey}`, newLink);
+      const catalogItem = findCatalogItemForProduct(lead.product);
+      setLinkResolution({
+        link: newLink,
+        source: newLink === catalogItem?.offerUrl ? "catalog_auto" : "custom_saved",
+        matchedCatalogItem: catalogItem,
+      });
+    }
+
     if (lead) {
       setCustomWhatsAppText(generateWhatsAppCopy(selectedLang, selectedStrategy, lead, newLink));
       const emailContent = generateEmailCopy(selectedLang, selectedStrategy, lead, newLink);
       setCustomEmailSubject(emailContent.subject);
       setCustomEmailBody(emailContent.body);
       setCustomSmsText(generateSmsCopy(selectedLang, selectedStrategy, lead, newLink));
+    }
+  };
+
+  const handleRestoreCatalogLink = () => {
+    if (!lead) return;
+    const catalogItem = findCatalogItemForProduct(lead.product);
+    if (catalogItem) {
+      const storageKey = getProductStorageKey(lead.product);
+      localStorage.removeItem(`ninja_prod_link_${storageKey}`);
+      handleCheckoutLinkChange(catalogItem.offerUrl);
     }
   };
 
@@ -590,19 +857,79 @@ export function WhatsAppRecoveryModal({
           </div>
         </div>
 
-        {/* Checkout Link Input (Persistent) */}
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-            <RiLinkM className="size-3.5 text-emerald-400" />
-            Link de Checkout / Cupom de Recuperação (Salvo automaticamente)
-          </label>
-          <input
-            type="text"
-            value={checkoutLink}
-            onChange={(e) => handleCheckoutLinkChange(e.target.value)}
-            placeholder="Cole seu link de checkout da Hotmart ou página de downsell aqui (ex: https://pay.hotmart.com/...)"
-            className="w-full bg-slate-900/60 border border-border/50 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500 placeholder-slate-500"
-          />
+        {/* Checkout Link Input with Product Intelligence */}
+        <div className="space-y-2 p-3.5 rounded-xl bg-slate-900/90 border border-emerald-500/30 shadow-inner">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <label className="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+              <RiLinkM className="size-3.5 text-emerald-400" />
+              Link da Oferta / Checkout do Produto (Injetado automaticamente no texto)
+            </label>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {linkResolution.source === "catalog_auto" && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] font-medium border-emerald-500/40 text-emerald-300 bg-emerald-500/10 flex items-center gap-1.5"
+                >
+                  <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Link Padrão Detectado ({linkResolution.matchedCatalogItem?.displayName || lead.product})
+                </Badge>
+              )}
+              {linkResolution.source === "custom_saved" && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] font-medium border-sky-500/40 text-sky-300 bg-sky-500/10 flex items-center gap-1.5"
+                >
+                  <span className="size-1.5 rounded-full bg-sky-400" />
+                  Personalizado Salvo para este Produto
+                </Badge>
+              )}
+              {linkResolution.source === "lead_checkout_url" && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] font-medium border-purple-500/40 text-purple-300 bg-purple-500/10"
+                >
+                  URL Recebida da Hotmart
+                </Badge>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={checkoutLink}
+              onChange={(e) => handleCheckoutLinkChange(e.target.value)}
+              placeholder="Cole seu link de checkout ou página de vendas aqui (ex: https://novidadesonline.net/...)"
+              className="flex-1 bg-slate-950 border border-border/60 rounded-lg px-3 py-1.5 text-xs font-mono text-emerald-300 focus:outline-none focus:border-emerald-500 placeholder-slate-500"
+            />
+            {checkoutLink && (
+              <a
+                href={checkoutLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Abrir o link em nova aba para validar"
+                className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border/60 bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-200 font-medium transition-colors cursor-pointer"
+              >
+                <span>Testar Link</span>
+                <RiExternalLinkLine className="size-3 text-slate-400" />
+              </a>
+            )}
+            {linkResolution.source === "custom_saved" && linkResolution.matchedCatalogItem && (
+              <button
+                type="button"
+                onClick={handleRestoreCatalogLink}
+                title="Restaurar link padrão do catálogo"
+                className="shrink-0 text-[11px] text-muted-foreground hover:text-emerald-400 underline underline-offset-2 transition-colors cursor-pointer"
+              >
+                Restaurar Padrão
+              </button>
+            )}
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <span>
+              💡 O link é salvo automaticamente para <strong className="text-slate-300">{lead.product}</strong> e incorporado no Call to Action (CTA) em {LANGUAGE_LABELS[selectedLang].name}.
+            </span>
+          </div>
         </div>
 
         {/* Language Tabs */}
