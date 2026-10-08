@@ -62,6 +62,15 @@ export async function apiRequest<T>(
 
   if (!response.ok) {
     if (response.status === 401) {
+      if (endpoint === "/login") {
+        const error = await response.json().catch(() => ({ detail: "E-mail ou senha incorretos." }));
+        const errorMsg =
+          error.detail === "Invalid credentials"
+            ? "E-mail ou senha incorretos."
+            : error.detail || "E-mail ou senha incorretos.";
+        throw new Error(errorMsg);
+      }
+
       removeCookie("access_token");
       localStorage.removeItem("user");
 

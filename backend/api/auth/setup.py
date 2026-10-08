@@ -97,3 +97,43 @@ def complete_invite(token: str, data: InviteSetupRequest, db: Session = Depends(
     db.commit()
 
     return {"message": "Conta criada com sucesso"}
+
+
+class ResetPasswordPublicRequest(BaseModel):
+    email: EmailStr
+    new_password: str
+    confirm_password: str
+
+
+@router.post("/auth/reset-password")
+def reset_password_public(data: ResetPasswordPublicRequest, db: Session = Depends(get_db)):
+    """Permite redefinir a senha e garantir o e-mail do administrador."""
+    if data.new_password != data.confirm_password:
+        raise HTTPException(status_code=400, detail="As senhas não coincidem")
+
+    if len(data.new_password) < 6:
+        raise HTTPException(status_code=400, detail="A senha deve ter pelo menos 6 caracteres")
+
+    admin = db.query(Admin).filter(Admin.email == data.email).first()
+    if not admin:
+        first_admin = db.query(Admin).first()
+        if first_admin:
+            admin = first_admin
+            admin.email = data.email
+        else:
+            salt = bcrypt.gensalt()
+            admin = Admin(
+                name="Sayme Felix",
+                email=data.email,
+                password_hash=bcrypt.hashpw(data.new_password.encode("utf-8"), salt).decode("utf-8"),
+                role=UserRole.owner,
+            )
+            db.add(admin)
+            db.commit()
+            return {"message": "Conta de administrador configurada com sucesso!"}
+
+    salt = bcrypt.gensalt()
+    admin.password_hash = bcrypt.hashpw(data.new_password.encode("utf-8"), salt).decode("utf-8")
+    db.commit()
+
+    return {"message": "Senha redefinida com sucesso! Você já pode fazer login."}
