@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import {
   RiWhatsappFill,
+  RiGoogleFill,
   RiMailSendLine,
   RiMessage3Line,
   RiFileCopyLine,
@@ -373,12 +374,25 @@ export function WhatsAppRecoveryModal({
     window.open(url, "_blank");
   };
 
-  const handleOpenEmail = () => {
+  const handleOpenGmail = () => {
     if (!lead?.customerEmail || lead.customerEmail === "—") {
       alert("Nenhum e-mail de cliente disponível.");
       return;
     }
-    const mailtoUrl = `mailto:${encodeURIComponent(lead.customerEmail)}?subject=${encodeURIComponent(
+    const to = encodeURIComponent(lead.customerEmail.trim());
+    const su = encodeURIComponent(customEmailSubject);
+    const body = encodeURIComponent(customEmailBody);
+    // URL oficial de composição direta do Gmail Web com Para, Assunto e Texto pré-preenchidos
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${su}&body=${body}`;
+    window.open(gmailUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const handleOpenEmailApp = () => {
+    if (!lead?.customerEmail || lead.customerEmail === "—") {
+      alert("Nenhum e-mail de cliente disponível.");
+      return;
+    }
+    const mailtoUrl = `mailto:${encodeURIComponent(lead.customerEmail.trim())}?subject=${encodeURIComponent(
       customEmailSubject
     )}&body=${encodeURIComponent(customEmailBody)}`;
     window.open(mailtoUrl, "_blank");
@@ -849,15 +863,28 @@ export function WhatsAppRecoveryModal({
             )}
 
             {activeChannel === "email" && (
-              <Button
-                size="sm"
-                onClick={handleOpenEmail}
-                className="flex-1 sm:flex-none bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs shadow-lg shadow-sky-500/20 transition-all cursor-pointer px-4 py-2"
-              >
-                <RiMailSendLine className="size-4 mr-1.5" />
-                Disparar E-mail (Webmail / App)
-                <RiExternalLinkLine className="size-3.5 ml-1 opacity-70" />
-              </Button>
+              <>
+                <Button
+                  size="sm"
+                  onClick={handleOpenGmail}
+                  className="flex-1 sm:flex-none bg-[#EA4335] hover:bg-[#d93829] text-white font-bold text-xs shadow-lg shadow-[#EA4335]/25 transition-all cursor-pointer px-4 py-2"
+                >
+                  <RiGoogleFill className="size-4 mr-1.5" />
+                  Abrir no Gmail (Web 1-Clique)
+                  <RiExternalLinkLine className="size-3.5 ml-1 opacity-80" />
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleOpenEmailApp}
+                  title="Abrir no aplicativo padrão do celular (Gmail App / Apple Mail) ou Windows"
+                  className="border-border/60 hover:bg-slate-800 text-xs text-slate-300 cursor-pointer"
+                >
+                  <RiMailSendLine className="size-3.5 mr-1 text-sky-400" />
+                  App do Celular
+                </Button>
+              </>
             )}
 
             {activeChannel === "sms" && (
