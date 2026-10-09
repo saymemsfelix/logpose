@@ -12,8 +12,10 @@ export const DEFAULT_CTA = "LEARN_MORE";
  * Opções de CTA disponíveis para anúncios.
  */
 export const CTA_OPTIONS = [
-  { value: "SHOP_NOW", label: "Comprar Agora" },
+  { value: "GET_DETAILS", label: "Ver Detalhes" },
   { value: "LEARN_MORE", label: "Saiba Mais" },
+  { value: "SHOP_NOW", label: "Comprar Agora" },
+  { value: "SEE_MORE", label: "Ver Mais" },
   { value: "SIGN_UP", label: "Cadastre-se" },
   { value: "SUBSCRIBE", label: "Inscreva-se" },
   { value: "CONTACT_US", label: "Fale Conosco" },
