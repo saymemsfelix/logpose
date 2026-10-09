@@ -238,7 +238,12 @@ def _parse_error(response: httpx.Response) -> str:
         # Prefere error_user_msg (mensagem detalhada na língua do usuário)
         user_msg = error.get("error_user_msg", "")
         msg = user_msg or error.get("message", f"Erro {response.status_code}")
-        logger.error(f"Meta API error detail: code={code}, subcode={subcode}, body={body}")
+        if subcode == 1885183 or "modo de desenvolvimento" in str(msg).lower() or "development mode" in str(msg).lower():
+            return (
+                "Seu aplicativo no Meta for Developers está em 'Modo de Desenvolvimento'. "
+                "Para publicar anúncios, acesse developers.facebook.com/apps, selecione seu app e mude a chave no topo de 'Em desenvolvimento' para 'Ao vivo' (Live)."
+            )
+
         return msg
     except Exception:
         logger.error(f"Meta API raw response: {response.text}")
