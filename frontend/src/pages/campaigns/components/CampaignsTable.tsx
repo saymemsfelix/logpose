@@ -97,6 +97,7 @@ export function CampaignsTable({
   // Bulk selection states
   const [selectedCampaignIds, setSelectedCampaignIds] = useState<Set<string>>(new Set());
   const [selectedAdSetIds, setSelectedAdSetIds] = useState<Set<string>>(new Set());
+  const [selectedAdIds, setSelectedAdIds] = useState<Set<string>>(new Set());
   const [batchLoading, setBatchLoading] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
@@ -142,9 +143,22 @@ export function CampaignsTable({
     });
   };
 
+  const toggleAdSelect = (id: string) => {
+    setSelectedAdIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
   const clearSelection = () => {
     setSelectedCampaignIds(new Set());
     setSelectedAdSetIds(new Set());
+    setSelectedAdIds(new Set());
   };
 
   const handleBatchToggle = async (active: boolean) => {
@@ -155,6 +169,9 @@ export function CampaignsTable({
       }
       if (selectedAdSetIds.size > 0 && onBatchToggle) {
         await onBatchToggle(Array.from(selectedAdSetIds), "adset", active);
+      }
+      if (selectedAdIds.size > 0 && onBatchToggle) {
+        await onBatchToggle(Array.from(selectedAdIds), "ad", active);
       }
       clearSelection();
     } finally {
@@ -171,6 +188,9 @@ export function CampaignsTable({
       if (selectedAdSetIds.size > 0 && onBatchDelete) {
         await onBatchDelete(Array.from(selectedAdSetIds), "adset");
       }
+      if (selectedAdIds.size > 0 && onBatchDelete) {
+        await onBatchDelete(Array.from(selectedAdIds), "ad");
+      }
       clearSelection();
     } finally {
       setBatchLoading(false);
@@ -178,11 +198,15 @@ export function CampaignsTable({
     }
   };
 
-  const totalSelected = selectedCampaignIds.size + selectedAdSetIds.size;
-  const selectedLabel = [
+  const totalSelected = selectedCampaignIds.size + selectedAdSetIds.size + selectedAdIds.size;
+  const selectedParts = [
     selectedCampaignIds.size > 0 ? `${selectedCampaignIds.size} campanha${selectedCampaignIds.size > 1 ? "s" : ""}` : "",
     selectedAdSetIds.size > 0 ? `${selectedAdSetIds.size} conjunto${selectedAdSetIds.size > 1 ? "s" : ""}` : "",
-  ].filter(Boolean).join(" e ");
+    selectedAdIds.size > 0 ? `${selectedAdIds.size} anúncio${selectedAdIds.size > 1 ? "s" : ""}` : "",
+  ].filter(Boolean);
+  const selectedLabel = selectedParts.length > 2
+    ? `${selectedParts.slice(0, -1).join(", ")} e ${selectedParts[selectedParts.length - 1]}`
+    : selectedParts.join(" e ");
 
   /** Intercepts toggle: if deactivating, shows confirmation modal first. */
   const handleToggle = useCallback(
@@ -340,6 +364,15 @@ export function CampaignsTable({
                                 setSelectedAdSetIds((prev) => {
                                   const next = new Set(prev);
                                   adSetIds.forEach((id) => (shouldSelect ? next.add(id) : next.delete(id)));
+                                  return next;
+                                });
+                              }}
+                              selectedAdIds={selectedAdIds}
+                              onToggleSelectAd={toggleAdSelect}
+                              onSelectAllAds={(adIds, shouldSelect) => {
+                                setSelectedAdIds((prev) => {
+                                  const next = new Set(prev);
+                                  adIds.forEach((id) => (shouldSelect ? next.add(id) : next.delete(id)));
                                   return next;
                                 });
                               }}

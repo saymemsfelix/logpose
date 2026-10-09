@@ -25,6 +25,9 @@ interface AdSetsSubTableProps {
   selectedAdSetIds?: Set<string>;
   onToggleSelectAdSet?: (adSetId: string) => void;
   onSelectAllAdSets?: (adSetIds: string[], shouldSelect: boolean) => void;
+  selectedAdIds?: Set<string>;
+  onToggleSelectAd?: (adId: string) => void;
+  onSelectAllAds?: (adIds: string[], shouldSelect: boolean) => void;
 }
 
 export function AdSetsSubTable({
@@ -37,6 +40,9 @@ export function AdSetsSubTable({
   selectedAdSetIds,
   onToggleSelectAdSet,
   onSelectAllAdSets,
+  selectedAdIds,
+  onToggleSelectAd,
+  onSelectAllAds,
 }: AdSetsSubTableProps) {
   const [expandedAdSetId, setExpandedAdSetId] = useState<string | null>(null);
   const [budgetAdSet, setBudgetAdSet] = useState<CampaignAdSetData | null>(null);
@@ -162,6 +168,9 @@ export function AdSetsSubTable({
                         onToggle={onToggle}
                         taxEnabled={taxEnabled}
                         taxRate={taxRate}
+                        selectedAdIds={selectedAdIds}
+                        onToggleSelectAd={onToggleSelectAd}
+                        onSelectAllAds={onSelectAllAds}
                       />
                     </TableCell>
                   </TableRow>
