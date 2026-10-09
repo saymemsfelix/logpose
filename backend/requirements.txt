@@ -16,3 +16,4 @@ langchain-google-genai
 stripe
 pywebpush
 email-validator
+Pillow

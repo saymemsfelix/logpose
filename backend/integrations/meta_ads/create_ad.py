@@ -22,6 +22,7 @@ async def create_ad_creative(
     description: str,
     cta_type: str,
     image_hash: str | None = None,
+    image_url: str | None = None,
     video_id: str | None = None,
     url_tags: str = "",
     display_url: str = "",
@@ -63,8 +64,26 @@ async def create_ad_creative(
             video_data["title"] = headline
         if description:
             video_data["link_description"] = description
+
+        # Se não tiver image_hash nem image_url, gera thumbnail de emergência
+        if not image_hash and not image_url:
+            logger.warning(f"Creative {name}: video_id {video_id} sem thumbnail. Gerando image_hash de emergência...")
+            try:
+                from integrations.meta_ads.upload_media import _ensure_fallback_image_hash
+                image_hash = await _ensure_fallback_image_hash(access_token, act_id, video_id)
+            except Exception as e:
+                logger.error(f"Falha ao gerar fallback_image_hash: {e}")
+
         if image_hash:
             video_data["image_hash"] = image_hash
+        elif image_url:
+            video_data["image_url"] = image_url
+        else:
+            return {
+                "success": False,
+                "error": "Não foi possível gerar thumbnail (image_hash) para o vídeo. Verifique as permissões da conta de anúncios."
+            }
+
         story_spec["video_data"] = video_data
     else:
         link_data: dict = {

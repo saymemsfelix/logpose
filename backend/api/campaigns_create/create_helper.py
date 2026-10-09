@@ -7,7 +7,7 @@ import logging
 from integrations.meta_ads.create_campaign import create_campaign
 from integrations.meta_ads.create_adset import create_adset
 from integrations.meta_ads.manage import delete_entity
-from api.campaigns_create.ads_batch import create_ads_batch
+from api.campaigns_create.ads_batch import create_ads_batch, upload_single_media
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +35,50 @@ async def create_for_single_account(
     first_adset_id: str | None = None
 
     acc_label = f"[{account_label}]" if account_label else ""
+
+    # 1. Pré-upload e validação de todas as mídias da conta
+    # Garante que vídeos sejam transcodificados e thumbnails gerados ANTES de criar campanha na Meta
+    media_cache: dict = {}
+    ads_list = data.get("ads", [])
+    used_media_indices = set()
+    for i, ad in enumerate(ads_list):
+        m_idx = ad.get("media_index", i)
+        if m_idx < len(file_bytes_list):
+            used_media_indices.add(m_idx)
+        else:
+            errors.append(f"{acc_label} AD {i+1}: Arquivo de mídia não encontrado (índice {m_idx})")
+            return {
+                "campaigns_created": 0,
+                "ads_created": 0,
+                "first_campaign_id": None,
+                "first_adset_id": None,
+                "errors": errors,
+                "account_id_db": account_id_db,
+                "account_label": account_label,
+            }
+
+    for m_idx in sorted(used_media_indices):
+        file_bytes, filename, is_video = file_bytes_list[m_idx]
+        media_type = "Vídeo" if is_video else "Imagem"
+        logger.info(f"{acc_label} Pré-upload de {media_type} [{m_idx+1}/{len(file_bytes_list)}]: {filename}")
+        
+        m_res = await upload_single_media(token, act_id, file_bytes, filename, is_video)
+        if not m_res.get("success"):
+            err_msg = f"{acc_label} Upload de {media_type} ({filename}) falhou — {m_res.get('error', 'Erro desconhecido')}"
+            logger.error(err_msg)
+            errors.append(err_msg)
+            return {
+                "campaigns_created": 0,
+                "ads_created": 0,
+                "first_campaign_id": None,
+                "first_adset_id": None,
+                "errors": errors,
+                "account_id_db": account_id_db,
+                "account_label": account_label,
+            }
+        media_cache[m_idx] = m_res
+        logger.info(f"{acc_label} Mídia {m_idx+1} ({filename}) pronta no cache!")
+
     sem = asyncio.Semaphore(3)
 
     async def _process_campaign(camp_i):
@@ -87,6 +131,7 @@ async def create_for_single_account(
                     status=status,
                     errors=errors,
                     label=adset_label,
+                    media_cache=media_cache,
                 )
                 
             if adset_id and first_adset_id is None:
@@ -138,6 +183,7 @@ async def _create_adset_with_ads(
     status: str,
     errors: list[str],
     label: str,
+    media_cache: dict | None = None,
 ) -> tuple[int, str | None]:
     """Cria um adset e todos os ads dentro dele. Retorna (ads_created, adset_id)."""
     adset_name = data.get("adset_name", "Conjunto")
@@ -182,6 +228,7 @@ async def _create_adset_with_ads(
         status=status,
         errors=errors,
         label=label,
+        media_cache=media_cache,
     )
 
     return ads_created, adset_id

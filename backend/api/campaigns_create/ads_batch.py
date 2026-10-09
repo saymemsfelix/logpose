@@ -20,10 +20,13 @@ async def create_ads_batch(
     status: str,
     errors: list[str],
     label: str = "",
+    media_cache: dict | None = None,
 ) -> int:
     """Cria múltiplos ads com upload de mídia para um dado adset_id.
     Cancela a operação inteira no primeiro erro de upload ou creative."""
     created_count = 0
+    if media_cache is None:
+        media_cache = {}
 
     for i, ad_data in enumerate(ads):
         media_index = ad_data.get("media_index", i)
@@ -31,12 +34,16 @@ async def create_ads_batch(
             errors.append(f"{label} AD {i+1}: Arquivo de mídia não encontrado")
             break
 
-        file_bytes, filename, is_video = file_bytes_list[media_index]
-        media_result = await _upload_media(token, act_id, file_bytes, filename, is_video)
-
-        if not media_result["success"]:
-            errors.append(f"{label} AD {i+1}: Upload falhou — {media_result['error']}")
-            break
+        if media_index in media_cache:
+            media_result = media_cache[media_index]
+            logger.info(f"{label} AD {i+1}: Reutilizando mídia em cache (index {media_index})")
+        else:
+            file_bytes, filename, is_video = file_bytes_list[media_index]
+            media_result = await _upload_media(token, act_id, file_bytes, filename, is_video)
+            if not media_result["success"]:
+                errors.append(f"{label} AD {i+1}: Upload falhou — {media_result['error']}")
+                break
+            media_cache[media_index] = media_result
 
         link = ad_data.get("link", "")
         url_tags = _build_url_tags(
@@ -53,6 +60,7 @@ async def create_ads_batch(
             description=ad_data.get("description", ""),
             cta_type=ad_data.get("cta_type", "SHOP_NOW"),
             image_hash=media_result.get("image_hash"),
+            image_url=media_result.get("image_url"),
             video_id=media_result.get("video_id"),
             url_tags=url_tags,
             display_url=ad_data.get("display_url", ""),
@@ -78,10 +86,13 @@ async def create_ads_batch(
     return created_count
 
 
-async def _upload_media(token, act_id, file_bytes: bytes, filename: str, is_video: bool) -> dict:
+async def upload_single_media(token: str, act_id: str, file_bytes: bytes, filename: str, is_video: bool) -> dict:
     if is_video:
         return await upload_video(token, act_id, file_bytes, filename)
     return await upload_image(token, act_id, file_bytes, filename)
+
+
+_upload_media = upload_single_media
 
 
 def _build_url_tags(utm_params: str | dict = "", extra_params: str = "") -> str:
