@@ -13,6 +13,8 @@ export function useCampaignPageData(
   filters: CampaignFilterState,
   dateStart: string,
   dateEnd: string,
+  taxEnabled: boolean = false,
+  taxRate: number = 0,
 ) {
   const { setSnapshot, clearSnapshot } = usePageDataSetter();
 
@@ -20,7 +22,7 @@ export function useCampaignPageData(
     if (campaigns.length === 0) return;
 
     const filtersDescription = buildFiltersDescription(filters, dateStart, dateEnd);
-    const data = buildCampaignsSummary(campaigns, dateStart, dateEnd, filters);
+    const data = buildCampaignsSummary(campaigns, dateStart, dateEnd, filters, taxEnabled, taxRate);
 
     const snapshot: PageDataSnapshot = {
       page: "campaigns",
@@ -31,7 +33,7 @@ export function useCampaignPageData(
 
     setSnapshot(snapshot);
     return () => clearSnapshot();
-  }, [campaigns, filters, dateStart, dateEnd, setSnapshot, clearSnapshot]);
+  }, [campaigns, filters, dateStart, dateEnd, taxEnabled, taxRate, setSnapshot, clearSnapshot]);
 }
 
 function buildFiltersDescription(
@@ -60,12 +62,16 @@ function buildCampaignsSummary(
   dateStart: string,
   dateEnd: string,
   filters: CampaignFilterState,
+  taxEnabled: boolean = false,
+  taxRate: number = 0,
 ): string {
   const totalSpend = campaigns.reduce((s, c) => s + c.spend, 0);
   const totalRevenue = campaigns.reduce((s, c) => s + c.revenue, 0);
+  const taxDeduction = taxEnabled && taxRate > 0 ? totalRevenue * (taxRate / 100) : 0;
+  const adjustedRevenue = totalRevenue - taxDeduction;
   const totalSales = campaigns.reduce((s, c) => s + c.sales, 0);
-  const totalProfit = campaigns.reduce((s, c) => s + c.profit, 0);
-  const avgRoas = totalSpend > 0 ? totalRevenue / totalSpend : 0;
+  const totalProfit = adjustedRevenue - totalSpend;
+  const avgRoas = totalSpend > 0 ? adjustedRevenue / totalSpend : 0;
   const active = campaigns.filter((c) => c.status === "active").length;
 
   const lines: string[] = [
@@ -76,10 +82,12 @@ function buildCampaignsSummary(
     `--- KPIs GERAIS ---`,
     `Campanhas ativas: ${active}/${campaigns.length}`,
     `Investido: R$ ${totalSpend.toFixed(2)}`,
-    `Faturamento: R$ ${totalRevenue.toFixed(2)}`,
-    `Lucro: R$ ${totalProfit.toFixed(2)}`,
+    taxEnabled && taxRate > 0
+      ? `Faturamento Líquido (- impostos): R$ ${adjustedRevenue.toFixed(2)} (Bruto: R$ ${totalRevenue.toFixed(2)} | -R$ ${taxDeduction.toFixed(2)} a ${taxRate}%)`
+      : `Faturamento: R$ ${totalRevenue.toFixed(2)}`,
+    taxEnabled ? `Lucro Real: R$ ${totalProfit.toFixed(2)}` : `Lucro: R$ ${totalProfit.toFixed(2)}`,
     `Vendas: ${totalSales}`,
-    `ROAS médio: ${avgRoas.toFixed(2)}x`,
+    `ROAS: ${avgRoas.toFixed(2)}x`,
     ``,
     `--- CAMPANHAS ---`,
   ];

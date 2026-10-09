@@ -4,6 +4,8 @@ import { useCachedQuery } from "./useCachedQuery";
 import {
   fetchCampaignsData,
   toggleCampaignStatus,
+  batchToggleCampaignStatus,
+  batchDeleteCampaigns,
   updateBudget,
   fetchPresets,
   createPreset,
@@ -179,6 +181,76 @@ export function useCampaigns(dateStart: string, dateEnd: string) {
     }
   };
 
+  const batchToggle = async (
+    entityIds: string[],
+    entityType: "campaign" | "adset" | "ad",
+    active: boolean,
+  ) => {
+    const targetAccountId = activeAccountId ?? accounts[0]?.id;
+    if (!targetAccountId || entityIds.length === 0) return;
+
+    const newStatus = active ? "active" : "paused";
+    const newOverrides: Record<string, { status?: string }> = {};
+    for (const eid of entityIds) {
+      newOverrides[eid] = { status: newStatus };
+    }
+    setOptimisticOverrides((prev) => ({
+      ...prev,
+      ...newOverrides,
+    }));
+
+    try {
+      const res = await batchToggleCampaignStatus(
+        targetAccountId,
+        entityIds,
+        entityType,
+        active,
+      );
+      invalidateCacheByPrefix("campaigns");
+      await silentReload();
+      for (const eid of entityIds) {
+        clearOverride(eid, "status");
+      }
+      const label = entityType === "campaign" ? "campanha(s)" : entityType === "adset" ? "conjunto(s)" : "anúncio(s)";
+      if (active) {
+        toast.success(`${res.updated} de ${res.total} ${label} ativada(s) com sucesso!`);
+      } else {
+        toast.info(`${res.updated} de ${res.total} ${label} pausada(s) com sucesso!`);
+      }
+    } catch {
+      for (const eid of entityIds) {
+        clearOverride(eid, "status");
+      }
+      toast.error("Erro ao alterar status em lote", {
+        description: "Não foi possível sincronizar o status no Meta Ads.",
+      });
+    }
+  };
+
+  const batchDelete = async (
+    entityIds: string[],
+    entityType: "campaign" | "adset" | "ad" = "campaign",
+  ) => {
+    const targetAccountId = activeAccountId ?? accounts[0]?.id;
+    if (!targetAccountId || entityIds.length === 0) return;
+
+    try {
+      const res = await batchDeleteCampaigns(
+        targetAccountId,
+        entityIds,
+        entityType,
+      );
+      invalidateCacheByPrefix("campaigns");
+      await silentReload();
+      const label = entityType === "campaign" ? "campanha(s)" : entityType === "adset" ? "conjunto(s)" : "anúncio(s)";
+      toast.success(`${res.deleted} de ${res.total} ${label} excluída(s) da Meta!`);
+    } catch {
+      toast.error("Erro ao excluir entidades em lote", {
+        description: "Não foi possível excluir no Meta Ads.",
+      });
+    }
+  };
+
   const rawCampaigns = data?.campaigns ?? [];
   const campaigns = applyOverrides(rawCampaigns);
 
@@ -192,6 +264,8 @@ export function useCampaigns(dateStart: string, dateEnd: string) {
     activeAccountId,
     setSelectedAccountId,
     toggle,
+    batchToggle,
+    batchDelete,
     changeBudget,
     reload,
     silentReload,

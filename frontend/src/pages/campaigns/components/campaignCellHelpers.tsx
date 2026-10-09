@@ -67,7 +67,8 @@ export function fmt(v: number): string {
   return v.toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL",
-    minimumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   });
 }
 
@@ -75,7 +76,13 @@ export function getCellValue(
   c: MetricRow,
   col: string,
   kpiColors?: KpiColorsConfig | null,
+  taxEnabled: boolean = false,
+  taxRate: number = 0,
 ): React.ReactNode {
+  const effRevenue = taxEnabled && taxRate > 0 ? c.revenue * (1 - taxRate / 100) : c.revenue;
+  const effProfit = effRevenue - c.spend;
+  const effRoas = c.spend > 0 ? effRevenue / c.spend : 0;
+
   const checkoutConv =
     c.landingPageViews > 0
       ? (c.initiateCheckout / c.landingPageViews) * 100
@@ -103,23 +110,23 @@ export function getCellValue(
   const map: Record<string, React.ReactNode> = {
     spend: fmt(c.spend),
     sales: c.sales,
-    revenue: fmt(c.revenue),
+    revenue: fmt(effRevenue),
     profit: (
       <span className={cn(
         "font-medium",
-        c.profit >= 0 ? "text-[var(--color-success)]" : "text-destructive"
+        effProfit >= 0 ? "text-[var(--color-success)]" : "text-destructive"
       )}>
-        {fmt(c.profit)}
+        {fmt(effProfit)}
       </span>
     ),
     roas: (
       <span
         className={cn(
           "font-semibold",
-          getKpiColor(c.roas, kpiColors?.roas ?? null),
+          getKpiColor(effRoas, kpiColors?.roas ?? null),
         )}
       >
-        {c.roas.toFixed(2)}x
+        {effRoas.toFixed(2)}x
       </span>
     ),
     cpa: (
@@ -187,18 +194,24 @@ export function getCellValue(
   return map[col] ?? "—";
 }
 
-export function getFooterValue(data: MetricRow[], col: string): string {
+export function getFooterValue(
+  data: MetricRow[],
+  col: string,
+  taxEnabled: boolean = false,
+  taxRate: number = 0,
+): string {
+  const totalSpend = data.reduce((s, c) => s + c.spend, 0);
+  const totalRawRevenue = data.reduce((s, c) => s + c.revenue, 0);
+  const effRevenue = taxEnabled && taxRate > 0 ? totalRawRevenue * (1 - taxRate / 100) : totalRawRevenue;
+  const effProfit = effRevenue - totalSpend;
+  const effRoas = totalSpend > 0 ? effRevenue / totalSpend : 0;
+
   const sums: Record<string, () => string> = {
-    spend: () => fmt(data.reduce((s, c) => s + c.spend, 0)),
+    spend: () => fmt(totalSpend),
     sales: () => String(data.reduce((s, c) => s + c.sales, 0)),
-    revenue: () => fmt(data.reduce((s, c) => s + c.revenue, 0)),
-    profit: () => fmt(data.reduce((s, c) => s + c.profit, 0)),
-    roas: () => {
-      const spend = data.reduce((s, c) => s + c.spend, 0);
-      return spend > 0
-        ? `${(data.reduce((s, c) => s + c.revenue, 0) / spend).toFixed(2)}x`
-        : "—";
-    },
+    revenue: () => fmt(effRevenue),
+    profit: () => fmt(effProfit),
+    roas: () => (totalSpend > 0 ? `${effRoas.toFixed(2)}x` : "—"),
     cpc: () => {
       const spend = data.reduce((s, c) => s + c.spend, 0);
       const clicks = data.reduce((s, c) => s + c.clicks, 0);

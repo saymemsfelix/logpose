@@ -32,18 +32,6 @@ Em poucos segundos, um CEO consegue visualizar a saúde financeira da operação
 - **Gestão Avançada de Operação:** Controle unificado de clientes, mapeamento e aliases de produtos, acompanhamento de assinaturas, rastreio de reembolsos e integração com VTurb.
 
 ---
-
-## Instalação em 1 Clique (Recomendado)
-
-A maneira mais rápida e segura de colocar o **SFY** no ar. Essa opção configura automaticamente seu banco de dados, gera os certificados de segurança (SSL) e roteia o seu domínio personalizado em poucos segundos, colocando o app em ambiente de produção sem dor de cabeça.
-
-[➡️ Clique aqui para instalar em 1 clique](https://ilumin.app/?src=logpose)
-
-[![Deploy to Ilumin](https://cdn.ilumin.app/static/banner-git.webp)](https://ilumin.app/?src=logpose)
-
-> **Por que recomendamos o Deploy Automático?**
-> A infraestrutura em nuvem lida com a parte pesada (proxy reverso, criação de redes isoladas e renovação de certificados). Você foca apenas em usar o aplicativo e escalar o seu negócio.
-
 ---
 
 ## Tutorial de Instalação
@@ -66,73 +54,18 @@ Se você tem experiência com infraestrutura cloud, gerenciamento de servidores 
 - Conhecimento para configurar Proxy Reverso (Nginx, Traefik ou Caddy).
 - Geração e renovação de certificados SSL (Let's Encrypt).
 
-<details>
-<summary><b>Opção A: docker-compose-ilumin.yml (Pronto para Ilumin Cloud / Traefik)</b></summary>
-
-Se você usa a stack da Ilumin ou Traefik, este arquivo já vem com as labels e redes configuradas corretamente.
-
-```yaml
-services:
-  app:
-    image: ghcr.io/ilumincloud-applications/logpose:${APP_VERSION}
-    environment:
-      - DATABASE_URL=postgres://logpose_user:${DB_PASSWORD}@db:5432/logpose
-      - SECRET_KEY=${SECRET_KEY}
-      - META_GRAPH_API_VERSION=${META_GRAPH_API_VERSION}
-    networks:
-      - traefik
-      - internal
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=traefik
-      - traefik.http.routers.logpose.rule=Host(`${BASE_DOMAIN}`)${CUSTOM_DOMAIN:+ || Host(`${CUSTOM_DOMAIN}`)}
-      - traefik.http.routers.logpose.entrypoints=websecure
-      - traefik.http.routers.logpose.tls=true
-      - traefik.http.routers.logpose.tls.certresolver=letsencrypt
-      - traefik.http.services.logpose.loadbalancer.server.port=8000
-    depends_on:
-      - db
-    restart: unless-stopped
-
-  db:
-    image: postgres:14-alpine
-    environment:
-      - POSTGRES_USER=logpose_user
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_DB=logpose
-    volumes:
-      - logpose_db_data:/var/lib/postgresql/data
-    networks:
-      - internal
-    restart: unless-stopped
-
-volumes:
-  logpose_db_data:
-
-networks:
-  traefik:
-    external: true
-  internal:
-```
-</details>
-
-<details>
-<summary><b>Opção B: docker-compose.yml (Padrão / Quick Start)</b></summary>
-
-Arquivo docker padrão para você usar atrás do seu próprio proxy reverso (Nginx, Apache, etc).
-
 ```yaml
 version: '3.8'
 
 services:
   app:
-    image: ghcr.io/ilumincloud-applications/logpose:latest
+    image: ninjastracker:latest
     environment:
-      - DATABASE_URL=postgres://logpose_user:pass@db:5432/logpose
+      - DATABASE_URL=postgres://tracker_user:pass@db:5432/ninjas_tracker
       - SECRET_KEY=sua_chave_secreta_aqui
       - META_GRAPH_API_VERSION=v25.0
     ports:
-      - "8000:8000" # Lembre-se de configurar o proxy reverso para apontar para cá
+      - "8000:8000"
     depends_on:
       - db
     restart: unless-stopped
@@ -140,17 +73,16 @@ services:
   db:
     image: postgres:14-alpine
     environment:
-      - POSTGRES_USER=logpose_user
+      - POSTGRES_USER=tracker_user
       - POSTGRES_PASSWORD=pass
-      - POSTGRES_DB=logpose
+      - POSTGRES_DB=ninjas_tracker
     volumes:
-      - logpose_db_data:/var/lib/postgresql/data
+      - tracker_db_data:/var/lib/postgresql/data
     restart: unless-stopped
 
 volumes:
-  logpose_db_data:
+  tracker_db_data:
 ```
-</details>
 
 1. Clone este repositório em seu servidor.
 2. Edite as variáveis de ambiente com suas credenciais seguras.
@@ -162,21 +94,19 @@ volumes:
 ## Tecnologias Utilizadas
 
 - **Frontend:** React + TailwindCSS + ShadCN UI
-- **Backend:** Python
-- **Banco de Dados:** PostgreSQL 14
+- **Backend:** Python + FastAPI
+- **Banco de Dados:** PostgreSQL
 - **Deployment:** Docker
 
 ---
 
 ## Licença
 
-Este projeto é de código aberto e está licenciado sob a [MIT License](LICENSE.md). É 100% gratuito para uso comercial e pessoal. Você tem total liberdade para usar e modificar.
+Este projeto é de código aberto e está licenciado sob a [MIT License](LICENSE.md). É 100% gratuito para uso comercial e pessoal.
 
 ---
 
 <div align="center">
   <br>
-  <p>Made with love by <a href="https://ilumin.app">Ilumin Cloud</a></p>
-  <p><a href="https://instagram.com/ilumin.app">@ilumin.app</a></p>
-  <p><small>© 2026 Ilumin Cloud. Simplificando a infraestrutura para criadores e empreendedores.</small></p>
+  <p><b>NINJA'S TRACKER</b> • Performance com vendas reais</p>
 </div>

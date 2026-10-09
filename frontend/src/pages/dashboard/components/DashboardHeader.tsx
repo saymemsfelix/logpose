@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { getStoredUser } from "@/services/auth";
+import { useState, useEffect } from "react";
+import { getStoredUser, refreshUserProfile } from "@/services/auth";
 import { Eye, EyeOff, RefreshCw, Bell } from "lucide-react";
 
 function getGreeting(): string {
@@ -35,8 +35,16 @@ export function DashboardHeader({
   onToggleNotifications,
   onOpenNotificationModal,
 }: DashboardHeaderProps) {
-  const user = getStoredUser();
-  const firstName = user?.name?.split(" ")[0] || "Sayme";
+  const [currentUser, setCurrentUser] = useState(() => getStoredUser());
+
+  useEffect(() => {
+    refreshUserProfile().then(() => {
+      setCurrentUser(getStoredUser());
+    }).catch(() => {});
+  }, []);
+
+  const rawFirst = currentUser?.name?.split(" ")[0]?.trim();
+  const firstName = (!rawFirst || rawFirst.toLowerCase() === "admin") ? "Sayme" : rawFirst;
   const greeting = getGreeting();
   const [isRefreshing, setIsRefreshing] = useState(false);
 

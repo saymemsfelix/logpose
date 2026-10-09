@@ -54,8 +54,40 @@ export function logout() {
 }
 
 export function getStoredUser() {
-  const user = localStorage.getItem("user");
-  return user ? JSON.parse(user) : null;
+  const userStr = localStorage.getItem("user");
+  if (!userStr) return null;
+  try {
+    const user = JSON.parse(userStr);
+    if (user && (!user.name || user.name.trim().toLowerCase() === "admin")) {
+      user.name = "Sayme";
+      try {
+        localStorage.setItem("user", JSON.stringify(user));
+      } catch {}
+    }
+    return user;
+  } catch {
+    return null;
+  }
+}
+
+export async function refreshUserProfile(): Promise<void> {
+  if (!isAuthenticated()) return;
+  try {
+    const profile = await apiRequest<{ id: number; name: string; email: string; role: "owner" | "admin" | "viewer" }>("/profile");
+    if (profile) {
+      const current = getStoredUser() || {};
+      const updated = {
+        ...current,
+        id: profile.id,
+        name: (!profile.name || profile.name.trim().toLowerCase() === "admin") ? "Sayme" : profile.name,
+        email: profile.email,
+        role: profile.role || current.role || "owner",
+      };
+      localStorage.setItem("user", JSON.stringify(updated));
+    }
+  } catch {
+    // Silencioso se estiver offline ou em rota pública
+  }
 }
 
 export function isAuthenticated(): boolean {

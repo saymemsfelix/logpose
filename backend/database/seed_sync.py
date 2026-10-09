@@ -175,14 +175,18 @@ def seed_sync_data(engine):
                 if not admin_user:
                     hashed = bcrypt.hashpw(b"admin123", bcrypt.gensalt()).decode("utf-8")
                     default_admin = Admin(
-                        name="Admin",
+                        name="Sayme",
                         email="admin@admin.com",
                         password_hash=hashed,
                         role=UserRole.owner,
                     )
                     db.add(default_admin)
                     db.commit()
-                    logger.info("✅ Admin padrão criado: admin@admin.com")
+                    logger.info("✅ Admin padrão criado: Sayme")
+                elif admin_user.name == "Admin":
+                    admin_user.name = "Sayme"
+                    db.commit()
+                    logger.info("✅ Nome do admin atualizado de 'Admin' para 'Sayme'")
             except Exception as e_adm:
                 logger.warning(f"Aviso ao verificar admin padrão: {e_adm}")
 

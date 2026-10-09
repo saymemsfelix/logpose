@@ -6,6 +6,7 @@ para manter create.py enxuto e reutilizável no loop multi-account.
 import logging
 from integrations.meta_ads.create_campaign import create_campaign
 from integrations.meta_ads.create_adset import create_adset
+from integrations.meta_ads.manage import delete_entity
 from api.campaigns_create.ads_batch import create_ads_batch
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,7 @@ async def create_for_single_account(
     import asyncio
     
     errors: list[str] = []
+    created_campaign_ids: list[str] = []
     campaign_count = max(1, int(data.get("campaign_count", 1)))
     adset_count = max(1, int(data.get("adset_count", 1)))
     total_ads_created = 0
@@ -61,6 +63,7 @@ async def create_for_single_account(
             return
 
         campaign_id = camp_result["campaign_id"]
+        created_campaign_ids.append(campaign_id)
         logger.info(f"{camp_label} Campanha criada: {campaign_id}")
         if first_campaign_id is None:
             first_campaign_id = campaign_id
@@ -95,6 +98,23 @@ async def create_for_single_account(
 
     camp_tasks = [_process_campaign(i) for i in range(campaign_count)]
     await asyncio.gather(*camp_tasks)
+
+    # Rollback automático: se houve erro no processo (adset ou ad falhou),
+    # deleta as campanhas que foram criadas nesta tentativa na Meta para não deixar lixo na conta
+    if errors and created_campaign_ids:
+        logger.warning(
+            f"{acc_label} Publicação falhou com {len(errors)} erro(s). "
+            f"Iniciando rollback automático de {len(created_campaign_ids)} campanha(s) na Meta..."
+        )
+        for cid in created_campaign_ids:
+            try:
+                rollback_res = await delete_entity(token, cid, "campaign")
+                if rollback_res.get("success"):
+                    logger.info(f"{acc_label} Rollback: campanha incompleta {cid} removida da Meta")
+                else:
+                    logger.warning(f"{acc_label} Rollback: falha ao remover campanha {cid}: {rollback_res.get('error')}")
+            except Exception as e:
+                logger.error(f"{acc_label} Erro no rollback da campanha {cid}: {e}")
 
     return {
         "campaigns_created": campaign_count if not errors else 0, # Aproximado se falhou

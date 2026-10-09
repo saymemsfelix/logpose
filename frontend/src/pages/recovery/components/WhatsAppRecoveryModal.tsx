@@ -24,6 +24,7 @@ import {
   RiExternalLinkLine,
   RiAlertLine,
   RiLinkM,
+  RiSmartphoneLine,
 } from "@remixicon/react";
 import type { RecoveryRow } from "@/services/recovery";
 
@@ -662,7 +663,8 @@ export function WhatsAppRecoveryModal({
     const mailtoUrl = `mailto:${encodeURIComponent(lead.customerEmail.trim())}?subject=${encodeURIComponent(
       customEmailSubject
     )}&body=${encodeURIComponent(customEmailBody)}`;
-    window.open(mailtoUrl, "_blank");
+    // Dispara o aplicativo de e-mail padrão do Android/iOS/Windows sem abrir aba em branco
+    window.location.href = mailtoUrl;
   };
 
   const handleOpenSms = () => {
@@ -670,8 +672,15 @@ export function WhatsAppRecoveryModal({
       alert("Por favor, digite um número com DDI para envio de SMS.");
       return;
     }
-    const smsUrl = `sms:+${cleanPhone}?body=${encodeURIComponent(customSmsText)}`;
-    window.open(smsUrl, "_blank");
+    const isIOS = typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const separator = isIOS ? "&" : "?";
+    const smsUrl = `sms:+${cleanPhone}${separator}body=${encodeURIComponent(customSmsText)}`;
+    // Dispara o aplicativo nativo de SMS (Google Mensagens / Samsung Mensagens) sem aba em branco
+    window.location.href = smsUrl;
+  };
+
+  const handleOpenGoogleMessagesWeb = () => {
+    window.open("https://messages.google.com/web", "_blank", "noopener,noreferrer");
   };
 
   const handleMarkAsRecovered = async () => {
@@ -703,7 +712,7 @@ export function WhatsAppRecoveryModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl max-w-3xl w-[96vw] max-h-[92vh] overflow-y-auto bg-[#0b1320] border-zinc-800 shadow-2xl p-5 sm:p-7 text-foreground">
+      <DialogContent className="sm:max-w-4xl max-w-4xl lg:max-w-5xl w-[96vw] max-h-[92vh] overflow-y-auto bg-[#0b1320] border border-zinc-800 shadow-2xl p-5 sm:p-7 text-foreground">
         <DialogHeader className="space-y-1.5 pb-2 border-b border-border/40">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
@@ -1102,6 +1111,21 @@ export function WhatsAppRecoveryModal({
                 />
               </div>
             </div>
+
+            {/* Mobile / App Helper Banner */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-300 bg-sky-950/40 border border-sky-500/25 rounded-lg px-3 py-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <RiSmartphoneLine className="size-4 text-sky-400 shrink-0" />
+                <span>
+                  No <strong>celular Android</strong>: use <strong>App de E-mail (Celular / Padrão)</strong> para abrir o <em>Outlook, Samsung Email ou Gmail App</em> com a mensagem pronta.
+                </span>
+              </div>
+              {cleanPhone && (
+                <div className="flex items-center gap-1 shrink-0 text-[10px] text-purple-300 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
+                  <span>WhatsApp/SMS (+{cleanPhone})</span>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -1136,32 +1160,57 @@ export function WhatsAppRecoveryModal({
                 <span>{cleanPhone ? `Destino: +${cleanPhone}` : "Sem número com DDI"}</span>
               </div>
             </div>
+
+            {/* Mobile / App Helper Banner */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-300 bg-purple-950/40 border border-purple-500/25 rounded-lg px-3 py-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <RiSmartphoneLine className="size-4 text-purple-400 shrink-0" />
+                <span>
+                  No <strong>celular Android</strong>: abre o <strong>Google Mensagens</strong> ou <strong>Samsung Mensagens</strong> pronto para enviar sem custos adicionais.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleOpenGoogleMessagesWeb}
+                className="hidden sm:inline-flex items-center gap-1 text-[10px] text-purple-300 hover:text-white underline cursor-pointer"
+                title="Parear SMS do seu celular com o computador em messages.google.com/web"
+              >
+                <span>Usar no PC via Web</span>
+                <RiExternalLinkLine className="size-2.5" />
+              </button>
+            </div>
           </div>
         )}
 
         {/* Modal Actions */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-border/40 shrink-0">
-          <div className="w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3.5 border-t border-border/50 shrink-0">
+          <div className="flex items-center gap-2">
             {onMarkRecovered && !lead.recovered && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleMarkAsRecovered}
                 disabled={isMarking}
-                className="w-full sm:w-auto border-border/60 hover:bg-slate-800 text-xs text-slate-300 cursor-pointer"
+                className="border-emerald-500/40 hover:bg-emerald-500/10 text-xs text-emerald-300 cursor-pointer"
               >
                 <RiCheckboxCircleLine className="size-3.5 mr-1.5 text-emerald-400" />
                 {isMarking ? "Salvando..." : "Marcar como Recuperado"}
               </Button>
             )}
+            {lead.recovered && (
+              <Badge variant="outline" className="text-xs border-emerald-500/50 text-emerald-400 bg-emerald-500/10 py-1 px-2.5">
+                <RiCheckboxCircleLine className="size-3.5 mr-1" />
+                Recuperado
+              </Badge>
+            )}
           </div>
 
-          <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+          <div className="flex flex-wrap items-center gap-2 justify-end">
             <Button
               variant="outline"
               size="sm"
               onClick={handleCopyCurrent}
-              className="flex-1 sm:flex-none border-border/60 hover:bg-slate-800 text-xs cursor-pointer"
+              className="border-border/60 hover:bg-slate-800 text-xs cursor-pointer"
             >
               {copied ? (
                 <>
@@ -1181,7 +1230,7 @@ export function WhatsAppRecoveryModal({
                 size="sm"
                 onClick={handleOpenWhatsApp}
                 disabled={!cleanPhone}
-                className="flex-1 sm:flex-none bg-[#25D366] hover:bg-[#20ba5a] text-slate-950 font-bold text-xs shadow-lg shadow-[#25D366]/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2"
+                className="bg-[#25D366] hover:bg-[#20ba5a] text-slate-950 font-bold text-xs shadow-lg shadow-[#25D366]/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2"
               >
                 <RiWhatsappFill className="size-4 mr-1.5" />
                 Abrir no WhatsApp
@@ -1194,10 +1243,11 @@ export function WhatsAppRecoveryModal({
                 <Button
                   size="sm"
                   onClick={handleOpenGmail}
-                  className="flex-1 sm:flex-none bg-[#EA4335] hover:bg-[#d93829] text-white font-bold text-xs shadow-lg shadow-[#EA4335]/25 transition-all cursor-pointer px-4 py-2"
+                  title="Abre a tela de composição do Gmail Web em nova aba (ideal para PC)"
+                  className="bg-[#EA4335] hover:bg-[#d93829] text-white font-semibold text-xs shadow-md shadow-[#EA4335]/25 transition-all cursor-pointer px-3.5 py-2"
                 >
                   <RiGoogleFill className="size-4 mr-1.5" />
-                  Abrir no Gmail (Web 1-Clique)
+                  Abrir no Gmail (Web)
                   <RiExternalLinkLine className="size-3.5 ml-1 opacity-80" />
                 </Button>
 
@@ -1205,26 +1255,53 @@ export function WhatsAppRecoveryModal({
                   variant="outline"
                   size="sm"
                   onClick={handleOpenEmailApp}
-                  title="Abrir no aplicativo padrão do celular (Gmail App / Apple Mail) ou Windows"
-                  className="border-border/60 hover:bg-slate-800 text-xs text-slate-300 cursor-pointer"
+                  title="Abre diretamente no app de e-mail padrão do seu celular Android/iOS (Outlook, Samsung Email, Gmail App) ou do sistema"
+                  className="border-sky-500/50 bg-sky-500/10 hover:bg-sky-500/20 text-xs text-sky-200 font-medium transition-all cursor-pointer px-3.5 py-2"
                 >
-                  <RiMailSendLine className="size-3.5 mr-1 text-sky-400" />
-                  App do Celular
+                  <RiSmartphoneLine className="size-3.5 mr-1.5 text-sky-400" />
+                  App de E-mail (Celular / Padrão)
                 </Button>
+
+                {cleanPhone && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleOpenSms}
+                    title={`Disparar SMS rápido para o celular do cliente (+${cleanPhone})`}
+                    className="border-purple-500/40 hover:bg-purple-500/15 text-xs text-purple-300 font-medium transition-all cursor-pointer px-3 py-2"
+                  >
+                    <RiMessage3Line className="size-3.5 mr-1 text-purple-400" />
+                    Enviar SMS (+{cleanPhone})
+                  </Button>
+                )}
               </>
             )}
 
             {activeChannel === "sms" && (
-              <Button
-                size="sm"
-                onClick={handleOpenSms}
-                disabled={!cleanPhone}
-                className="flex-1 sm:flex-none bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-lg shadow-purple-600/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2"
-              >
-                <RiMessage3Line className="size-4 mr-1.5" />
-                Enviar SMS
-                <RiExternalLinkLine className="size-3.5 ml-1 opacity-70" />
-              </Button>
+              <>
+                <Button
+                  size="sm"
+                  onClick={handleOpenSms}
+                  disabled={!cleanPhone}
+                  title="Abre o aplicativo nativo de SMS do celular (Google Mensagens, Samsung Mensagens) com o texto pronto"
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-lg shadow-purple-600/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2"
+                >
+                  <RiSmartphoneLine className="size-4 mr-1.5" />
+                  Abrir no App de SMS (Celular)
+                  <RiExternalLinkLine className="size-3.5 ml-1 opacity-70" />
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleOpenGoogleMessagesWeb}
+                  title="Acessar o Google Mensagens Web no computador para disparar SMS usando seu celular Android"
+                  className="border-purple-500/40 hover:bg-purple-500/10 text-xs text-purple-300 cursor-pointer px-3 py-2"
+                >
+                  <RiExternalLinkLine className="size-3.5 mr-1 text-purple-400" />
+                  Google Mensagens Web (PC)
+                </Button>
+              </>
             )}
           </div>
         </div>

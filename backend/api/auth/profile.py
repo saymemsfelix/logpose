@@ -18,7 +18,15 @@ class PasswordChangeRequest(BaseModel):
     confirm_password: str
 
 @router.get("/profile")
-def get_profile(current_user: Admin = Depends(get_current_user)):
+def get_profile(current_user: Admin = Depends(get_current_user), db: Session = Depends(get_db)):
+    if current_user.name == "Admin":
+        current_user.name = "Sayme"
+        try:
+            db.commit()
+            db.refresh(current_user)
+        except Exception:
+            pass
+
     return {
         "id": current_user.id,
         "name": current_user.name,

@@ -1,5 +1,5 @@
 import {
-  Table, TableBody, TableCell, TableHeader, TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import type { CampaignAdData } from "@/services/campaigns";
@@ -13,9 +13,17 @@ interface AdsSubTableProps {
   ads: CampaignAdData[];
   columns: string[];
   onToggle: (entityId: string, entityType: "campaign" | "adset" | "ad", active: boolean) => Promise<void>;
+  taxEnabled?: boolean;
+  taxRate?: number;
 }
 
-export function AdsSubTable({ ads, columns, onToggle }: AdsSubTableProps) {
+export function AdsSubTable({
+  ads,
+  columns,
+  onToggle,
+  taxEnabled = false,
+  taxRate = 0,
+}: AdsSubTableProps) {
   const visibleCols = columns.filter((c) => c !== "name");
   const kpiColors = useKpiColorsContext();
 
@@ -32,7 +40,8 @@ export function AdsSubTable({ ads, columns, onToggle }: AdsSubTableProps) {
       <Table>
         <TableHeader>
           <TableRow className="text-[10px]">
-            <TooltipTableHead colKey="name" label="Anúncio" className="pl-20 min-w-[180px]" />
+            <TableHead className="w-10 px-3"></TableHead>
+            <TooltipTableHead colKey="name" label="Anúncio" className="pl-6 min-w-[180px]" />
             {visibleCols.map((col) => (
               <TooltipTableHead key={col} colKey={col} label={allColumns[col] || col} className="text-right" />
             ))}
@@ -43,7 +52,8 @@ export function AdsSubTable({ ads, columns, onToggle }: AdsSubTableProps) {
             const row = adToMetricRow(ad);
             return (
               <TableRow key={ad.id} className="text-xs">
-                <TableCell className="pl-20">
+                <TableCell className="w-10 px-3"></TableCell>
+                <TableCell className="pl-6">
                   <div className="flex items-center gap-2">
                     <Switch
                       size="sm"
@@ -64,7 +74,7 @@ export function AdsSubTable({ ads, columns, onToggle }: AdsSubTableProps) {
                 </TableCell>
                 {visibleCols.map((col) => (
                   <TableCell key={col} className="text-right tabular-nums">
-                    {getCellValue(row, col, kpiColors)}
+                    {getCellValue(row, col, kpiColors, taxEnabled, taxRate)}
                   </TableCell>
                 ))}
               </TableRow>

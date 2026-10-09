@@ -29,6 +29,7 @@ import { useQuickFilters } from "./components/useQuickFilters";
 import type { ValueFilter } from "@/components/ValueFiltersSection";
 import { useCampaignPageData } from "@/hooks/useCampaignPageData";
 import { useKpiColors } from "@/hooks/useKpiColors";
+import { useCompany } from "@/hooks/use-company";
 import { invalidateCacheByPrefix } from "@/lib/queryCache";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -44,6 +45,36 @@ export default function CampaignsPage() {
   const [blur, setBlur] = useState<BlurState>({
     name: false, values: false, hideUnidentified: false, hiddenProducts: [],
   });
+
+  const { settings } = useCompany();
+  const taxRate = settings?.tax_rate ?? 0;
+
+  const [taxEnabled, setTaxEnabled] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("ninjas_tracker_tax_enabled");
+      return saved !== null ? saved === "true" : true;
+    }
+    return true;
+  });
+
+  const handleTaxEnabledChange = useCallback((enabled: boolean) => {
+    setTaxEnabled(enabled);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("ninjas_tracker_tax_enabled", String(enabled));
+      window.dispatchEvent(new Event("storage"));
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleStorage = () => {
+      const saved = localStorage.getItem("ninjas_tracker_tax_enabled");
+      if (saved !== null) {
+        setTaxEnabled(saved === "true");
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
 
   const { tagsMap, allUniqueTags, updateTags } = useCampaignTags();
   const { markersMap, saveMarker } = useCampaignMarkers();
@@ -66,7 +97,7 @@ export default function CampaignsPage() {
   const {
     campaigns, unidentified, metaError, isLoading, error,
     accounts: fbAccounts, activeAccountId, setSelectedAccountId,
-    toggle, changeBudget, silentReload,
+    toggle, batchToggle, batchDelete, changeBudget, silentReload,
   } = useCampaigns(dateStart, dateEnd);
 
   const navigate = useNavigate();
@@ -187,7 +218,7 @@ export default function CampaignsPage() {
   };
 
   const metricsForKpi = filtered.map(campaignToMetricRow);
-  useCampaignPageData(filtered, filters, dateStart, dateEnd);
+  useCampaignPageData(filtered, filters, dateStart, dateEnd, taxEnabled, taxRate);
 
   return (
     <div className="flex flex-col gap-6 p-6 min-w-0">
@@ -206,8 +237,15 @@ export default function CampaignsPage() {
         onRefresh={handleRefresh}
         onOpenSettings={() => setSettingsOpen(true)}
         defaultPresetIds={DEFAULT_PRESET_IDS}
+        taxEnabled={taxEnabled}
+        onTaxEnabledChange={handleTaxEnabledChange}
+        taxRate={taxRate}
       />
-      <CampaignsKpis data={metricsForKpi} />
+      <CampaignsKpis
+        data={metricsForKpi}
+        taxEnabled={taxEnabled}
+        taxRate={taxRate}
+      />
       <div className="flex flex-wrap items-center gap-2">
         <QuickFiltersBadges filters={quickFilters} onChange={handleFilterChange} />
         <AddValueFilterPopover onAdd={addValueFilter} />
@@ -227,12 +265,16 @@ export default function CampaignsPage() {
             tagsMap={tagsMap}
             markersMap={markersMap}
             onToggle={toggle}
+            onBatchToggle={batchToggle}
+            onBatchDelete={batchDelete}
             onBudgetChange={changeBudget}
             onSaveTags={async (id, tags) => { await updateTags(id, tags); }}
             onSaveMarker={async (id, type, refId, refLabel) => {
               await saveMarker(id, type, refId, refLabel);
             }}
             accountId={activeAccountId}
+            taxEnabled={taxEnabled}
+            taxRate={taxRate}
           />
         </KpiColorsProvider>
       )}

@@ -166,6 +166,38 @@ export async function toggleCampaignStatus(
   });
 }
 
+export async function batchToggleCampaignStatus(
+  accountId: number,
+  entityIds: string[],
+  entityType: "campaign" | "adset" | "ad",
+  active: boolean,
+): Promise<{ status: string; total: number; updated: number; new_status: string }> {
+  return apiRequest("/campaigns/batch-toggle", {
+    method: "POST",
+    body: {
+      account_id: accountId,
+      entity_ids: entityIds,
+      entity_type: entityType,
+      active,
+    },
+  });
+}
+
+export async function batchDeleteCampaigns(
+  accountId: number,
+  entityIds: string[],
+  entityType: "campaign" | "adset" | "ad" = "campaign",
+): Promise<{ status: string; total: number; deleted: number }> {
+  return apiRequest("/campaigns/batch-delete", {
+    method: "POST",
+    body: {
+      account_id: accountId,
+      entity_ids: entityIds,
+      entity_type: entityType,
+    },
+  });
+}
+
 export async function updateBudget(
   accountId: number,
   entityId: string,

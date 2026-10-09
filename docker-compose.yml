@@ -1,6 +1,6 @@
 services:
   logpose:
-    image: ghcr.io/ilumincloud-applications/logpose:${APP_VERSION}
+    image: ninjastracker:${APP_VERSION}
     depends_on:
       db:
         condition: service_healthy

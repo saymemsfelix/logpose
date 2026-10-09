@@ -1,4 +1,4 @@
-﻿import os
+import os
 import json
 import logging
 from typing import Any
@@ -83,6 +83,17 @@ def send_web_push(sub: PushSubscription, payload: dict, db: Session | None = Non
         return False
 
 
+def get_country_flag(country_code: str) -> str:
+    """Retorna o emoji da bandeira para qualquer código ISO de 2 letras do mundo."""
+    if not country_code or len(country_code) != 2:
+        return "🌍"
+    code = country_code.upper()
+    try:
+        return chr(0x1F1E6 + ord(code[0]) - ord('A')) + chr(0x1F1E6 + ord(code[1]) - ord('A'))
+    except Exception:
+        return "🌍"
+
+
 def send_sale_push_notification(db: Session, event: StandardizedWebhookEvent) -> int:
     """
     Dispara o pop-up nativo de Venda Aprovada (estilo Nexofy / Hotmart) para todos
@@ -97,17 +108,6 @@ def send_sale_push_notification(db: Session, event: StandardizedWebhookEvent) ->
     amount = float(event.amount) if event.amount is not None else 0.0
     formatted_amount = f"R$ {amount:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
-def get_country_flag(country_code: str) -> str:
-    """Retorna o emoji da bandeira para qualquer código ISO de 2 letras do mundo."""
-    if not country_code or len(country_code) != 2:
-        return "🌍"
-    code = country_code.upper()
-    try:
-        return chr(0x1F1E6 + ord(code[0]) - ord('A')) + chr(0x1F1E6 + ord(code[1]) - ord('A'))
-    except Exception:
-        return "🌍"
-
-
     # 2. Bandeira do País (suporte universal para todos os países)
     country = getattr(event, "customer_country", "") or getattr(event, "country", "") or "BR"
     flag = get_country_flag(country)
@@ -116,10 +116,30 @@ def get_country_flag(country_code: str) -> str:
     creative = event.utm_content or event.utm_campaign or "Anúncio Direto"
     product_name = event.product_name or "Produto Digital"
 
-    # 4. Monta o Payload do Pop-up Nativo do Celular
+    # 4. Estatísticas acumuladas de hoje (estilo UTMify em tempo real)
+    today_stats_suffix = ""
+    try:
+        from database.core.timezone import now_sp
+        from database.models.transaction import Transaction, TransactionStatus
+        now = now_sp()
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+        today_txs = db.query(Transaction).filter(
+            Transaction.status == TransactionStatus.APPROVED,
+            Transaction.created_at >= today_start,
+            Transaction.created_at <= today_end,
+        ).all()
+        t_count = len(today_txs)
+        t_rev = sum(float(t.amount or 0.0) for t in today_txs)
+        formatted_t_rev = f"R$ {t_rev:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        today_stats_suffix = f" • Hoje: {t_count} vendas ({formatted_t_rev})"
+    except Exception:
+        pass
+
+    # 5. Monta o Payload do Pop-up Nativo do Celular
     payload = {
         "title": f"💰 Venda Aprovada: {formatted_amount}",
-        "body": f"{flag} {product_name} • {formatted_amount}\n🎨 Criativo: {creative}",
+        "body": f"{flag} {product_name} • {formatted_amount}{today_stats_suffix}\n🎨 Criativo: {creative}",
         "icon": "/icons/pwa-192.png",
         "badge": "/icons/pwa-192.png",
         "tag": f"ninja-sale-{event.external_id}",
@@ -195,15 +215,54 @@ def send_recovery_push_notification(db: Session, event: StandardizedWebhookEvent
     return sent
 
 
-def get_today_profit_metrics(db: Session) -> dict:
-    """Calcula faturamento, gasto de ads em tempo real e lucro líquido do dia em perfeita sincronia com o Dashboard (São Paulo)."""
+def _fetch_meta_sync(access_token: str, account_id: str, ds: str, de: str, level: str = "campaign"):
+    """Executa busca direta na Meta Ads via MetaAdsService de forma sync-safe sem depender de langchain."""
+    import asyncio
+    import concurrent.futures
+    from integrations.meta_ads.service import MetaAdsService
+
+    async def _runner():
+        service = MetaAdsService(access_token, account_id)
+        try:
+            if level == "account":
+                return await service.get_account_summary(ds, de)
+            else:
+                return await service.get_campaigns(ds, de)
+        finally:
+            await service.close()
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    coro = _runner()
+    if loop and loop.is_running():
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            return pool.submit(asyncio.run, coro).result()
+    else:
+        return asyncio.run(coro)
+
+
+def get_today_profit_metrics(db: Session, force_live: bool = True) -> dict:
+    """
+    Calcula faturamento, gasto de ads em tempo real e lucro líquido do dia em perfeita sincronia com o Dashboard (São Paulo).
+    Quando force_live=True, limpa o cache em memória para consultar a Meta Ads ao vivo, sincronizando campanhas ativas.
+    """
     from database.core.timezone import now_sp, today_sp, today_sp_str
     from database.models.transaction import Transaction, TransactionStatus
     from database.models.facebook_account import FacebookAccount
     from database.models.daily_ad_spend import DailyAdSpend
-    from ai.tools.universal import _run_meta
+    from integrations.meta_ads.cache import clear_all_cache
 
     try:
+        # Se force_live=True, limpa o cache da Meta para ler 100% ao vivo sem defasagem
+        if force_live:
+            try:
+                clear_all_cache()
+            except Exception as c_err:
+                logger.warning(f"Aviso ao limpar cache para métricas em tempo real: {c_err}")
+
         now = now_sp()
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         today_end = now.replace(hour=23, minute=59, second=59, microsecond=999999)
@@ -218,10 +277,10 @@ def get_today_profit_metrics(db: Session) -> dict:
         ).all()
         # Filtra transações com valor real > 0 para faturamento
         valid_sales = [t for t in txs if float(t.amount or 0.0) > 0]
-        today_revenue = sum(float(t.amount or 0.0) for t in valid_sales)
+        today_revenue = round(sum(float(t.amount or 0.0) for t in valid_sales), 2)
         today_sales = len(valid_sales)
 
-        # 2. Busca gastos reais da Meta Ads ao vivo nas contas ativas
+        # 2. Busca gastos reais da Meta Ads ao vivo nas contas ativas (Conta + Campanhas para capturar o maior valor em tempo real)
         fb_accounts = db.query(FacebookAccount).filter(FacebookAccount.token_valid.is_(True)).all()
         meta_spend = 0.0
         meta_clicks = 0
@@ -232,14 +291,34 @@ def get_today_profit_metrics(db: Session) -> dict:
 
         for acc in fb_accounts:
             try:
-                summary = _run_meta(acc.access_token, acc.account_id, today_str, today_str, "account")
-                if summary and summary.spend > 0:
-                    meta_spend += summary.spend
-                    meta_clicks += summary.clicks
-                    meta_impr += summary.impressions
-                    meta_lpv += summary.landing_page_views
-                    meta_ic += summary.initiate_checkout
+                summary = _fetch_meta_sync(acc.access_token, acc.account_id, today_str, today_str, "account")
+                campaigns = _fetch_meta_sync(acc.access_token, acc.account_id, today_str, today_str, "campaign")
+
+                acc_spend = float(summary.spend or 0.0) if summary else 0.0
+                camp_spend = sum(float(c.spend or 0.0) for c in campaigns) if campaigns else 0.0
+
+                # Meta Ads atualiza o nível de campanhas mais rapidamente do que o agregado da conta.
+                # Utilizamos o maior valor para garantir que novos gastos com tráfego nunca fiquem para trás.
+                real_acc_spend = max(acc_spend, camp_spend)
+                if real_acc_spend > 0:
+                    meta_spend += real_acc_spend
                     has_meta = True
+
+                acc_clicks = summary.clicks if summary else 0
+                camp_clicks = sum(c.clicks for c in campaigns) if campaigns else 0
+                meta_clicks += max(acc_clicks, camp_clicks)
+
+                acc_impr = summary.impressions if summary else 0
+                camp_impr = sum(c.impressions for c in campaigns) if campaigns else 0
+                meta_impr += max(acc_impr, camp_impr)
+
+                acc_lpv = summary.landing_page_views if summary else 0
+                camp_lpv = sum(c.landing_page_views for c in campaigns) if campaigns else 0
+                meta_lpv += max(acc_lpv, camp_lpv)
+
+                acc_ic = summary.initiate_checkout if summary else 0
+                camp_ic = sum(c.initiate_checkout for c in campaigns) if campaigns else 0
+                meta_ic += max(acc_ic, camp_ic)
             except Exception as meta_err:
                 logger.warning(f"Aviso ao consultar Meta Ads hoje para conta {acc.label}: {meta_err}")
 
@@ -255,6 +334,8 @@ def get_today_profit_metrics(db: Session) -> dict:
             total_spend = meta_spend
             total_clicks = meta_clicks
             total_impr = meta_impr
+
+        total_spend = round(total_spend, 2)
 
         # 4. Métricas consolidadas padrão UTMify / NexoFy
         profit = round(today_revenue - total_spend, 2)
@@ -312,7 +393,7 @@ def send_daily_profit_push_notification(db: Session, admin_id: int | None = None
     Dispara notificação inteligente de lucro/performance do dia (estilo Nexofy & UTMify).
     Avalia a saúde real: se estiver gastando sem vender, alerta! Se estiver no lucro, celebra!
     """
-    metrics = get_today_profit_metrics(db)
+    metrics = get_today_profit_metrics(db, force_live=True)
     profit = metrics["profit"]
     revenue = metrics["revenue"]
     spend = metrics["spend"]
@@ -423,7 +504,7 @@ def send_test_push_notification(db: Session, admin_id: int | None = None, test_t
             },
         }
     elif test_type == "profit":
-        metrics = get_today_profit_metrics(db)
+        metrics = get_today_profit_metrics(db, force_live=True)
         sales = metrics["sales"]
         spend = metrics["spend"]
         profit = metrics["profit"]

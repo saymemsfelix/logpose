@@ -77,13 +77,16 @@ export function NexoKpisGrid({
   const checkoutConvRate = kpis.checkout_conversion_rate ?? (ic > 0 ? (kpis.total_sales / ic) * 100 : 0);
   const conversionRate = kpis.conversion_rate ?? (totalClicks > 0 ? (kpis.total_sales / totalClicks) * 100 : 0);
 
-  const taxSubtext = taxEnabled
+  const taxSubtextRev = taxEnabled
     ? `-${formatCurrency(taxDeduction)} impostos (${taxRate}%)`
+    : null;
+  const taxSubtextProfit = taxEnabled
+    ? `-${formatCurrency(taxDeduction)} impostos (${taxRate}% s/ faturamento)`
     : null;
   const opSubtext = opCostsEnabled
     ? `-${formatCurrency(opDeduction)} custos fixos`
     : null;
-  const profitSubtext = [taxSubtext, opSubtext].filter(Boolean).join(" | ") || null;
+  const profitSubtext = [taxSubtextProfit, opSubtext].filter(Boolean).join(" | ") || null;
 
   interface CardItem {
     id: string;
@@ -91,6 +94,7 @@ export function NexoKpisGrid({
     title: string;
     value: string;
     subtext: string | null;
+    tooltip?: string;
     colorClass: string;
     hasToggle: boolean;
   }
@@ -102,7 +106,8 @@ export function NexoKpisGrid({
       category: "finance",
       title: taxEnabled ? "Faturamento (- impostos)" : "Faturamento líquido",
       value: formatCurrency(adjustedRevenue),
-      subtext: taxSubtext,
+      subtext: taxSubtextRev,
+      tooltip: taxEnabled ? `Faturamento bruto: ${formatCurrency(kpis.total_revenue)} | Dedução de impostos (${taxRate}%): -${formatCurrency(taxDeduction)}` : undefined,
       colorClass: "text-zinc-900 dark:text-zinc-100",
       hasToggle: true,
     },
@@ -112,6 +117,7 @@ export function NexoKpisGrid({
       title: (taxEnabled || opCostsEnabled) ? "Lucro Real" : "Lucro líquido",
       value: formatCurrency(profit),
       subtext: profitSubtext,
+      tooltip: taxEnabled ? `Lucro operacional: ${formatCurrency(baseProfit)} | Imposto (${taxRate}% sobre o faturamento de ${formatCurrency(kpis.total_revenue)}): -${formatCurrency(taxDeduction)} = Lucro Real ${formatCurrency(profit)}` : undefined,
       colorClass: isProfitPositive
         ? "text-emerald-600 dark:text-emerald-400 font-semibold"
         : "text-rose-600 dark:text-rose-400 font-semibold",
@@ -457,7 +463,7 @@ export function NexoKpisGrid({
                 </div>
 
                 {card.subtext && (
-                  <div className="mt-1.5 text-[11px] text-zinc-400 dark:text-zinc-500 truncate" title={card.subtext}>
+                  <div className="mt-1.5 text-[11px] text-zinc-400 dark:text-zinc-500 truncate" title={card.tooltip || card.subtext}>
                     {masked && card.id !== "approved" && card.id !== "clicks" && card.id !== "impressions" && card.id !== "lpv" && card.id !== "ic" ? "••••••" : card.subtext}
                   </div>
                 )}

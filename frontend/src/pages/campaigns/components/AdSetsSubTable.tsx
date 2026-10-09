@@ -1,8 +1,9 @@
 import { useState } from "react";
 import {
-  Table, TableBody, TableCell, TableHeader, TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { RiArrowDownSFill, RiPencilLine } from "@remixicon/react";
 import { cn } from "@/lib/utils";
 import type { CampaignAdSetData } from "@/services/campaigns";
@@ -19,13 +20,32 @@ interface AdSetsSubTableProps {
   columns: string[];
   onToggle: (entityId: string, entityType: "campaign" | "adset" | "ad", active: boolean) => Promise<void>;
   onBudgetChange: (entityId: string, entityType: "campaign" | "adset", dailyBudget: number, entityName?: string, budgetBefore?: number, metrics?: Record<string, number>) => Promise<void>;
+  taxEnabled?: boolean;
+  taxRate?: number;
+  selectedAdSetIds?: Set<string>;
+  onToggleSelectAdSet?: (adSetId: string) => void;
+  onSelectAllAdSets?: (adSetIds: string[], shouldSelect: boolean) => void;
 }
 
-export function AdSetsSubTable({ adSets, columns, onToggle, onBudgetChange }: AdSetsSubTableProps) {
+export function AdSetsSubTable({
+  adSets,
+  columns,
+  onToggle,
+  onBudgetChange,
+  taxEnabled = false,
+  taxRate = 0,
+  selectedAdSetIds,
+  onToggleSelectAdSet,
+  onSelectAllAdSets,
+}: AdSetsSubTableProps) {
   const [expandedAdSetId, setExpandedAdSetId] = useState<string | null>(null);
   const [budgetAdSet, setBudgetAdSet] = useState<CampaignAdSetData | null>(null);
   const visibleCols = columns.filter((c) => c !== "name");
   const kpiColors = useKpiColorsContext();
+
+  const allAdSetIds = adSets.map((as_) => as_.id);
+  const allAdSetsSelected = allAdSetIds.length > 0 && allAdSetIds.every((id) => selectedAdSetIds?.has(id));
+  const someAdSetsSelected = allAdSetIds.some((id) => selectedAdSetIds?.has(id));
 
   if (adSets.length === 0) {
     return (
@@ -44,7 +64,17 @@ export function AdSetsSubTable({ adSets, columns, onToggle, onBudgetChange }: Ad
       <Table>
         <TableHeader>
           <TableRow className="text-xs">
-            <TooltipTableHead colKey="name" label="Conjunto" className="pl-10 min-w-[180px]" />
+            <TableHead className="w-10 px-3 text-center">
+              <Checkbox
+                checked={allAdSetsSelected ? true : someAdSetsSelected ? "indeterminate" : false}
+                onCheckedChange={(checked) => {
+                  onSelectAllAdSets?.(allAdSetIds, !!checked);
+                }}
+                aria-label="Selecionar todos os conjuntos"
+                className="translate-y-[2px]"
+              />
+            </TableHead>
+            <TooltipTableHead colKey="name" label="Conjunto" className="pl-2 min-w-[180px]" />
             {visibleCols.map((col) => (
               <TooltipTableHead key={col} colKey={col} label={allColumns[col] || col} className="text-right" />
             ))}
@@ -56,6 +86,7 @@ export function AdSetsSubTable({ adSets, columns, onToggle, onBudgetChange }: Ad
             const isActive = as_.status === "active";
             const row = adsetToMetricRow(as_);
             const hasBudget = as_.budget > 0;
+            const isSelected = selectedAdSetIds?.has(as_.id) ?? false;
 
             return (
               <>
@@ -63,11 +94,20 @@ export function AdSetsSubTable({ adSets, columns, onToggle, onBudgetChange }: Ad
                   key={as_.id}
                   className={cn(
                     "text-xs cursor-pointer transition-colors",
-                    isExpanded && "bg-muted/20"
+                    isExpanded && "bg-muted/20",
+                    isSelected && "bg-primary/5"
                   )}
                   onClick={() => handleAdSetClick(as_.id)}
                 >
-                  <TableCell className="pl-10">
+                  <TableCell className="w-10 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => onToggleSelectAdSet?.(as_.id)}
+                      aria-label={`Selecionar conjunto ${as_.name}`}
+                      className="translate-y-[2px]"
+                    />
+                  </TableCell>
+                  <TableCell className="pl-2">
                     <div className="flex flex-col gap-0.5">
                       <div className="flex items-center gap-2">
                         <RiArrowDownSFill
@@ -93,7 +133,7 @@ export function AdSetsSubTable({ adSets, columns, onToggle, onBudgetChange }: Ad
                         </span>
                       </div>
                       {hasBudget && (
-                        <div className="flex items-center gap-1 pl-[3.25rem] relative z-10">
+                        <div className="flex items-center gap-1 pl-12 relative z-10">
                           <span className="text-[10px] text-muted-foreground tabular-nums">
                             {fmt(as_.budget)}/dia
                           </span>
@@ -109,17 +149,19 @@ export function AdSetsSubTable({ adSets, columns, onToggle, onBudgetChange }: Ad
                   </TableCell>
                   {visibleCols.map((col) => (
                     <TableCell key={col} className="text-right tabular-nums">
-                      {getCellValue(row, col, kpiColors)}
+                      {getCellValue(row, col, kpiColors, taxEnabled, taxRate)}
                     </TableCell>
                   ))}
                 </TableRow>
                 {isExpanded && as_.ads.length > 0 && (
                   <TableRow key={`${as_.id}-ads`}>
-                    <TableCell colSpan={visibleCols.length + 1} className="p-0">
+                    <TableCell colSpan={visibleCols.length + 2} className="p-0">
                       <AdsSubTable
                         ads={as_.ads}
                         columns={columns}
                         onToggle={onToggle}
+                        taxEnabled={taxEnabled}
+                        taxRate={taxRate}
                       />
                     </TableCell>
                   </TableRow>

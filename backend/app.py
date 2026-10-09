@@ -95,9 +95,9 @@ from database.core.timezone import now_sp, today_sp_str
 from services.push_service import send_daily_profit_push_notification
 
 async def _scheduled_profit_notifier_loop():
-    """Verifica e envia resumo de lucro nos horários definidos (08:00, 12:00, 18:00, 20:00, 22:00)."""
+    """Verifica e envia resumo de lucro nos horários definidos (08:00, 10:00, 12:00, 14:00, 16:00, 18:00, 20:00, 22:00)."""
     last_sent_key = None
-    target_hours = {8, 12, 18, 20, 22}
+    target_hours = {8, 10, 12, 14, 16, 18, 20, 22}
     while True:
         try:
             sp_time = now_sp()

@@ -193,6 +193,31 @@ async def toggle_entity_status(
     )
 
 
+async def delete_entity(
+    access_token: str,
+    entity_id: str,
+    entity_type: str = "campaign",
+) -> dict:
+    """
+    Deleta uma entidade (campaign, adset, ad) na Meta Marketing API.
+    DELETE https://graph.facebook.com/{version}/{entity_id}?access_token={token}
+    """
+    url = f"{GRAPH_API_BASE}/{entity_id}"
+    try:
+        async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as http:
+            resp = await http.delete(url, params={"access_token": access_token})
+            if resp.status_code == 200:
+                logger.info(f"{entity_type.capitalize()} {entity_id} deletado com sucesso na Meta")
+                return {"success": True}
+            error_data = _parse_meta_error(resp)
+            logger.error(f"Erro ao deletar {entity_type} {entity_id}: {error_data['message']}")
+            return {"success": False, "error": error_data["message"]}
+    except Exception as e:
+        logger.error(f"Exceção ao deletar {entity_type} {entity_id}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+
 async def update_budget(
     access_token: str,
     entity_id: str,

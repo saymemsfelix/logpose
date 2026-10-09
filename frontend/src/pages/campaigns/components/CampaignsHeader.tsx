@@ -1,7 +1,9 @@
-import { RiMegaphoneLine, RiSearchLine, RiAddLine, RiSettings3Line } from "@remixicon/react";
+import { RiMegaphoneLine, RiSearchLine, RiAddLine, RiSettings3Line, RiPercentLine } from "@remixicon/react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import type { ColumnPreset } from "./columnPresets";
 import { BlurToggle, type BlurState } from "./BlurToggle";
 import { UtmParamsGuide } from "./UtmParamsGuide";
@@ -25,6 +27,9 @@ interface CampaignsHeaderProps {
   onOpenSettings: () => void;
   /** IDs of built-in (non-editable) presets */
   defaultPresetIds?: string[];
+  taxEnabled?: boolean;
+  onTaxEnabledChange?: (enabled: boolean) => void;
+  taxRate?: number;
 }
 
 export function CampaignsHeader({
@@ -33,6 +38,9 @@ export function CampaignsHeader({
   onEditPreset, onDeletePreset,
   blur, onBlurChange, unidentifiedProducts, onRefresh, onOpenSettings,
   defaultPresetIds = [],
+  taxEnabled = false,
+  onTaxEnabledChange,
+  taxRate = 0,
 }: CampaignsHeaderProps) {
   const navigate = useNavigate();
 
@@ -85,6 +93,25 @@ export function CampaignsHeader({
               <RiSettings3Line className="size-4" />
             </Button>
             <RefreshButton onRefresh={onRefresh} />
+            {onTaxEnabledChange && (
+              <div className="flex items-center gap-1.5 border-l border-border/40 pl-2.5 ml-1">
+                <RiPercentLine className="size-3.5 text-muted-foreground" />
+                <Label htmlFor="campaigns-tax-toggle" className="text-xs cursor-pointer select-none whitespace-nowrap">
+                  Impostos
+                </Label>
+                <Switch
+                  id="campaigns-tax-toggle"
+                  checked={taxEnabled}
+                  onCheckedChange={onTaxEnabledChange}
+                  className="scale-90"
+                />
+                {taxEnabled && taxRate > 0 && (
+                  <span className="text-xs font-semibold text-destructive tabular-nums whitespace-nowrap">
+                    -{taxRate}%
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

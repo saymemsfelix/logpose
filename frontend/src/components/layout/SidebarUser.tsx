@@ -26,6 +26,7 @@ export function SidebarUser() {
   const navigate = useNavigate();
   const [notifModalOpen, setNotifModalOpen] = useState(false);
   const user = getStoredUser();
+  const displayName = (!user?.name || user.name.trim().toLowerCase() === "admin") ? "Sayme" : user.name;
 
   const [isDark, setIsDark] = useState(() => localStorage.getItem("theme") !== "light");
   const { showFull, toggle: toggleFull } = useValueDisplay();
@@ -41,12 +42,12 @@ export function SidebarUser() {
     }
   }, [isDark]);
 
-  const initials = user?.name
+  const initials = displayName
     ?.split(" ")
     .map((n: string) => n[0])
     .join("")
     .toUpperCase()
-    .slice(0, 2) || "CA";
+    .slice(0, 2) || "S";
 
   const handleLogout = () => {
     logout();
@@ -69,7 +70,7 @@ export function SidebarUser() {
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium text-[13px]">
-                  {user?.name || "Admin"}
+                  {displayName}
                 </span>
                 <span className="truncate text-[11px] text-sidebar-foreground/60">
                   {user?.role === "owner" ? "Owner" : user?.role === "admin" ? "Administrador" : user?.role === "viewer" ? "Visualizador" : ""}
@@ -92,16 +93,10 @@ export function SidebarUser() {
                   </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user?.name || "Admin"}</span>
-                  <a
-                    href="https://ilumin.app"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="truncate text-xs text-muted-foreground hover:text-primary transition-colors"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    Powered by Ilumin
-                  </a>
+                  <span className="truncate font-medium">{displayName}</span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    {user?.email || "Ninja Tracker"}
+                  </span>
                 </div>
               </div>
             </DropdownMenuLabel>

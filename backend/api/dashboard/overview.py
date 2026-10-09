@@ -114,6 +114,37 @@ async def dashboard_overview(
     meta_summary, meta_error = await fetch_meta_account_summary(db, ds, de, account_id=account_id)
     meta_campaigns = await fetch_meta_campaigns_for_dashboard(db, ds, de, account_id=account_id)
 
+    # Sincronização inteligente em tempo real (estilo UTMify):
+    # A API da Meta no nível conta (account insights) costuma demorar horas para consolidar no dia de hoje.
+    # Se a soma das campanhas ativas for maior, usamos os dados mais recentes das campanhas!
+    if meta_campaigns:
+        camp_spend = round(sum(float(c.spend or 0.0) for c in meta_campaigns), 2)
+        camp_clicks = sum(int(c.clicks or 0) for c in meta_campaigns)
+        camp_impr = sum(int(c.impressions or 0) for c in meta_campaigns)
+        camp_lpv = sum(int(c.landing_page_views or 0) for c in meta_campaigns)
+        camp_ic = sum(int(c.initiate_checkout or 0) for c in meta_campaigns)
+
+        if not meta_summary:
+            meta_summary = AccountInsightsSummary(
+                spend=camp_spend,
+                clicks=camp_clicks,
+                impressions=camp_impr,
+                landing_page_views=camp_lpv,
+                initiate_checkout=camp_ic,
+            )
+        else:
+            # Sincroniza 100% com a soma exata das campanhas individuais da Meta
+            # Garante que o gasto exibido no Dashboard e na tela de Campanhas seja perfeitamente idêntico
+            meta_summary.spend = camp_spend
+            if camp_clicks > 0:
+                meta_summary.clicks = camp_clicks
+            if camp_impr > 0:
+                meta_summary.impressions = camp_impr
+            if camp_lpv > 0:
+                meta_summary.landing_page_views = camp_lpv
+            if camp_ic > 0:
+                meta_summary.initiate_checkout = camp_ic
+
     # Se a Meta não retornou spend (>0), buscar da tabela daily_ad_spends para o período
     if not meta_summary or meta_summary.spend == 0.0:
         d_start, d_end = _parse_date_range(preset, start_date, end_date)
@@ -141,7 +172,6 @@ async def dashboard_overview(
                     ctr=round((tot_clicks / tot_imp) * 100, 2) if tot_imp > 0 else 0.0,
                     cpm=round((tot_spend / tot_imp) * 1000, 2) if tot_imp > 0 else 0.0,
                 )
-
 
     # KPIs com dados da Meta ou Gasto Manual
     kpis = calc_kpis(base, meta_summary)
