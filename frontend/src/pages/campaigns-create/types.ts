@@ -68,6 +68,7 @@ export interface CampaignFormState {
   pixelId: string;
   startTime: string;
   advantageAudience: boolean;
+  customerLifecycle: "ALL_AUDIENCES" | "NEW_CUSTOMERS";
   ageMin: number;
   ageMax: number;
   gender: number;

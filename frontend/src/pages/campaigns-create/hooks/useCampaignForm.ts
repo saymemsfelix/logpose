@@ -30,6 +30,7 @@ const INITIAL_STATE: CampaignFormState = {
   pixelId: "",
   startTime: getNextMidnightSP(),
   advantageAudience: true,
+  customerLifecycle: "ALL_AUDIENCES",
   ageMin: 18,
   ageMax: 65,
   gender: 0,

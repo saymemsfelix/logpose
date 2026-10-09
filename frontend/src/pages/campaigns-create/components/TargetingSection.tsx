@@ -254,6 +254,50 @@ export function TargetingSection({
           />
         </div>
 
+        {/* Estratégia de Ciclo de Vida do Cliente */}
+        <div className="space-y-2 p-3.5 rounded-lg border bg-muted/20">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Label className="text-sm font-semibold">
+                Estratégia de Ciclo de Vida do Cliente
+              </Label>
+              <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/20 px-1.5 py-0 font-medium">
+                {form.customerLifecycle === "NEW_CUSTOMERS" ? "Novos Clientes" : "Todos os Públicos (Padrão)"}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Priorize as conversões de pessoas que geram mais valor para sua empresa.
+            </p>
+          </div>
+
+          <Select
+            value={form.customerLifecycle || "ALL_AUDIENCES"}
+            onValueChange={(v) => onUpdate("customerLifecycle", v as "ALL_AUDIENCES" | "NEW_CUSTOMERS")}
+          >
+            <SelectTrigger className="w-full bg-background mt-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL_AUDIENCES">
+                <div className="py-0.5 text-left">
+                  <div className="font-medium text-xs sm:text-sm">Obter conversões de todos os públicos (Recomendado)</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Menor custo por resultado. Entrega para novos visitantes e clientes anteriores.
+                  </div>
+                </div>
+              </SelectItem>
+              <SelectItem value="NEW_CUSTOMERS">
+                <div className="py-0.5 text-left">
+                  <div className="font-medium text-xs sm:text-sm">Conquiste novos clientes</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Foca apenas em quem nunca comprou. O custo por resultado (CPA) pode aumentar.
+                  </div>
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* Idade + Gênero */}
         <div className="grid grid-cols-3 gap-4">
           <div className="space-y-2">

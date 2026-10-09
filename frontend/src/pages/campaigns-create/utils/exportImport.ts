@@ -26,6 +26,7 @@ export function buildExportPayload(form: CampaignFormState): Record<string, unkn
       country: form.country, locales: form.locales,
       excluded_countries: form.excludedCountries,
       advantage_audience: form.advantageAudience ? 1 : 0,
+      customer_lifecycle: form.customerLifecycle || "ALL_AUDIENCES",
     },
     page_id: form.pageId,
     page_label: form.pageLabel,
@@ -97,6 +98,9 @@ export function applyDataToForm(
     }
     if (targeting.advantage_audience !== undefined) {
       updateField("advantageAudience", Boolean(targeting.advantage_audience));
+    }
+    if (targeting.customer_lifecycle !== undefined) {
+      updateField("customerLifecycle", (targeting.customer_lifecycle as "ALL_AUDIENCES" | "NEW_CUSTOMERS") || "ALL_AUDIENCES");
     }
   }
 
