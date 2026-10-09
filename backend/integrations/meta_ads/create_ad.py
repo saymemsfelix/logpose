@@ -60,7 +60,6 @@ async def create_ad_creative(
             "title": headline,
             "link_description": description,
             "call_to_action": {"type": cta_type, "value": cta_value},
-            "link": link,
         }
         # caption — URL de exibição no anúncio (display URL)
         if display_url:

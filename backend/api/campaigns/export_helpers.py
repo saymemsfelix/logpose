@@ -90,8 +90,8 @@ def parse_ad_creative(ad_name: str, creative: dict) -> dict:
     media_type = "image"
 
     if video_data:
-        link = video_data.get("link", "")
         cta = video_data.get("call_to_action", {})
+        link = video_data.get("link") or cta.get("value", {}).get("link", "")
         cta_type = cta.get("type", "LEARN_MORE")
         media_type = "video"
     elif link_data:
