@@ -28,6 +28,8 @@ class TargetingPayload(BaseModel):
     excluded_countries: list[str] = []  # ISO 3166-1 alpha-2 para excluir (SG, VE, etc.)
     locales: list[int] = []  # Meta adlocale keys; vazio = todos os idiomas
     interests: list[dict] = []  # [{"id": "123", "name": "..."}]
+    advantage_audience: int | bool = 1  # 1 = Advantage+ habilitado, 0 = desabilitado (público original)
+
 
 
 class CampaignCreatePayload(BaseModel):

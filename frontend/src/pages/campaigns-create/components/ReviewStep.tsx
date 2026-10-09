@@ -134,6 +134,7 @@ export function ReviewStep({ form, onUpdate, accounts }: ReviewStepProps) {
           <ReviewRow label="Idioma" value={getLocaleLabels(form.locales)} />
           <ReviewRow label="Idade" value={`${form.ageMin} — ${form.ageMax === 65 ? "65+" : form.ageMax}`} />
           <ReviewRow label="Gênero" value={genderLabel} />
+          <ReviewRow label="Público Advantage+" value={form.advantageAudience ? "Ativado" : "Desativado (Original)"} />
           {form.interests.length > 0 && (
             <div className="flex items-start gap-2 py-1">
               <span className="text-muted-foreground w-28 shrink-0">Interesses</span>

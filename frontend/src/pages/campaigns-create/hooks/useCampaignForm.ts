@@ -29,6 +29,7 @@ const INITIAL_STATE: CampaignFormState = {
   adsetCount: 1,
   pixelId: "",
   startTime: getNextMidnightSP(),
+  advantageAudience: true,
   ageMin: 18,
   ageMax: 65,
   gender: 0,

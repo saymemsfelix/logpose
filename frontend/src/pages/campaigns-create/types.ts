@@ -67,6 +67,7 @@ export interface CampaignFormState {
   adsetCount: number;
   pixelId: string;
   startTime: string;
+  advantageAudience: boolean;
   ageMin: number;
   ageMax: number;
   gender: number;

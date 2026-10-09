@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { CampaignFormState } from "../hooks/useCampaignForm";
 import type { InterestData } from "@/services/campaignCreator";
@@ -227,6 +228,30 @@ export function TargetingSection({
               + Excluir
             </Button>
           </div>
+        </div>
+
+        {/* Público Advantage+ */}
+        <div className="flex items-center justify-between p-3.5 rounded-lg border bg-muted/20 hover:bg-muted/30 transition-colors">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="advantage-audience-toggle" className="text-sm font-semibold cursor-pointer">
+                Público Advantage+
+              </Label>
+              <Badge variant={form.advantageAudience ? "default" : "secondary"} className="text-[10px] px-1.5 py-0">
+                {form.advantageAudience ? "Ativado" : "Desativado"}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed max-w-xl">
+              {form.advantageAudience
+                ? "A IA da Meta otimiza a entrega buscando conversões além do público definido. Os dados abaixo servem como sugestões prioritárias."
+                : "Entrega restrita estritamente aos parâmetros definidos (público original sem expansão pela Meta)."}
+            </p>
+          </div>
+          <Switch
+            id="advantage-audience-toggle"
+            checked={form.advantageAudience}
+            onCheckedChange={(checked) => onUpdate("advantageAudience", checked)}
+          />
         </div>
 
         {/* Idade + Gênero */}

@@ -161,4 +161,25 @@ def _build_targeting(targeting: dict) -> dict:
         if "facebook_positions" in targeting:
             api_targeting["facebook_positions"] = targeting["facebook_positions"]
 
+    # Automação de direcionamento (Advantage+ Audience)
+    # A Meta Marketing API (v19+) exige explicitamente advantage_audience
+    # definido como 1 (habilitado) ou 0 (desabilitado) no campo targeting_automation.
+    if "targeting_automation" in targeting and isinstance(targeting["targeting_automation"], dict):
+        api_targeting["targeting_automation"] = dict(targeting["targeting_automation"])
+        if "advantage_audience" not in api_targeting["targeting_automation"]:
+            api_targeting["targeting_automation"]["advantage_audience"] = 1
+    else:
+        adv_raw = targeting.get("advantage_audience", 1)
+        if isinstance(adv_raw, bool):
+            adv_val = 1 if adv_raw else 0
+        elif str(adv_raw).strip() in ("0", "false", "False"):
+            adv_val = 0
+        else:
+            adv_val = 1
+
+        api_targeting["targeting_automation"] = {
+            "advantage_audience": adv_val
+        }
+
     return api_targeting
+
