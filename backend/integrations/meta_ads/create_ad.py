@@ -52,7 +52,13 @@ async def create_ad_creative(
         if ig_id:
             story_spec["instagram_user_id"] = ig_id
 
+    clean_display = ""
+    if display_url:
+        clean_display = display_url.replace("https://", "").replace("http://", "").strip().rstrip("/")
+
     cta_value = {"link": link}
+    if clean_display:
+        cta_value["link_caption"] = clean_display
 
     if video_id:
         video_data: dict = {
@@ -95,8 +101,8 @@ async def create_ad_creative(
             "call_to_action": {"type": cta_type, "value": cta_value},
         }
         # caption — URL de exibição no anúncio (display URL)
-        if display_url:
-            link_data["caption"] = display_url
+        if clean_display:
+            link_data["caption"] = clean_display
         story_spec["link_data"] = link_data
 
     data = {

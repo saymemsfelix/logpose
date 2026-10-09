@@ -63,7 +63,7 @@ async def create_ads_batch(
             image_url=media_result.get("image_url"),
             video_id=media_result.get("video_id"),
             url_tags=url_tags,
-            display_url=ad_data.get("display_url", ""),
+            display_url=ad_data.get("display_url", "") or ad_data.get("display_link", ""),
         )
 
         if not creative_result["success"]:
