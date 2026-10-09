@@ -57,13 +57,12 @@ async def create_ad_creative(
         video_data: dict = {
             "video_id": video_id,
             "message": primary_text,
-            "title": headline,
-            "link_description": description,
             "call_to_action": {"type": cta_type, "value": cta_value},
         }
-        # caption — URL de exibição no anúncio (display URL)
-        if display_url:
-            video_data["caption"] = display_url
+        if headline:
+            video_data["title"] = headline
+        if description:
+            video_data["link_description"] = description
         if image_hash:
             video_data["image_hash"] = image_hash
         story_spec["video_data"] = video_data
