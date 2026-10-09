@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 from sqlalchemy.orm import Session
 
 from integrations.webhook.schemas import StandardizedWebhookEvent
@@ -118,6 +118,12 @@ def process_webhook_event(db: Session, event: StandardizedWebhookEvent):
 
         if is_newly_approved:
             try:
+                from services.sales_events import sales_broadcaster, format_smart_sale
+                smart_sale_data = format_smart_sale(existing_tx, db=db)
+                sales_broadcaster.broadcast_sync(smart_sale_data)
+            except Exception as sse_err:
+                logger.warning(f"Erro ao transmitir SSE para existing_tx {existing_tx.id}: {sse_err}")
+            try:
                 from services.push_service import send_sale_push_notification
                 send_sale_push_notification(db, event)
             except Exception as push_err:
@@ -209,6 +215,12 @@ def process_webhook_event(db: Session, event: StandardizedWebhookEvent):
     logger.info(f"Webhook processado com sucesso. Transação: {new_tx.id}")
 
     if event.status == TransactionStatus.APPROVED:
+        try:
+            from services.sales_events import sales_broadcaster, format_smart_sale
+            smart_sale_data = format_smart_sale(new_tx, db=db)
+            sales_broadcaster.broadcast_sync(smart_sale_data)
+        except Exception as sse_err:
+            logger.warning(f"Erro ao transmitir SSE para nova venda {new_tx.id}: {sse_err}")
         try:
             from services.push_service import send_sale_push_notification
             send_sale_push_notification(db, event)

@@ -104,16 +104,58 @@ def send_sale_push_notification(db: Session, event: StandardizedWebhookEvent) ->
         logger.info("Nenhum dispositivo cadastrado para Web Push no momento.")
         return 0
 
-    # 1. Formatação de Moeda
-    amount = float(event.amount) if event.amount is not None else 0.0
-    formatted_amount = f"R$ {amount:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-    # 2. Bandeira do País (suporte universal para todos os países)
+    # 1. Formatação Inteligente de Moeda e País
     country = getattr(event, "customer_country", "") or getattr(event, "country", "") or "BR"
+    p_name = (event.product_name or "").lower()
+    amount_brl = float(event.amount) if event.amount is not None else 0.0
+
+    if not country or country == "BR":
+        if any(k in p_name for k in ["diagnosi", "visive", "hardware", "software", "pinout", "multimetro", "solda", "saldatura", "tornitura", "fresatura"]):
+            country = "IT"
+
     flag = get_country_flag(country)
 
+    if country in ["IT", "ES", "PT", "FR", "DE"]:
+        orig_val = round(amount_brl / 5.1865, 2) if amount_brl > 0 else 0.0
+        formatted_orig = f"€ {orig_val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        formatted_brl = f"R$ {amount_brl:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        title_amount = f"{formatted_orig} ({formatted_brl})"
+        body_amount = formatted_orig
+    elif country in ["US", "MX", "CO", "CL", "PE"]:
+        orig_val = round(amount_brl / 5.45, 2) if amount_brl > 0 else 0.0
+        formatted_orig = f"$ {orig_val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        formatted_brl = f"R$ {amount_brl:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        title_amount = f"{formatted_orig} ({formatted_brl})"
+        body_amount = formatted_orig
+    else:
+        formatted_brl = f"R$ {amount_brl:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        title_amount = formatted_brl
+        body_amount = formatted_brl
+
+    # 2. Posição no Funil
+    if any(k in p_name for k in ["upsell", "vip", "avanzat", "plus", "completo"]):
+        badge = "🚀 Upsell VIP"
+    elif any(k in p_name for k in ["downsell", "base", "essenziale", "starter"]):
+        badge = "💎 Downsell"
+    elif getattr(event, "order_bumps", None) or any(k in p_name for k in ["bump", "+"]):
+        badge = "⚡ Order Bump"
+    else:
+        badge = "🛒 Front-End"
+
     # 3. Criativo e Produto
-    creative = event.utm_content or event.utm_campaign or "Anúncio Direto"
+    raw_creative = event.utm_content or event.utm_campaign or event.src or "Anúncio Direto"
+    creative = raw_creative.replace("{{ad.name}}", "").replace("{{ad.id}}", "").strip()
+    if "|" in creative:
+        parts = [p.strip() for p in creative.split("|") if p.strip()]
+        for p in parts:
+            if not p.isdigit() and len(p) > 2:
+                creative = p
+                break
+        if not creative and len(parts) > 0:
+            creative = parts[0]
+    elif creative.isdigit():
+        creative = f"Anúncio #{creative[-4:]}"
+
     product_name = event.product_name or "Produto Digital"
 
     # 4. Estatísticas acumuladas de hoje (estilo UTMify em tempo real)
@@ -132,14 +174,14 @@ def send_sale_push_notification(db: Session, event: StandardizedWebhookEvent) ->
         t_count = len(today_txs)
         t_rev = sum(float(t.amount or 0.0) for t in today_txs)
         formatted_t_rev = f"R$ {t_rev:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        today_stats_suffix = f" • Hoje: {t_count} vendas ({formatted_t_rev})"
+        today_stats_suffix = f" • Hoje: #{t_count} ({formatted_t_rev})"
     except Exception:
         pass
 
     # 5. Monta o Payload do Pop-up Nativo do Celular
     payload = {
-        "title": f"💰 Venda Aprovada: {formatted_amount}",
-        "body": f"{flag} {product_name} • {formatted_amount}{today_stats_suffix}\n🎨 Criativo: {creative}",
+        "title": f"💰 Venda Aprovada: {title_amount}",
+        "body": f"{flag} {badge} • {product_name} • {body_amount}{today_stats_suffix}\n🎨 Criativo: {creative}",
         "icon": "/icons/pwa-192.png",
         "badge": "/icons/pwa-192.png",
         "tag": f"ninja-sale-{event.external_id}",
@@ -149,7 +191,7 @@ def send_sale_push_notification(db: Session, event: StandardizedWebhookEvent) ->
         "data": {
             "url": "/dashboard",
             "sale_id": event.external_id,
-            "amount": amount,
+            "amount": amount_brl,
         },
     }
 

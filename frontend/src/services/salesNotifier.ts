@@ -4,16 +4,35 @@ import { apiRequest } from "./api";
 
 export interface RecentSaleItem {
   id: number;
-  external_id: string;
+  external_id?: string;
   amount: number;
+  original_amount?: number;
+  currency?: string;
+  currency_symbol?: string;
+  formatted_original?: string;
+  formatted_brl?: string;
+  display_amount?: string;
+  voice_amount?: string;
   product_name: string;
   customer_email?: string;
   country?: string;
-  created_at?: string;
+  country_flag?: string;
+  country_name?: string;
+  country_display?: string;
+  offer_type?: "front_end" | "order_bump" | "upsell" | "downsell" | string;
+  offer_badge?: string;
+  ad_name?: string;
+  creative_name?: string;
+  campaign_name?: string;
   utm_content?: string;
   utm_campaign?: string;
   utm_source?: string;
-  ad_name?: string;
+  today_sales_count?: number;
+  today_revenue_brl?: number;
+  today_revenue_formatted?: string;
+  creative_today_sales?: number;
+  smart_insight?: string;
+  created_at?: string;
 }
 
 const STORAGE_KEY_NOTIF = "ninja_sales_notif_enabled";
@@ -322,7 +341,8 @@ export function getCountryFlagEmoji(code?: string): string {
 }
 
 /**
- * Notifica uma nova venda com som Ka-Ching, voz do criativo e pop-up nativo do celular
+ * Notifica uma nova venda com som Ka-Ching, voz inteligente na moeda nativa,
+ * badges de funil (Front/Bump/Upsell) e KPIs acumulados do dia.
  */
 export function notifyNewSale(sale: RecentSaleItem) {
   const prefs = getNotificationPreferences();
@@ -334,21 +354,45 @@ export function notifyNewSale(sale: RecentSaleItem) {
   }
 
   const countryCode = (sale.country || "BR").toUpperCase();
-  const flag = getCountryFlagEmoji(countryCode);
-  const countryName = COUNTRY_NAME_MAP[countryCode] || countryCode;
-  const countryFlag = `${flag} ${countryName}`;
+  const flag = sale.country_flag || getCountryFlagEmoji(countryCode);
+  const countryName = sale.country_name || COUNTRY_NAME_MAP[countryCode] || countryCode;
+  const countryDisplay = sale.country_display || `${flag} ${countryName}`;
 
-  const formattedVal = new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(sale.amount);
+  // Formatação de valores com multi-moeda nativa
+  const displayVal = sale.display_amount || (
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(sale.amount)
+  );
+  const voiceVal = sale.voice_amount || (
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(sale.amount)
+  );
 
-  const creative = sale.ad_name || sale.utm_content || "Criativo Anúncio";
+  const creative = sale.creative_name || sale.ad_name || sale.utm_content || "Criativo Direto";
+  const badge = sale.offer_badge || "🛒 Front-End";
+  const insight = sale.smart_insight || "Nova Venda Aprovada";
+  const todayCount = sale.today_sales_count ? ` • Venda #${sale.today_sales_count} de hoje` : "";
+  const todayRev = sale.today_revenue_formatted ? ` (Hoje: ${sale.today_revenue_formatted})` : "";
+  const statsLine = `${insight}${todayCount}${todayRev}`;
 
-  // 2. Voz sintetizada falando o valor e o criativo
+  // 2. Voz sintetizada inteligente falando valor na moeda nativa, país, oferta e criativo
   if (prefs.voice_enabled && prefs.channels.new_sale.sound) {
     try {
-      speakVoice(`Venda aprovada! ${formattedVal}! Criativo: ${creative}.`);
+      let voiceText = "";
+      if (countryCode === "IT") {
+        voiceText = `Nova venda aprovada na Itália! ${voiceVal}! ${badge}: ${creative}. ${insight}.`;
+      } else if (countryCode === "ES") {
+        voiceText = `Nova venda aprovada na Espanha! ${voiceVal}! ${badge}: ${creative}. ${insight}.`;
+      } else if (countryCode === "PT") {
+        voiceText = `Nova venda aprovada em Portugal! ${voiceVal}! ${badge}: ${creative}. ${insight}.`;
+      } else if (countryCode === "US") {
+        voiceText = `Nova venda aprovada nos Estados Unidos! ${voiceVal}! ${badge}: ${creative}. ${insight}.`;
+      } else if (countryCode === "CH") {
+        voiceText = `Nova venda aprovada na Suíça! ${voiceVal}! ${badge}: ${creative}. ${insight}.`;
+      } else if (countryCode === "BR") {
+        voiceText = `Venda aprovada! ${voiceVal}! ${badge}: ${creative}. ${insight}.`;
+      } else {
+        voiceText = `Nova venda aprovada em ${countryName}! ${voiceVal}! ${badge}: ${creative}. ${insight}.`;
+      }
+      speakVoice(voiceText);
     } catch (err) {
       console.warn("Falha na fala:", err);
     }
@@ -356,18 +400,18 @@ export function notifyNewSale(sale: RecentSaleItem) {
 
   // 3. Pop-up nativo no sistema operacional (Android, iOS PWA ou Windows/Mac)
   if (prefs.channels.new_sale.push) {
-    showNativeNotification(`💰 Nova Venda: ${formattedVal}!`, {
-      body: `🎨 Criativo: ${creative}\n📦 ${sale.product_name || "Produto"}\n🌍 ${countryFlag} • Venda Aprovada`,
+    showNativeNotification(`💰 ${badge}: ${displayVal}!`, {
+      body: `🎨 ${creative}\n📦 ${sale.product_name || "Produto"}\n🌍 ${countryDisplay}\n📊 ${statsLine}`,
       tag: `sale-${sale.id}`,
       vibrate: [200, 100, 200, 100, 300],
       data: { url: "/dashboard" },
     } as unknown as NotificationOptions);
   }
 
-  // 4. Pop-up animado na tela do app
-  toast.success(`🎉 VENDA APROVADA: ${formattedVal}!`, {
-    description: `🎨 Criativo: ${creative} • 🌍 ${countryFlag}`,
-    duration: 8000,
+  // 4. Pop-up enriquecido na tela do dashboard
+  toast.success(`🎉 VENDA: ${displayVal}!`, {
+    description: `${badge} • ${sale.product_name || "Produto"}\n🎨 Criativo: ${creative} • 🌍 ${countryDisplay}\n📊 ${statsLine}`,
+    duration: 9000,
   });
 }
 

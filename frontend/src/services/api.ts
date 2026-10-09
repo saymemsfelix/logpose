@@ -1,7 +1,7 @@
 import { getCookie, removeCookie } from "@/lib/cookies";
 import { getMockData } from "./mockInterceptor";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";
+export const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";
 
 /** Evita múltiplos redirects simultâneos de 401 */
 let isRedirecting = false;

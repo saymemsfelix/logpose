@@ -1,4 +1,6 @@
-﻿from fastapi import APIRouter, Depends, Query
+import asyncio
+from fastapi import APIRouter, Depends, Query, Request
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime, timedelta
@@ -12,6 +14,7 @@ from database.models.product_items import Upsell
 from database.core.timezone import now_sp, SP_ZONE
 from api.auth.deps import get_current_user
 from api.products.alias_helper import get_product_names_for_filter, get_upsell_name_for_filter
+from services.sales_events import format_smart_sale, sales_broadcaster
 
 router = APIRouter(prefix="/sales", tags=["sales"])
 
@@ -256,7 +259,7 @@ def get_latest_sales(
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    """Retorna as vendas aprovadas mais recentes para notificações em tempo real."""
+    """Retorna as vendas aprovadas mais recentes enriquecidas com inteligência em tempo real."""
     query = (
         db.query(Transaction)
         .filter(Transaction.status == TransactionStatus.APPROVED)
@@ -265,34 +268,38 @@ def get_latest_sales(
         query = query.filter(Transaction.id > since_id)
 
     rows = query.order_by(Transaction.id.desc()).limit(limit).all()
-    def _extract_ad_name(utm_content: str | None) -> str:
-        if not utm_content:
-            return ""
-        # Remove macro tags like {{...}} se vier cru
-        cleaned = utm_content.replace("{{ad.name}}", "").replace("{{ad.id}}", "").strip()
-        if "|" in cleaned:
-            parts = cleaned.split("|")
-            candidate = parts[0].strip()
-            if candidate and not candidate.isdigit():
-                return candidate
-            if len(parts) > 1 and parts[1].strip() and not parts[1].strip().isdigit():
-                return parts[1].strip()
-        return cleaned or utm_content
+    return [format_smart_sale(t, db=db) for t in rows]
 
-    return [
-        {
-            "id": t.id,
-            "external_id": t.external_id,
-            "amount": t.amount,
-            "product_name": t.product_name,
-            "customer_email": t.customer_email,
-            "utm_content": t.utm_content,
-            "utm_campaign": t.utm_campaign,
-            "utm_source": t.utm_source,
-            "ad_name": _extract_ad_name(t.utm_content),
-            "country": getattr(t, "country", None) or ("IT" if any(k in (t.product_name or "").lower() for k in ["diagnosi", "visive", "hardware", "software", "pinout", "multimetro", "solda", "saldatura", "tornitura", "fresatura", "navigazione", "mappe"]) else ("ES" if any(k in (t.product_name or "").lower() for k in ["atlas", "escrituras", "latam"]) else "BR")),
-            "created_at": t.created_at.isoformat() if t.created_at else None,
-        }
-        for t in rows
-    ]
+
+@router.get("/stream")
+async def stream_sales(
+    request: Request,
+):
+    """
+    Canal Server-Sent Events (SSE) para entrega instantânea (< 300ms) de novas vendas
+    diretamente para o dashboard e áudio/voz do usuário sem delay de polling.
+    """
+    async def event_generator():
+        q = sales_broadcaster.subscribe()
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    data = await asyncio.wait_for(q.get(), timeout=15.0)
+                    yield f"data: {data}\n\n"
+                except asyncio.TimeoutError:
+                    yield ": keep-alive\n\n"
+        finally:
+            sales_broadcaster.unsubscribe(q)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
