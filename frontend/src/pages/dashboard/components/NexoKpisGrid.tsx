@@ -91,6 +91,7 @@ export function NexoKpisGrid({
   interface CardItem {
     id: string;
     category: "finance" | "traffic" | "funnel";
+    extraCategories?: ("finance" | "traffic" | "funnel")[];
     title: string;
     value: string;
     subtext: string | null;
@@ -100,20 +101,35 @@ export function NexoKpisGrid({
   }
 
   const allCards: CardItem[] = [
-    // ─── 1. Financeiro & Vendas ───
+    // ─── 1. O CORE DA OPERAÇÃO (Padrão UTMify - Topo Imediato no Mobile e Desktop) ───
+    // Linha 1 no Mobile: Faturamento lado a lado com Gastos com Anúncios (Entrada vs Saída imediata!)
     {
       id: "rev",
       category: "finance",
+      extraCategories: ["traffic"],
       title: taxEnabled ? "Faturamento (- impostos)" : "Faturamento líquido",
       value: formatCurrency(adjustedRevenue),
       subtext: taxSubtextRev,
       tooltip: taxEnabled ? `Faturamento bruto: ${formatCurrency(kpis.total_revenue)} | Dedução de impostos (${taxRate}%): -${formatCurrency(taxDeduction)}` : undefined,
-      colorClass: "text-zinc-900 dark:text-zinc-100",
+      colorClass: "text-zinc-900 dark:text-zinc-100 font-semibold",
       hasToggle: true,
     },
     {
+      id: "spend",
+      category: "traffic",
+      extraCategories: ["finance"],
+      title: "Gastos com anúncios",
+      value: formatCurrency(kpis.total_spend),
+      subtext: "Meta Ads ao vivo",
+      colorClass: "text-zinc-900 dark:text-zinc-100 font-semibold",
+      hasToggle: true,
+    },
+
+    // Linha 2 no Mobile: Lucro Real (em destaque verde) lado a lado com ROAS Real (Multiplicador)!
+    {
       id: "profit",
       category: "finance",
+      extraCategories: ["traffic"],
       title: (taxEnabled || opCostsEnabled) ? "Lucro Real" : "Lucro líquido",
       value: formatCurrency(profit),
       subtext: profitSubtext,
@@ -124,21 +140,46 @@ export function NexoKpisGrid({
       hasToggle: true,
     },
     {
+      id: "roas",
+      category: "finance",
+      extraCategories: ["traffic"],
+      title: taxEnabled ? "ROAS Real" : "ROAS",
+      value: `${roas.toFixed(2)}x`,
+      subtext: roas >= 2.0 ? "Excelente retorno" : roas >= 1.0 ? "Operação lucrativa" : roas > 0 ? "Abaixo do breakeven" : null,
+      colorClass: roas >= 1.0 ? "text-emerald-600 dark:text-emerald-400 font-medium" : "text-rose-600 dark:text-rose-400 font-medium",
+      hasToggle: true,
+    },
+
+    // Linha 3 no Mobile: Vendas Aprovadas lado a lado com Margem Real!
+    {
+      id: "approved",
+      category: "finance",
+      extraCategories: ["traffic"],
+      title: "Vendas aprovadas",
+      value: String(kpis.total_sales),
+      subtext: `de ${totalOrders} pedidos`,
+      colorClass: "text-zinc-900 dark:text-zinc-100 font-semibold",
+      hasToggle: false,
+    },
+    {
       id: "margin",
       category: "finance",
       title: (taxEnabled || opCostsEnabled) ? "Margem Real" : "Margem de lucro",
       value: `${margin.toFixed(1)}%`,
-      subtext: null,
-      colorClass: "text-zinc-900 dark:text-zinc-100",
+      subtext: margin >= 30 ? "Margem saudável" : margin > 0 ? "Margem positiva" : null,
+      colorClass: margin >= 20 ? "text-emerald-600 dark:text-emerald-400 font-medium" : margin < 0 ? "text-rose-600 dark:text-rose-400 font-medium" : "text-zinc-900 dark:text-zinc-100",
       hasToggle: true,
     },
+
+    // Linha 4 no Mobile: CPA (Custo por Venda) lado a lado com ROI Real!
     {
-      id: "roas",
+      id: "cpa",
       category: "finance",
-      title: taxEnabled ? "ROAS Real" : "ROAS",
-      value: `${roas.toFixed(2)}x`,
-      subtext: null,
-      colorClass: roas >= 1.0 ? "text-emerald-600 dark:text-emerald-400 font-medium" : "text-rose-600 dark:text-rose-400 font-medium",
+      extraCategories: ["traffic"],
+      title: "CPA (Custo por Venda)",
+      value: formatCurrency(kpis.cpa ?? 0),
+      subtext: (kpis.total_sales > 0 && kpis.total_spend > 0) ? "Custo por aquisição" : null,
+      colorClass: "text-zinc-900 dark:text-zinc-100",
       hasToggle: true,
     },
     {
@@ -150,24 +191,8 @@ export function NexoKpisGrid({
       colorClass: roi >= 0 ? "text-emerald-600 dark:text-emerald-400 font-medium" : "text-rose-600 dark:text-rose-400 font-medium",
       hasToggle: true,
     },
-    {
-      id: "approved",
-      category: "finance",
-      title: "Vendas aprovadas",
-      value: String(kpis.total_sales),
-      subtext: `de ${totalOrders} pedidos`,
-      colorClass: "text-zinc-900 dark:text-zinc-100 font-medium",
-      hasToggle: false,
-    },
-    {
-      id: "approval_rate",
-      category: "finance",
-      title: "Taxa de aprovação",
-      value: `${approvalRate.toFixed(1)}%`,
-      subtext: null,
-      colorClass: approvalRate >= 80 ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-900 dark:text-zinc-100",
-      hasToggle: false,
-    },
+
+    // Linha 5 no Mobile: Ticket Médio lado a lado com Taxa de Aprovação!
     {
       id: "ticket",
       category: "finance",
@@ -178,61 +203,16 @@ export function NexoKpisGrid({
       hasToggle: true,
     },
     {
-      id: "cpa",
+      id: "approval_rate",
       category: "finance",
-      title: "CPA (Custo por Venda)",
-      value: formatCurrency(kpis.cpa ?? 0),
-      subtext: null,
-      colorClass: "text-zinc-900 dark:text-zinc-100",
-      hasToggle: true,
-    },
-    {
-      id: "arpu",
-      category: "finance",
-      title: "ARPU",
-      value: formatCurrency(kpis.arpu ?? avgTicket),
-      subtext: "Receita por cliente",
-      colorClass: "text-zinc-900 dark:text-zinc-100",
-      hasToggle: true,
-    },
-    {
-      id: "refunded",
-      category: "finance",
-      title: "Vendas reembolsadas",
-      value: String(kpis.refunded_count ?? 0),
-      subtext: formatCurrency(kpis.refunded_amount ?? 0),
-      colorClass: (kpis.refunded_count ?? 0) > 0 ? "text-amber-600 dark:text-amber-400" : "text-zinc-900 dark:text-zinc-100",
-      hasToggle: true,
-    },
-    {
-      id: "pending",
-      category: "finance",
-      title: "Vendas pendentes",
-      value: String(kpis.pending_count ?? 0),
-      subtext: formatCurrency(kpis.pending_amount ?? 0),
-      colorClass: "text-zinc-900 dark:text-zinc-100",
-      hasToggle: true,
+      title: "Taxa de aprovação",
+      value: `${approvalRate.toFixed(1)}%`,
+      subtext: totalOrders > 0 ? `${kpis.total_sales}/${totalOrders} pedidos` : null,
+      colorClass: approvalRate >= 80 ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-900 dark:text-zinc-100",
+      hasToggle: false,
     },
 
-    // ─── 2. Tráfego & Leilão ───
-    {
-      id: "spend",
-      category: "traffic",
-      title: "Gastos com anúncios",
-      value: formatCurrency(kpis.total_spend),
-      subtext: "Meta Ads ao vivo",
-      colorClass: "text-zinc-900 dark:text-zinc-100 font-semibold",
-      hasToggle: true,
-    },
-    {
-      id: "cpm",
-      category: "traffic",
-      title: "CPM (Custo por Mil)",
-      value: formatCurrency(cpm),
-      subtext: cpm > 45 ? "Leilão concorrido" : cpm > 0 ? "Custo por 1k impressões" : "Aguardando dados",
-      colorClass: cpm > 0 && cpm <= 30 ? "text-emerald-600 dark:text-emerald-400 font-semibold" : cpm > 50 ? "text-rose-600 dark:text-rose-400 font-semibold" : "text-zinc-900 dark:text-zinc-100",
-      hasToggle: true,
-    },
+    // Linha 6 no Mobile: Performance do Anúncio (CPC e CTR)!
     {
       id: "cpc",
       category: "traffic",
@@ -251,6 +231,17 @@ export function NexoKpisGrid({
       colorClass: ctr >= 2.0 ? "text-emerald-600 dark:text-emerald-400 font-medium" : ctr > 0 && ctr < 1.0 ? "text-amber-600 dark:text-amber-400" : "text-zinc-900 dark:text-zinc-100",
       hasToggle: true,
     },
+
+    // Linha 7 no Mobile: Custo do Leilão e Volume de Cliques!
+    {
+      id: "cpm",
+      category: "traffic",
+      title: "CPM (Custo por Mil)",
+      value: formatCurrency(cpm),
+      subtext: cpm > 45 ? "Leilão concorrido" : cpm > 0 ? "Custo por 1k impressões" : "Aguardando dados",
+      colorClass: cpm > 0 && cpm <= 30 ? "text-emerald-600 dark:text-emerald-400 font-semibold" : cpm > 50 ? "text-rose-600 dark:text-rose-400 font-semibold" : "text-zinc-900 dark:text-zinc-100",
+      hasToggle: true,
+    },
     {
       id: "clicks",
       category: "traffic",
@@ -260,6 +251,8 @@ export function NexoKpisGrid({
       colorClass: "text-zinc-900 dark:text-zinc-100",
       hasToggle: false,
     },
+
+    // Linha 8 no Mobile: Impressões e ARPU!
     {
       id: "impressions",
       category: "traffic",
@@ -269,8 +262,17 @@ export function NexoKpisGrid({
       colorClass: "text-zinc-900 dark:text-zinc-100",
       hasToggle: false,
     },
+    {
+      id: "arpu",
+      category: "finance",
+      title: "ARPU",
+      value: formatCurrency(kpis.arpu ?? avgTicket),
+      subtext: "Receita por cliente",
+      colorClass: "text-zinc-900 dark:text-zinc-100",
+      hasToggle: true,
+    },
 
-    // ─── 3. Funil & Páginas ───
+    // Linha 9 no Mobile: Funil e Carregamento (LPV e Connect Rate)!
     {
       id: "lpv",
       category: "funnel",
@@ -281,15 +283,6 @@ export function NexoKpisGrid({
       hasToggle: false,
     },
     {
-      id: "cpv",
-      category: "funnel",
-      title: "CPV (Custo por Visualização)",
-      value: formatCurrency(cpv),
-      subtext: cpv > 0 ? "Custo por visualização de LP" : null,
-      colorClass: cpv > 0 && cpv <= 2.0 ? "text-emerald-600 dark:text-emerald-400 font-medium" : cpv > 3.5 ? "text-amber-600 dark:text-amber-400" : "text-zinc-900 dark:text-zinc-100",
-      hasToggle: true,
-    },
-    {
       id: "connect_rate",
       category: "funnel",
       title: "Connect Rate (Taxa de Conexão)",
@@ -298,6 +291,8 @@ export function NexoKpisGrid({
       colorClass: connectRate >= 75 ? "text-emerald-600 dark:text-emerald-400 font-medium" : connectRate > 0 && connectRate < 65 ? "text-rose-600 dark:text-rose-400 font-medium" : "text-zinc-900 dark:text-zinc-100",
       hasToggle: true,
     },
+
+    // Linha 10 no Mobile: Início de Checkout e Custo por Checkout!
     {
       id: "ic",
       category: "funnel",
@@ -316,6 +311,8 @@ export function NexoKpisGrid({
       colorClass: "text-zinc-900 dark:text-zinc-100",
       hasToggle: true,
     },
+
+    // Linha 11 no Mobile: Taxas de Conversão do Funil!
     {
       id: "checkout_rate",
       category: "funnel",
@@ -334,6 +331,8 @@ export function NexoKpisGrid({
       colorClass: checkoutConvRate >= 20 ? "text-emerald-600 dark:text-emerald-400 font-medium" : checkoutConvRate > 0 && checkoutConvRate < 10 ? "text-rose-600 dark:text-rose-400" : "text-zinc-900 dark:text-zinc-100",
       hasToggle: true,
     },
+
+    // Linha 12 no Mobile: Conversão Global e Custo por Visualização!
     {
       id: "cvr_global",
       category: "funnel",
@@ -343,17 +342,49 @@ export function NexoKpisGrid({
       colorClass: conversionRate >= 2.0 ? "text-emerald-600 dark:text-emerald-400 font-medium" : "text-zinc-900 dark:text-zinc-100",
       hasToggle: true,
     },
+    {
+      id: "cpv",
+      category: "funnel",
+      title: "CPV (Custo por Visualização)",
+      value: formatCurrency(cpv),
+      subtext: cpv > 0 ? "Custo por visualização de LP" : null,
+      colorClass: cpv > 0 && cpv <= 2.0 ? "text-emerald-600 dark:text-emerald-400 font-medium" : cpv > 3.5 ? "text-amber-600 dark:text-amber-400" : "text-zinc-900 dark:text-zinc-100",
+      hasToggle: true,
+    },
+
+    // Linha 13 no Mobile: Pendências e Reembolsos!
+    {
+      id: "pending",
+      category: "finance",
+      title: "Vendas pendentes",
+      value: String(kpis.pending_count ?? 0),
+      subtext: formatCurrency(kpis.pending_amount ?? 0),
+      colorClass: "text-zinc-900 dark:text-zinc-100",
+      hasToggle: true,
+    },
+    {
+      id: "refunded",
+      category: "finance",
+      title: "Vendas reembolsadas",
+      value: String(kpis.refunded_count ?? 0),
+      subtext: formatCurrency(kpis.refunded_amount ?? 0),
+      colorClass: (kpis.refunded_count ?? 0) > 0 ? "text-amber-600 dark:text-amber-400" : "text-zinc-900 dark:text-zinc-100",
+      hasToggle: true,
+    },
   ];
 
-  const filteredCards = activeTab === "all"
-    ? allCards
-    : allCards.filter((c) => c.category === activeTab);
+  const cardMatchesTab = (card: CardItem, tab: MetricCategory) => {
+    if (tab === "all") return true;
+    return card.category === tab || !!card.extraCategories?.includes(tab);
+  };
+
+  const filteredCards = allCards.filter((c) => cardMatchesTab(c, activeTab));
 
   const counts = {
     all: allCards.length,
-    finance: allCards.filter((c) => c.category === "finance").length,
-    traffic: allCards.filter((c) => c.category === "traffic").length,
-    funnel: allCards.filter((c) => c.category === "funnel").length,
+    finance: allCards.filter((c) => cardMatchesTab(c, "finance")).length,
+    traffic: allCards.filter((c) => cardMatchesTab(c, "traffic")).length,
+    funnel: allCards.filter((c) => cardMatchesTab(c, "funnel")).length,
   };
 
   return (
@@ -464,7 +495,7 @@ export function NexoKpisGrid({
 
                 {card.subtext && (
                   <div className="mt-1.5 text-[11px] text-zinc-400 dark:text-zinc-500 truncate" title={card.tooltip || card.subtext}>
-                    {masked && card.id !== "approved" && card.id !== "clicks" && card.id !== "impressions" && card.id !== "lpv" && card.id !== "ic" ? "••••••" : card.subtext}
+                    {masked && (card.subtext.includes("R$") || card.id === "pending" || card.id === "refunded") ? "••••••" : card.subtext}
                   </div>
                 )}
               </div>

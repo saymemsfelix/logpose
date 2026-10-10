@@ -238,6 +238,12 @@ if os.path.isdir(_frontend_dir):
             if request.method not in ("GET", "HEAD"):
                 return await call_next(request)
 
+            if path in ("/sw.js", "/manifest.json"):
+                file_path = os.path.join(_frontend_dir, path.lstrip("/"))
+                if os.path.isfile(file_path):
+                    content_type = mimetypes.guess_type(file_path)[0] or "application/javascript"
+                    return FileResponse(file_path, media_type=content_type, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+
             if path != "/":
                 clean_path = path.lstrip("/")
                 file_path = os.path.join(_frontend_dir, clean_path)
@@ -246,7 +252,7 @@ if os.path.isdir(_frontend_dir):
                     return FileResponse(file_path, media_type=content_type)
 
             index_path = os.path.join(_frontend_dir, "index.html")
-            return FileResponse(index_path)
+            return FileResponse(index_path, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
     app.add_middleware(SPAMiddleware)
 

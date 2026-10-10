@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ninjastracker-v7';
+const CACHE_NAME = 'ninjastracker-v8';
 
 const STATIC_ASSETS = [
   '/',
