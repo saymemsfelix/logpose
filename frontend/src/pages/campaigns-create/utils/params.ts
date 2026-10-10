@@ -9,6 +9,8 @@ const FIXED_UTM_KEYS = new Set([
   "utm_medium",
   "utm_content",
   "utm_term",
+  "src",
+  "sck",
 ]);
 
 /**

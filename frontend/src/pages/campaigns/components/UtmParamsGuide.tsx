@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/tooltip";
 
 const UTM_TEMPLATE =
-  "utm_source=FB&utm_campaign={{campaign.name}}|{{campaign.id}}&utm_medium={{adset.name}}|{{adset.id}}&utm_content={{ad.name}}|{{ad.id}}&utm_term={{placement}}";
+  "utm_source=FB&utm_campaign={{campaign.name}}|{{campaign.id}}&utm_medium={{adset.name}}|{{adset.id}}&utm_content={{ad.name}}|{{ad.id}}&utm_term={{ad.id}}&src={{ad.id}}&sck={{campaign.id}}";
 
 const PARAMS = [
   {
@@ -34,8 +34,18 @@ const PARAMS = [
   },
   {
     key: "utm_term",
-    value: "{{placement}}",
-    desc: "Onde o anúncio apareceu",
+    value: "{{ad.id}}",
+    desc: "ID do anúncio (Meta)",
+  },
+  {
+    key: "src",
+    value: "{{ad.id}}",
+    desc: "Rastreamento nativo Hotmart (ID do anúncio)",
+  },
+  {
+    key: "sck",
+    value: "{{campaign.id}}",
+    desc: "Rastreamento de checkout Hotmart (ID da campanha)",
   },
 ];
 

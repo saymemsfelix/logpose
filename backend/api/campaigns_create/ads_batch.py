@@ -96,7 +96,7 @@ _upload_media = upload_single_media
 
 
 def _build_url_tags(utm_params: str | dict = "", extra_params: str = "") -> str:
-    """Constrói url_tags string (UTM + extra params). Não inclui o link base."""
+    """Constrói url_tags string (UTM + extra params). Garante parâmetros de rastreamento Hotmart (src/sck)."""
     if isinstance(utm_params, dict):
         utm_str = "&".join(f"{k}={v}" for k, v in utm_params.items() if v)
     else:
@@ -107,5 +107,13 @@ def _build_url_tags(utm_params: str | dict = "", extra_params: str = "") -> str:
     extra = extra_params.strip().lstrip("?&").rstrip("&") if extra_params else ""
 
     parts = [p for p in [utm_str, extra] if p]
-    return "&".join(parts)
+    combined = "&".join(parts)
+
+    # Garantia de rastreamento: se não tiver src ou sck, injeta dinamicamente os tokens da Meta
+    if "src=" not in combined:
+        combined = f"{combined}&src={{{{ad.id}}}}" if combined else "src={{ad.id}}"
+    if "sck=" not in combined:
+        combined = f"{combined}&sck={{{{campaign.id}}}}" if combined else "sck={{campaign.id}}"
+
+    return combined
 
