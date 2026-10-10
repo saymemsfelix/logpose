@@ -26,7 +26,7 @@ def parse_utm_field(raw: Optional[str]) -> tuple[Optional[str], Optional[str]]:
     """
     Parseia campo UTM no formato 'name|id' ou variações flexíveis.
     Retorna (name, id). Se for apenas dígitos, retorna (None, id).
-    Se não tem pipe, retorna (name, None) ou (None, id) se for ID numérico.
+    Suporta nomes de campanha com pipes (ex: 'CBO | TESTE DE OFERTA |' ou 'CBO | TESTE DE OFERTA ||1202394829384').
     """
     if not raw:
         return None, None
@@ -34,21 +34,41 @@ def parse_utm_field(raw: Optional[str]) -> tuple[Optional[str], Optional[str]]:
     if not clean:
         return None, None
 
+    # Se for puramente numérico (ID de campanha/anúncio da Meta com 8+ dígitos)
+    clean_digits = re.sub(r"\D", "", clean)
+    if clean.isdigit() or (len(clean_digits) >= 8 and clean.startswith("act_")):
+        return None, clean_digits or clean
+
+    # Se contém ID numérico longo (8+ dígitos) em qualquer lugar da string
+    id_match = re.search(r"\b\d{8,20}\b", clean)
+    if id_match:
+        uid = id_match.group()
+        # O nome é o que vem antes do ID (removendo pipes à direita)
+        name_candidate = clean[:id_match.start()].rstrip("|").strip()
+        if not name_candidate:
+            # Caso o ID esteja no começo (ex: "123456789|Nome")
+            name_candidate = clean[id_match.end():].lstrip("|").strip()
+
+        # Limpar macros residuais se houver
+        if name_candidate and (name_candidate.startswith("{{") or name_candidate.endswith("}}")):
+            name_candidate = None
+
+        return name_candidate or None, uid
+
     if "|" in clean:
         parts = clean.rsplit("|", 1)
         name = parts[0].strip() or None
         uid = parts[1].strip() or None
-        # Limpar macros residuais
         if uid and (uid.startswith("{{") or not any(c.isdigit() for c in uid)):
             uid = None
         if name and name.startswith("{{"):
             name = None
-        return name, uid
 
-    # Se for puramente numérico (ID de campanha/anúncio da Meta com 9+ dígitos)
-    clean_digits = re.sub(r"\D", "", clean)
-    if clean.isdigit() or (len(clean_digits) >= 10 and clean.startswith("act_")):
-        return None, clean_digits or clean
+        # Se uid não é numérico e name terminou com pipe, na verdade o nome continha pipe!
+        if not uid:
+            return clean.strip(), None
+
+        return name, uid
 
     return clean, None
 

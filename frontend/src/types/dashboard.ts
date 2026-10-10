@@ -126,6 +126,7 @@ export interface ConversionFlow {
     pageviews_to_ics: number;
     ics_to_initiated: number;
     initiated_to_approved: number;
+    ics_to_approved?: number;
   };
 }
 

@@ -1,6 +1,7 @@
-﻿from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional
 import uuid
 import logging
+import re
 from integrations.webhook.schemas import StandardizedWebhookEvent
 from database.models.transaction import TransactionStatus, PaymentPlatform
 
@@ -193,23 +194,86 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
             or "Produto Hotmart"
         )
 
-        # 6. Rastreamento e UTMs
-        src = tracking.get("source") or data.get("src") or payload.get("src") or payload.get("source")
-        sck = tracking.get("source_sck") or data.get("sck") or payload.get("sck")
+        # 6. Rastreamento e UTMs (Extremamente abrangente para Hotmart 1.0 e 2.0)
+        src = (
+            tracking.get("source")
+            or tracking.get("src")
+            or purchase.get("source")
+            or purchase.get("src")
+            or data.get("src")
+            or data.get("source")
+            or payload.get("src")
+            or payload.get("source")
+            or None
+        )
+        sck = (
+            tracking.get("source_sck")
+            or tracking.get("sck")
+            or purchase.get("source_sck")
+            or purchase.get("sck")
+            or data.get("sck")
+            or data.get("source_sck")
+            or payload.get("sck")
+            or payload.get("source_sck")
+            or None
+        )
 
-        utm_source = tracking.get("utm_source") or data.get("utm_source") or payload.get("utm_source") or src
-        utm_medium = tracking.get("utm_medium") or data.get("utm_medium") or payload.get("utm_medium")
-        utm_campaign = tracking.get("utm_campaign") or data.get("utm_campaign") or payload.get("utm_campaign")
-        utm_content = tracking.get("utm_content") or data.get("utm_content") or payload.get("utm_content")
-        utm_term = tracking.get("utm_term") or data.get("utm_term") or payload.get("utm_term")
+        utm_source = tracking.get("utm_source") or data.get("utm_source") or payload.get("utm_source") or purchase.get("utm_source") or src
+        utm_medium = tracking.get("utm_medium") or data.get("utm_medium") or payload.get("utm_medium") or purchase.get("utm_medium")
+        utm_campaign = tracking.get("utm_campaign") or data.get("utm_campaign") or payload.get("utm_campaign") or purchase.get("utm_campaign")
+        utm_content = tracking.get("utm_content") or data.get("utm_content") or payload.get("utm_content") or purchase.get("utm_content")
+        utm_term = tracking.get("utm_term") or data.get("utm_term") or payload.get("utm_term") or purchase.get("utm_term")
 
-        # Se vier no padrão concatenado no SCK (ex: Campanha|Conjunto|Criativo)
-        if sck and "|" in sck:
-            parts = sck.split("|")
-            if not utm_campaign and len(parts) >= 1:
-                utm_campaign = parts[0]
-            if not utm_content and len(parts) >= 2:
-                utm_content = parts[1]
+        # Parser Inteligente de SCK (Hotmart):
+        # O NINJA'S TRACKER envia no SCK: utm_campaign|utm_content
+        # Exemplo real: "CBO | TESTE DE OFERTA ||1202394829384|AD01|1202394829385" ou "BIDCAP|1202394829384|AD01|1202394829385"
+        if sck:
+            sck_str = str(sck).strip()
+            # Procurar por IDs numéricos de 8 a 20 dígitos (IDs do Meta Ads)
+            meta_ids = list(re.finditer(r"\b\d{8,20}\b", sck_str))
+            
+            if meta_ids:
+                # O primeiro ID de 8+ dígitos é o campaign_id
+                first_match = meta_ids[0]
+                camp_id_val = first_match.group()
+                camp_name_val = sck_str[:first_match.start()].rstrip("|").strip()
+                
+                if not utm_campaign:
+                    utm_campaign = f"{camp_name_val}|{camp_id_val}" if camp_name_val else camp_id_val
+                
+                # Se houver um segundo ID de 8+ dígitos, é o ad_id
+                if len(meta_ids) >= 2:
+                    second_match = meta_ids[1]
+                    ad_id_val = second_match.group()
+                    ad_name_val = sck_str[first_match.end():second_match.start()].strip("|").strip()
+                    if not utm_content:
+                        utm_content = f"{ad_name_val}|{ad_id_val}" if ad_name_val else ad_id_val
+                    if not src:
+                        src = ad_id_val
+                elif not src:
+                    src = camp_id_val
+            elif "|" in sck_str:
+                # Sem IDs numéricos explícitos (ex: "Campanha|Conjunto|Criativo" ou "CBO | TESTE DE OFERTA |")
+                parts = [p.strip() for p in sck_str.split("|") if p.strip()]
+                if not utm_campaign:
+                    if len(parts) >= 3:
+                        utm_campaign = parts[0]
+                        if not utm_medium:
+                            utm_medium = parts[1]
+                        if not utm_content:
+                            utm_content = parts[2]
+                    elif len(parts) == 2:
+                        utm_campaign = parts[0]
+                        if not utm_content:
+                            utm_content = parts[1]
+                    else:
+                        utm_campaign = sck_str
+            elif not utm_campaign:
+                utm_campaign = sck_str
+
+        # Se src tiver apenas o ID do anúncio numérico, sincroniza com utm_content
+        if src and str(src).strip().isdigit() and not utm_content:
+            utm_content = str(src).strip()
 
         # Método de pagamento
         payment_info = purchase.get("payment") or data.get("payment") or {}

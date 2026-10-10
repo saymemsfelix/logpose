@@ -1,4 +1,4 @@
-﻿"""
+"""
 Agregações para o dashboard: revenue diário, plataformas, vendas por hora.
 """
 from sqlalchemy import func, extract
@@ -400,29 +400,32 @@ def _payment_method_distribution(base, db):
 
 def _conversion_flow(base, meta_summary):
     """
-    Funil de conversão em tempo real (NexoFlow):
-    Cliques -> Vis. Página -> ICs (Initiate Checkouts) -> Vendas Inic. -> Vendas Apr.
-    Usa métricas reais do Meta Ads (clicks, landing_page_views, omni_initiated_checkout)
-    e transações reais do banco de dados.
+    Funil de conversão em tempo real otimizado e inteligente (Ninja's Flow):
+    Cliques -> Vis. Página -> Checkouts (ICs) -> Vendas Aprovadas
+    Garante consistência matemática entre Meta Ads API e Gateway/Webhook:
+    Como toda venda gerada obrigatoriamente iniciou o checkout, o total de ICs
+    reais é no mínimo max(meta_initiate_checkouts, total_vendas_iniciadas).
     """
     all_rows = base.all()
     approved = [t for t in all_rows if t.status == TransactionStatus.APPROVED]
     
-    clicks = meta_summary.clicks if meta_summary else 0
-    pageviews = meta_summary.landing_page_views if meta_summary else 0
-    ics = (
-        meta_summary.initiate_checkout
-        if meta_summary and meta_summary.initiate_checkout > 0
-        else len(all_rows)
-    )
+    clicks = int(meta_summary.clicks) if meta_summary and meta_summary.clicks else 0
+    pageviews = int(meta_summary.landing_page_views) if meta_summary and meta_summary.landing_page_views else 0
+    
+    meta_ics = int(meta_summary.initiate_checkout) if meta_summary and meta_summary.initiate_checkout else 0
     sales_init = len(all_rows)
     sales_app = len(approved)
 
-    # Taxas de conversão
+    # Piso real de ICs: se o Meta Pixel perdeu eventos por AdBlock/iOS ou atraso de atribuição,
+    # as transações do banco garantem o piso real de checkouts que existiram.
+    ics = max(meta_ics, sales_init)
+
+    # Taxas de conversão com limites consistentes (0 a 100%)
     rate_click_to_pv = round((pageviews / clicks * 100), 1) if clicks > 0 else 0.0
     rate_pv_to_ic = round((ics / pageviews * 100), 1) if pageviews > 0 else 0.0
     rate_ic_to_init = round((sales_init / ics * 100), 1) if ics > 0 else 0.0
     rate_init_to_app = round((sales_app / sales_init * 100), 1) if sales_init > 0 else 0.0
+    rate_ic_to_app = round((sales_app / ics * 100), 1) if ics > 0 else 0.0
 
     return {
         "clicks": clicks,
@@ -435,5 +438,6 @@ def _conversion_flow(base, meta_summary):
             "pageviews_to_ics": rate_pv_to_ic,
             "ics_to_initiated": rate_ic_to_init,
             "initiated_to_approved": rate_init_to_app,
+            "ics_to_approved": rate_ic_to_app,
         }
     }

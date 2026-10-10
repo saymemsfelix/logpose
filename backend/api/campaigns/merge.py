@@ -36,10 +36,16 @@ def _extract_tokens(s: str) -> set[str]:
     return {w for w in words if len(w) >= 2 and w not in stopwords}
 
 
-def _group_transactions_by_level(transactions: list[Transaction]) -> dict:
+def _group_transactions_by_level(
+    transactions: list[Transaction],
+    meta_campaigns: list = None,
+    meta_adsets: list = None,
+    meta_ads: list = None,
+) -> dict:
     """
     Agrupa transações por campaign_id, adset_id e ad_id.
     Usa o formato name|id com suporte flexível a variações de UTMs, src e sck.
+    Vincula automaticamente Ad IDs aos seus AdSets e Campanhas pais.
     """
     by_campaign_id: dict[str, list[Transaction]] = defaultdict(list)
     by_campaign_name: dict[str, list[Transaction]] = defaultdict(list)
@@ -48,6 +54,12 @@ def _group_transactions_by_level(transactions: list[Transaction]) -> dict:
     by_ad_id: dict[str, list[Transaction]] = defaultdict(list)
     by_ad_name: dict[str, list[Transaction]] = defaultdict(list)
     all_tx_list: list[Transaction] = []
+
+    # Mapas de hierarquia do Meta Ads para atribuição direta via Ad ID / AdSet ID
+    ad_to_camp = {str(ad.id): str(ad.campaign_id) for ad in (meta_ads or []) if getattr(ad, "campaign_id", None)}
+    ad_to_adset = {str(ad.id): str(ad.ad_set_id) for ad in (meta_ads or []) if getattr(ad, "ad_set_id", None)}
+    adset_to_camp = {str(as_.id): str(as_.campaign_id) for as_ in (meta_adsets or []) if getattr(as_, "campaign_id", None)}
+    valid_camp_ids = {str(c.id) for c in (meta_campaigns or []) if getattr(c, "id", None)}
 
     for tx in transactions:
         all_tx_list.append(tx)
@@ -61,6 +73,8 @@ def _group_transactions_by_level(transactions: list[Transaction]) -> dict:
         camp_name, camp_id = parse_utm_campaign(camp_raw)
         if camp_id:
             by_campaign_id[camp_id].append(tx)
+            if camp_id in ad_to_camp:
+                by_campaign_id[ad_to_camp[camp_id]].append(tx)
         if camp_name:
             norm = _normalize_key(camp_name)
             if norm:
@@ -74,6 +88,8 @@ def _group_transactions_by_level(transactions: list[Transaction]) -> dict:
 
         if adset_id:
             by_adset_id[adset_id].append(tx)
+            if adset_id in adset_to_camp:
+                by_campaign_id[adset_to_camp[adset_id]].append(tx)
         if adset_name:
             norm_as = _normalize_key(adset_name)
             if norm_as:
@@ -89,14 +105,22 @@ def _group_transactions_by_level(transactions: list[Transaction]) -> dict:
             elif term_name:
                 ad_name = term_name
 
-        # Suporte a SRC direto com o ID do anúncio
+        # Suporte a SRC direto com o ID do anúncio ou da campanha
         if tx.src:
             clean_src = tx.src.strip()
             if clean_src.isdigit():
                 ad_id = clean_src
+                if clean_src in valid_camp_ids:
+                    by_campaign_id[clean_src].append(tx)
 
         if ad_id:
             by_ad_id[ad_id].append(tx)
+            # Vinculação direta hierárquica automática
+            if ad_id in ad_to_camp:
+                by_campaign_id[ad_to_camp[ad_id]].append(tx)
+            if ad_id in ad_to_adset:
+                by_adset_id[ad_to_adset[ad_id]].append(tx)
+
         if ad_name:
             norm_ad = _normalize_key(ad_name)
             if norm_ad:
@@ -155,8 +179,8 @@ def _match_transactions_advanced(
 
         if stored_key == norm_entity or stored_key == entity_name.lower().strip():
             is_match = True
-        elif len(stored_key) >= 4 and len(norm_entity) >= 4:
-            # Substring match (ex: 'cbotestecriativo' in 'cbotestecriativonewoffer')
+        elif len(stored_key) >= 3 and len(norm_entity) >= 3:
+            # Substring match (ex: 'cbo' in 'cbotestedeoferta')
             if stored_key in norm_entity or norm_entity in stored_key:
                 is_match = True
             else:
@@ -164,7 +188,7 @@ def _match_transactions_advanced(
                 stored_tokens = _extract_tokens(stored_key)
                 if stored_tokens and entity_tokens:
                     intersection = stored_tokens.intersection(entity_tokens)
-                    if len(intersection) >= 2 or (len(stored_tokens) == 1 and intersection == stored_tokens):
+                    if len(intersection) >= 2 or (len(stored_tokens) == 1 and intersection == stored_tokens) or (len(entity_tokens) == 1 and intersection == entity_tokens):
                         is_match = True
 
         if is_match:
@@ -192,8 +216,8 @@ def merge_campaigns(
     meta_ads: list[AdInsights],
     transactions: list[Transaction],
 ) -> list[dict[str, Any]]:
-    """Cruza campanhas do Meta com transações do DB."""
-    grouped = _group_transactions_by_level(transactions)
+    """Cruza campanhas do Meta com transações do DB garantindo roll-up total de filhos."""
+    grouped = _group_transactions_by_level(transactions, meta_campaigns, meta_adsets, meta_ads)
     results = []
     attributed_tx_ids = set()
 
@@ -201,14 +225,23 @@ def merge_campaigns(
         txs, no_id_count = _match_transactions_advanced(
             camp.id, camp.name, grouped, "campaign_id", "campaign_name",
         )
-        for t in txs:
-            attributed_tx_ids.add(t.id)
-
-        sales_data = _calc_sales_metrics(txs)
         camp_adsets = [a for a in meta_adsets if a.campaign_id == camp.id]
         adsets_merged = _merge_adsets_for_campaign(
             camp_adsets, meta_ads, grouped,
         )
+
+        # UNIR as transações dos adsets e anúncios filhos à campanha (Roll-up garantido)
+        camp_tx_ids = {t.id for t in txs}
+        for as_res in adsets_merged:
+            for as_tx in as_res.get("_txs", []):
+                if as_tx.id not in camp_tx_ids:
+                    camp_tx_ids.add(as_tx.id)
+                    txs.append(as_tx)
+
+        for t in txs:
+            attributed_tx_ids.add(t.id)
+
+        sales_data = _calc_sales_metrics(txs)
 
         profit = sales_data["revenue"] - camp.spend
         roas = safe_division(sales_data["revenue"], camp.spend)
@@ -264,8 +297,9 @@ def merge_campaigns(
             "plays_vsl": 0,
             "play_rate": 0,
             "adsets": adsets_merged,
+            "_txs": txs,
+            "_attributed_tx_ids": list(camp_tx_ids),
         })
-
 
     # Atribuição Inteligente para Vendas Sem UTM / Transações Não Atribuídas
     unattributed_txs = [t for t in transactions if t.id not in attributed_tx_ids]
@@ -279,9 +313,8 @@ def merge_campaigns(
             top_camp = camps_with_spend[0]
             total_spend_all = sum(c["spend"] for c in camps_with_spend)
 
-            # Se a campanha principal representa mais de 70% do gasto total ou se só há 1 com gasto significativo (> R$ 10)
-            if top_camp["spend"] >= 10.0 and (total_spend_all == 0 or (top_camp["spend"] / total_spend_all) >= 0.70 or len(camps_with_spend) == 1):
-                # Atribui as vendas não identificadas à campanha que concentrou o tráfego pago
+            # Se só há 1 campanha com gasto ou uma principal dominante (>= 50% do gasto total)
+            if top_camp["spend"] >= 5.0 and (total_spend_all == 0 or (top_camp["spend"] / total_spend_all) >= 0.50 or len(camps_with_spend) == 1):
                 extra_data = _calc_sales_metrics(unattributed_txs)
                 top_camp["sales"] += extra_data["sales"]
                 top_camp["revenue"] = round(top_camp["revenue"] + extra_data["revenue"], 2)
@@ -289,8 +322,11 @@ def merge_campaigns(
                 top_camp["roas"] = safe_division(top_camp["revenue"], top_camp["spend"])
                 top_camp["cpa"] = safe_division(top_camp["spend"], top_camp["sales"]) if top_camp["sales"] > 0 else 0.0
                 top_camp["no_id_sales"] += extra_data["sales"]
+                for t in unattributed_txs:
+                    attributed_tx_ids.add(t.id)
+                    if "_attributed_tx_ids" in top_camp:
+                        top_camp["_attributed_tx_ids"].append(t.id)
 
-                # Também propaga para o conjunto e anúncio ativo dessa campanha se houver
                 if top_camp.get("adsets"):
                     active_adset = max(top_camp["adsets"], key=lambda a: a["spend"], default=top_camp["adsets"][0])
                     active_adset["sales"] += extra_data["sales"]
@@ -315,15 +351,24 @@ def _merge_adsets_for_campaign(
     meta_ads: list[AdInsights],
     grouped: dict,
 ) -> list[dict[str, Any]]:
-    """Merge adsets level."""
+    """Merge adsets level com roll-up de anúncios filhos."""
     results = []
     for adset in meta_adsets:
         txs, no_id_count = _match_transactions_advanced(
             adset.id, adset.name, grouped, "adset_id", "adset_name",
         )
-        sales_data = _calc_sales_metrics(txs)
         adset_ads = [a for a in meta_ads if a.ad_set_id == adset.id]
         ads_merged = merge_ads(adset_ads, grouped)
+
+        # UNIR as transações dos anúncios filhos ao adset
+        adset_tx_ids = {t.id for t in txs}
+        for ad_res in ads_merged:
+            for ad_tx in ad_res.get("_txs", []):
+                if ad_tx.id not in adset_tx_ids:
+                    adset_tx_ids.add(ad_tx.id)
+                    txs.append(ad_tx)
+
+        sales_data = _calc_sales_metrics(txs)
 
         profit = sales_data["revenue"] - adset.spend
         roas = safe_division(sales_data["revenue"], adset.spend)
@@ -373,6 +418,8 @@ def _merge_adsets_for_campaign(
             "plays_vsl": 0,
             "play_rate": 0,
             "ads": ads_merged,
+            "_txs": txs,
+            "_attributed_tx_ids": list(adset_tx_ids),
         })
 
     return results
@@ -437,7 +484,8 @@ def merge_ads(
             "views_vsl": 0,
             "plays_vsl": 0,
             "play_rate": 0,
+            "_txs": txs,
+            "_attributed_tx_ids": [t.id for t in txs],
         })
-
 
     return results

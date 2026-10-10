@@ -17,7 +17,11 @@ export function SfyFlow({ flow }: SfyFlowProps) {
     pageviews_to_ics: pageviews > 0 ? (ics / pageviews) * 100 : 0,
     ics_to_initiated: ics > 0 ? (salesInit / ics) * 100 : 0,
     initiated_to_approved: salesInit > 0 ? (salesApp / salesInit) * 100 : 0,
+    ics_to_approved: ics > 0 ? (salesApp / ics) * 100 : 0,
   };
+
+  const finalRate = rates.ics_to_approved ?? (ics > 0 ? (salesApp / ics) * 100 : 0);
+  const pendingSales = salesInit > salesApp ? salesInit - salesApp : 0;
 
   const steps = [
     {
@@ -25,6 +29,7 @@ export function SfyFlow({ flow }: SfyFlowProps) {
       label: "Cliques",
       value: clicks,
       icon: MousePointerClick,
+      tooltip: "Cliques no link dos anúncios",
     },
     {
       id: "pageviews",
@@ -32,29 +37,27 @@ export function SfyFlow({ flow }: SfyFlowProps) {
       value: pageviews,
       icon: Eye,
       prevRate: rates.clicks_to_pageviews,
+      tooltip: "Visualizações da página de vendas (Landing Page Views)",
     },
     {
       id: "ics",
-      label: "ICs",
+      label: "Checkouts (ICs)",
       value: ics > 0 ? ics : "—",
       icon: Receipt,
       prevRate: rates.pageviews_to_ics,
-      tooltip: "Initiate Checkouts (início de finalização de compra)",
-    },
-    {
-      id: "sales_init",
-      label: "Vendas Inic.",
-      value: salesInit,
-      icon: ShoppingCart,
-      prevRate: rates.ics_to_initiated,
+      tooltip: "Iniciações de Checkout (visitas à página de pagamento)",
     },
     {
       id: "sales_app",
       label: "Vendas Apr.",
       value: salesApp,
       icon: CheckCircle2,
-      prevRate: rates.initiated_to_approved,
+      prevRate: finalRate,
       isFinal: true,
+      pendingCount: pendingSales,
+      tooltip: pendingSales > 0
+        ? `${salesApp} vendas aprovadas (${pendingSales} pendente${pendingSales > 1 ? "s" : ""})`
+        : "Total de vendas aprovadas",
     },
   ];
 
@@ -96,7 +99,7 @@ export function SfyFlow({ flow }: SfyFlowProps) {
 
               {/* Node Card */}
               <div
-                className="flex w-24 shrink-0 flex-col items-center text-center"
+                className="flex w-28 shrink-0 flex-col items-center text-center"
                 title={step.tooltip}
               >
                 <div
@@ -116,6 +119,11 @@ export function SfyFlow({ flow }: SfyFlowProps) {
                 <span className="mt-0.5 text-[17px] font-semibold tabular-nums text-zinc-900 dark:text-white">
                   {step.value}
                 </span>
+                {step.pendingCount ? (
+                  <span className="mt-0.5 text-[10px] font-medium text-amber-500 dark:text-amber-400">
+                    +{step.pendingCount} pendente{step.pendingCount > 1 ? "s" : ""}
+                  </span>
+                ) : null}
               </div>
             </div>
           );
@@ -151,8 +159,15 @@ export function SfyFlow({ flow }: SfyFlowProps) {
                   <div className="text-[12px] font-medium text-zinc-500 dark:text-zinc-400">
                     {step.label}
                   </div>
-                  <div className="text-[17px] font-semibold tabular-nums text-zinc-900 dark:text-white">
-                    {step.value}
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-[17px] font-semibold tabular-nums text-zinc-900 dark:text-white">
+                      {step.value}
+                    </span>
+                    {step.pendingCount ? (
+                      <span className="text-[10px] font-medium text-amber-500 dark:text-amber-400">
+                        (+{step.pendingCount} pend.)
+                      </span>
+                    ) : null}
                   </div>
                 </div>
                 {step.prevRate !== undefined && (

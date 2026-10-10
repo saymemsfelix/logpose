@@ -165,17 +165,31 @@ def _apply_vturb_stats(
 
 
 def _build_unidentified(db: Session, date_start: str, date_end: str, campaigns: list[dict] = None) -> dict:
-    """Vendas aprovadas sem utm_campaign (não atribuídas a nenhuma campanha)."""
-    already_attributed_count = sum(c.get("sales", 0) for c in (campaigns or []))
-    
+    """Vendas aprovadas sem atribuição a nenhuma campanha."""
+    attributed_tx_ids = set()
+    if campaigns:
+        for c in campaigns:
+            for tid in c.get("_attributed_tx_ids", []):
+                attributed_tx_ids.add(tid)
+            for adset in c.get("adsets", []):
+                for tid in adset.get("_attributed_tx_ids", []):
+                    attributed_tx_ids.add(tid)
+                for ad in adset.get("ads", []):
+                    for tid in ad.get("_attributed_tx_ids", []):
+                        attributed_tx_ids.add(tid)
+
     all_approved = db.query(Transaction).filter(
         Transaction.status == TransactionStatus.APPROVED,
         Transaction.created_at >= date_start,
         Transaction.created_at <= f"{date_end} 23:59:59",
     ).all()
 
+    already_attributed_count = sum(c.get("sales", 0) for c in (campaigns or []))
+
     if already_attributed_count >= len(all_approved):
         unid = []
+    elif attributed_tx_ids:
+        unid = [t for t in all_approved if t.id not in attributed_tx_ids]
     else:
         unid = db.query(Transaction).filter(
             Transaction.status == TransactionStatus.APPROVED,
