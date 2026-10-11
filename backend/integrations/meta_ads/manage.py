@@ -5,6 +5,7 @@ Funções de gerenciamento do Meta Ads via Graph API.
 - Resolução inteligente de IDs por correspondência exata e normalizada
 """
 import asyncio
+import json
 import logging
 import unicodedata
 import re
@@ -297,6 +298,368 @@ async def update_budget(
             return {"success": True, "note": "Orçamento vitalício atualizado"}
 
     return res
+
+
+async def update_bid_amount(
+    access_token: str,
+    adset_id: str,
+    bid_amount_reais: float,
+) -> dict:
+    """
+    Atualiza o Bid Cap (teto de lance / bid_amount) de um conjunto de anúncios.
+    Meta API espera o valor em centavos (int).
+    Exemplo: R$ 90,00 -> 9000 centavos.
+    """
+    bid_cents = max(1, int(round(bid_amount_reais * 100)))
+
+    # 1. Tentativa padrão de atualizar bid_amount
+    res = await _post_with_retry(
+        access_token=access_token,
+        entity_id=adset_id,
+        params={"bid_amount": str(bid_cents)},
+        action_label=f"Update bid_amount adset {adset_id}",
+    )
+    if res["success"]:
+        return {"success": True, "bid_amount": bid_amount_reais}
+
+    err_msg = res.get("error", "").lower()
+    # 2. Se exigir bid_strategy compatível (LOWEST_COST_WITH_BID_CAP ou COST_CAP)
+    if "bid_strategy" in err_msg or "bid strategy" in err_msg or "strategy" in err_msg:
+        res_with_strat = await _post_with_retry(
+            access_token=access_token,
+            entity_id=adset_id,
+            params={
+                "bid_amount": str(bid_cents),
+                "bid_strategy": "LOWEST_COST_WITH_BID_CAP",
+            },
+            action_label=f"Update bid_amount + strategy adset {adset_id}",
+        )
+        if res_with_strat["success"]:
+            return {"success": True, "bid_amount": bid_amount_reais}
+
+    return res
+
+
+async def update_adset_details(
+    access_token: str,
+    adset_id: str,
+    name: str | None = None,
+    daily_budget_reais: float | None = None,
+    bid_amount_reais: float | None = None,
+    status: str | None = None,
+) -> dict:
+    """
+    Atualiza campos de um conjunto de anúncios (nome, orçamento, bid cap, status).
+    """
+    params: dict[str, str] = {}
+    if name and name.strip():
+        params["name"] = name.strip()
+    if status:
+        params["status"] = status.upper()
+    if daily_budget_reais is not None and daily_budget_reais > 0:
+        params["daily_budget"] = str(max(100, int(round(daily_budget_reais * 100))))
+    if bid_amount_reais is not None and bid_amount_reais > 0:
+        params["bid_amount"] = str(max(1, int(round(bid_amount_reais * 100))))
+
+    if not params:
+        return {"success": True, "note": "Nenhuma alteração informada"}
+
+    res = await _post_with_retry(
+        access_token=access_token,
+        entity_id=adset_id,
+        params=params,
+        action_label=f"Update adset details {adset_id}",
+    )
+    return res
+
+
+async def update_campaign_details(
+    access_token: str,
+    campaign_id: str,
+    name: str | None = None,
+    daily_budget_reais: float | None = None,
+    status: str | None = None,
+) -> dict:
+    """
+    Atualiza dados de uma campanha existente (nome, orçamento CBO, status).
+    """
+    params: dict[str, str] = {}
+    if name and name.strip():
+        params["name"] = name.strip()
+    if status:
+        params["status"] = status.upper()
+
+    if daily_budget_reais is not None and daily_budget_reais > 0:
+        b_res = await update_budget(access_token, campaign_id, "campaign", daily_budget_reais)
+        if not b_res["success"]:
+            return b_res
+
+    if params:
+        res = await _post_with_retry(
+            access_token=access_token,
+            entity_id=campaign_id,
+            params=params,
+            action_label=f"Update campaign details {campaign_id}",
+        )
+        return res
+
+    return {"success": True}
+
+
+async def duplicate_adset_in_campaign(
+    access_token: str,
+    account_id: str,
+    source_adset_id: str,
+    new_name: str | None = None,
+    new_bid_amount_reais: float | None = None,
+    new_daily_budget_reais: float | None = None,
+    status: str = "PAUSED",
+) -> dict:
+    """
+    Duplica um conjunto de anúncios mantendo os mesmos anúncios/criativos,
+    permitindo alterar o nome e o lance (Bid Cap).
+    Tenta primeiro o endpoint nativo de cópias da Meta (/copies),
+    com fallback para clonagem estruturada.
+    """
+    act_id = account_id if str(account_id).startswith("act_") else f"act_{account_id}"
+
+    # 1. Tentativa via endpoint nativo de cópia da Meta Ads
+    try:
+        url_copy = f"{GRAPH_API_BASE}/{source_adset_id}/copies"
+        copy_data = {
+            "access_token": access_token,
+            "deep_copy": "true",
+            "status_option": status.upper(),
+        }
+        if new_name:
+            copy_data["rename_options"] = json.dumps({
+                "rename_strategy": "CUSTOM_NAME",
+                "custom_name": new_name,
+            })
+
+        async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as http:
+            resp = await http.post(url_copy, data=copy_data)
+            if resp.status_code == 200:
+                result = resp.json()
+                new_adset_id = str(result.get("copied_adset_id") or result.get("id", ""))
+                if new_adset_id:
+                    if new_bid_amount_reais is not None and new_bid_amount_reais > 0:
+                        await update_bid_amount(access_token, new_adset_id, new_bid_amount_reais)
+                    if new_daily_budget_reais is not None and new_daily_budget_reais > 0:
+                        await update_budget(access_token, new_adset_id, "adset", new_daily_budget_reais)
+                    if new_name:
+                        await update_adset_details(access_token, new_adset_id, name=new_name)
+
+                    logger.info(f"AdSet {source_adset_id} duplicado com sucesso via /copies -> {new_adset_id}")
+                    return {"success": True, "adset_id": new_adset_id}
+    except Exception as e:
+        logger.warning(f"Tentativa /copies falhou: {e}, executando clonagem estruturada manual")
+
+    # 2. Fallback: Clonagem Estruturada
+    try:
+        async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as http:
+            # Buscar detalhes do adset original
+            resp_adset = await http.get(
+                f"{GRAPH_API_BASE}/{source_adset_id}",
+                params={
+                    "access_token": access_token,
+                    "fields": "id,name,campaign_id,bid_strategy,bid_amount,daily_budget,targeting,promoted_object,start_time",
+                },
+            )
+            if resp_adset.status_code != 200:
+                err = _parse_meta_error(resp_adset)
+                return {"success": False, "error": f"Erro ao ler conjunto original: {err['message']}"}
+
+            orig = resp_adset.json()
+            campaign_id = orig.get("campaign_id")
+            adset_name = new_name.strip() if new_name else f"{orig.get('name', 'Conjunto')} - Cópia"
+
+            bid_strategy = orig.get("bid_strategy") or "LOWEST_COST_WITHOUT_CAP"
+            bid_amount_to_use = new_bid_amount_reais
+            if bid_amount_to_use is None and orig.get("bid_amount"):
+                bid_amount_to_use = float(orig["bid_amount"]) / 100.0
+
+            # Montar payload do novo conjunto
+            create_payload: dict[str, str] = {
+                "access_token": access_token,
+                "name": adset_name,
+                "campaign_id": campaign_id,
+                "bid_strategy": bid_strategy,
+                "optimization_goal": "OFFSITE_CONVERSIONS",
+                "billing_event": "IMPRESSIONS",
+                "status": status.upper(),
+            }
+
+            if orig.get("promoted_object"):
+                create_payload["promoted_object"] = json.dumps(orig["promoted_object"])
+            if orig.get("targeting"):
+                create_payload["targeting"] = json.dumps(orig["targeting"])
+            if orig.get("start_time"):
+                create_payload["start_time"] = orig["start_time"]
+
+            # Orçamento se for ABO
+            budget_val = new_daily_budget_reais if new_daily_budget_reais is not None else (
+                float(orig["daily_budget"]) / 100.0 if orig.get("daily_budget") else None
+            )
+            if budget_val:
+                create_payload["daily_budget"] = str(int(round(budget_val * 100)))
+
+            # Bid amount se aplicável
+            if bid_amount_to_use:
+                create_payload["bid_amount"] = str(int(round(bid_amount_to_use * 100)))
+
+            resp_create = await http.post(f"{GRAPH_API_BASE}/{act_id}/adsets", data=create_payload)
+            if resp_create.status_code != 200:
+                err = _parse_meta_error(resp_create)
+                return {"success": False, "error": f"Erro ao criar conjunto: {err['message']}"}
+
+            new_adset_id = str(resp_create.json().get("id"))
+
+            # Buscar anúncios do adset original
+            resp_ads = await http.get(
+                f"{GRAPH_API_BASE}/{source_adset_id}/ads",
+                params={
+                    "access_token": access_token,
+                    "fields": "id,name,creative,status",
+                    "limit": "50",
+                },
+            )
+            ads_created = 0
+            if resp_ads.status_code == 200:
+                ads_list = resp_ads.json().get("data", [])
+                for ad in ads_list:
+                    c_id = ad.get("creative", {}).get("id")
+                    if c_id:
+                        ad_payload = {
+                            "access_token": access_token,
+                            "name": ad.get("name", "Anúncio"),
+                            "adset_id": new_adset_id,
+                            "creative": json.dumps({"creative_id": c_id}),
+                            "status": status.upper(),
+                        }
+                        r_ad = await http.post(f"{GRAPH_API_BASE}/{act_id}/ads", data=ad_payload)
+                        if r_ad.status_code == 200:
+                            ads_created += 1
+
+            return {"success": True, "adset_id": new_adset_id, "ads_copied": ads_created}
+
+    except Exception as e:
+        logger.error(f"Erro ao duplicar adset {source_adset_id}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+async def create_new_adset_for_campaign(
+    access_token: str,
+    account_id: str,
+    campaign_id: str,
+    name: str,
+    bid_strategy: str = "BID_CAP",
+    bid_amount_reais: float | None = None,
+    daily_budget_reais: float | None = None,
+    pixel_id: str = "",
+    targeting: dict | None = None,
+    copy_ads_from_adset_id: str | None = None,
+    status: str = "PAUSED",
+) -> dict:
+    """
+    Cria um novo conjunto de anúncios diretamente dentro de uma campanha existente.
+    Pode herdar configurações de pixel/targeting e copiar anúncios de outro conjunto.
+    """
+    act_id = account_id if str(account_id).startswith("act_") else f"act_{account_id}"
+
+    try:
+        async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as http:
+            # Se pixel_id ou targeting não foram enviados, busca do primeiro adset da campanha
+            if not pixel_id or not targeting:
+                resp_existing = await http.get(
+                    f"{GRAPH_API_BASE}/{campaign_id}/adsets",
+                    params={
+                        "access_token": access_token,
+                        "fields": "id,targeting,promoted_object,start_time",
+                        "limit": "1",
+                    },
+                )
+                if resp_existing.status_code == 200:
+                    ex_data = resp_existing.json().get("data", [])
+                    if ex_data:
+                        first_as = ex_data[0]
+                        if not pixel_id:
+                            pixel_id = (first_as.get("promoted_object") or {}).get("pixel_id", "")
+                        if not targeting:
+                            targeting = first_as.get("targeting", {})
+
+            # Mapeamento da estratégia de lance
+            bid_strat_map = {
+                "VOLUME": "LOWEST_COST_WITHOUT_CAP",
+                "BID_CAP": "LOWEST_COST_WITH_BID_CAP",
+                "COST_CAP": "COST_CAP",
+                "ROAS": "LOWEST_COST_WITH_MIN_ROAS",
+            }
+            api_strat = bid_strat_map.get(bid_strategy, bid_strategy)
+
+            create_data: dict[str, str] = {
+                "access_token": access_token,
+                "name": name.strip(),
+                "campaign_id": campaign_id,
+                "bid_strategy": api_strat,
+                "optimization_goal": "OFFSITE_CONVERSIONS",
+                "billing_event": "IMPRESSIONS",
+                "status": status.upper(),
+            }
+
+            if pixel_id:
+                create_data["promoted_object"] = json.dumps({
+                    "pixel_id": pixel_id,
+                    "custom_event_type": "PURCHASE",
+                })
+            if targeting:
+                create_data["targeting"] = json.dumps(targeting)
+
+            if daily_budget_reais is not None and daily_budget_reais > 0:
+                create_data["daily_budget"] = str(int(round(daily_budget_reais * 100)))
+
+            if bid_amount_reais is not None and bid_amount_reais > 0:
+                create_data["bid_amount"] = str(int(round(bid_amount_reais * 100)))
+
+            resp_create = await http.post(f"{GRAPH_API_BASE}/{act_id}/adsets", data=create_data)
+            if resp_create.status_code != 200:
+                err = _parse_meta_error(resp_create)
+                return {"success": False, "error": f"Erro ao criar conjunto: {err['message']}"}
+
+            new_adset_id = str(resp_create.json().get("id"))
+
+            # Copiar anúncios de um conjunto existente se solicitado
+            ads_copied = 0
+            if copy_ads_from_adset_id:
+                resp_ads = await http.get(
+                    f"{GRAPH_API_BASE}/{copy_ads_from_adset_id}/ads",
+                    params={
+                        "access_token": access_token,
+                        "fields": "id,name,creative,status",
+                        "limit": "50",
+                    },
+                )
+                if resp_ads.status_code == 200:
+                    ads_list = resp_ads.json().get("data", [])
+                    for ad in ads_list:
+                        c_id = ad.get("creative", {}).get("id")
+                        if c_id:
+                            ad_payload = {
+                                "access_token": access_token,
+                                "name": ad.get("name", "Anúncio"),
+                                "adset_id": new_adset_id,
+                                "creative": json.dumps({"creative_id": c_id}),
+                                "status": status.upper(),
+                            }
+                            r_ad = await http.post(f"{GRAPH_API_BASE}/{act_id}/ads", data=ad_payload)
+                            if r_ad.status_code == 200:
+                                ads_copied += 1
+
+            return {"success": True, "adset_id": new_adset_id, "ads_copied": ads_copied}
+
+    except Exception as e:
+        logger.error(f"Erro ao criar conjunto na campanha {campaign_id}: {e}")
+        return {"success": False, "error": str(e)}
 
 
 async def _post_with_retry(

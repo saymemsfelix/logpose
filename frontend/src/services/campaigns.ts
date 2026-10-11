@@ -34,6 +34,7 @@ export interface CampaignAdData {
   cpv?: number;
   cost_per_ic?: number;
   checkout_rate?: number;
+  creative_id?: string;
 }
 
 export interface CampaignAdSetData {
@@ -42,6 +43,8 @@ export interface CampaignAdSetData {
   name: string;
   status: string;
   budget: number;
+  bid_amount?: number | null;
+  bid_strategy?: string;
   spend: number;
   clicks: number;
   impressions: number;
@@ -217,6 +220,106 @@ export async function updateBudget(
       entity_name: entityName || "",
       budget_before: budgetBefore || 0,
       metrics: metrics || {},
+    },
+  });
+}
+
+export async function updateBidCap(
+  accountId: number,
+  adSetId: string,
+  bidAmount: number,
+  adSetName?: string,
+): Promise<{ status: string; bid_amount: number; message: string }> {
+  return apiRequest("/campaigns/edit-bid-cap", {
+    method: "POST",
+    body: {
+      account_id: accountId,
+      adset_id: adSetId,
+      bid_amount: bidAmount,
+      adset_name: adSetName || "",
+    },
+  });
+}
+
+export async function editAdSet(
+  accountId: number,
+  adSetId: string,
+  data: {
+    name?: string;
+    daily_budget?: number;
+    bid_amount?: number;
+    status?: string;
+  },
+): Promise<{ status: string; message: string }> {
+  return apiRequest("/campaigns/edit-adset", {
+    method: "POST",
+    body: {
+      account_id: accountId,
+      adset_id: adSetId,
+      ...data,
+    },
+  });
+}
+
+export async function editCampaign(
+  accountId: number,
+  campaignId: string,
+  data: {
+    name?: string;
+    daily_budget?: number;
+    status?: string;
+  },
+): Promise<{ status: string; message: string }> {
+  return apiRequest("/campaigns/edit-campaign", {
+    method: "POST",
+    body: {
+      account_id: accountId,
+      campaign_id: campaignId,
+      ...data,
+    },
+  });
+}
+
+export async function duplicateAdSet(
+  accountId: number,
+  sourceAdSetId: string,
+  data: {
+    new_name?: string;
+    new_bid_amount?: number;
+    new_daily_budget?: number;
+    status?: string;
+  },
+): Promise<{ status: string; adset_id: string; message: string }> {
+  return apiRequest("/campaigns/duplicate-adset", {
+    method: "POST",
+    body: {
+      account_id: accountId,
+      source_adset_id: sourceAdSetId,
+      ...data,
+    },
+  });
+}
+
+export async function createAdSetInCampaign(
+  accountId: number,
+  campaignId: string,
+  data: {
+    name: string;
+    bid_strategy?: string;
+    bid_amount?: number;
+    daily_budget?: number;
+    pixel_id?: string;
+    targeting?: any;
+    copy_ads_from_adset_id?: string;
+    status?: string;
+  },
+): Promise<{ status: string; adset_id: string; message: string }> {
+  return apiRequest("/campaigns/create-adset", {
+    method: "POST",
+    body: {
+      account_id: accountId,
+      campaign_id: campaignId,
+      ...data,
     },
   });
 }

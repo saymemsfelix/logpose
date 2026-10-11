@@ -25,7 +25,7 @@ import {
 import type { CampaignData } from "@/services/campaigns";
 import { allColumns } from "./columnPresets";
 import { AdSetsSubTable } from "./AdSetsSubTable";
-import { CampaignModals, type CampaignModalState } from "./CampaignModals";
+import { CampaignModals, type CampaignModalState, type NewAdSetModalState } from "./CampaignModals";
 import { CampaignNameCell } from "./CampaignNameCell";
 import { CampaignContextMenu } from "./CampaignContextMenu";
 import { DeactivateConfirmModal, type DeactivateMetrics } from "./DeactivateConfirmModal";
@@ -51,6 +51,11 @@ interface CampaignsTableProps {
   onBatchToggle?: (entityIds: string[], entityType: "campaign" | "adset" | "ad", active: boolean) => Promise<void>;
   onBatchDelete?: (entityIds: string[], entityType: "campaign" | "adset" | "ad") => Promise<void>;
   onBudgetChange: (entityId: string, entityType: "campaign" | "adset", dailyBudget: number, entityName?: string, budgetBefore?: number, metrics?: Record<string, number>) => Promise<void>;
+  onBidCapChange?: (adSetId: string, newBid: number, name?: string) => Promise<void>;
+  onEditAdSet?: (adSetId: string, data: { name?: string; daily_budget?: number; bid_amount?: number; status?: string }) => Promise<void>;
+  onEditCampaign?: (campaignId: string, data: { name?: string; daily_budget?: number; status?: string }) => Promise<void>;
+  onDuplicateAdSet?: (sourceAdSetId: string, data: { new_name?: string; new_bid_amount?: number; new_daily_budget?: number; status?: string }) => Promise<any>;
+  onCreateAdSet?: (campaignId: string, data: { name: string; bid_strategy?: string; bid_amount?: number; daily_budget?: number; copy_ads_from_adset_id?: string; status?: string }) => Promise<any>;
   onSaveTags?: (campaignId: string, tags: string[]) => Promise<void>;
   onSaveMarker?: (campaignId: string, type: "video" | "checkout" | "product" | "platform", refId: string, refLabel: string) => Promise<void>;
   accountId?: number;
@@ -77,7 +82,9 @@ export function CampaignsTable({
   data, columns,
   blur = { name: false, values: false, hideUnidentified: false, hiddenProducts: [] },
   tagsMap = {}, markersMap = {},
-  onToggle, onBatchToggle, onBatchDelete, onBudgetChange, onSaveTags, onSaveMarker,
+  onToggle, onBatchToggle, onBatchDelete, onBudgetChange,
+  onBidCapChange, onEditAdSet, onEditCampaign, onDuplicateAdSet, onCreateAdSet,
+  onSaveTags, onSaveMarker,
   accountId,
   taxEnabled = false,
   taxRate = 0,
@@ -86,6 +93,8 @@ export function CampaignsTable({
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const ms: CampaignModalState = { open: false, campaign: null };
   const [budgetModal, setBudgetModal] = useState<CampaignModalState>(ms);
+  const [editCampaignModal, setEditCampaignModal] = useState<CampaignModalState>(ms);
+  const [newAdSetModal, setNewAdSetModal] = useState<NewAdSetModalState>({ open: false, campaign: null, sourceAdSet: null });
   const [tagsModal, setTagsModal] = useState<CampaignModalState>(ms);
   const [videoModal, setVideoModal] = useState<CampaignModalState>(ms);
   const [checkoutModal, setCheckoutModal] = useState<CampaignModalState>(ms);
@@ -338,6 +347,8 @@ export function CampaignsTable({
                           isActive={row.status === "active"}
                           isCbo={c.budget_type !== "ABO"}
                           onToggle={() => handleToggle(c.id, "campaign", row.status !== "active")}
+                          onEditCampaign={() => setEditCampaignModal({ open: true, campaign: c })}
+                          onAddNewAdSet={() => setNewAdSetModal({ open: true, campaign: c, sourceAdSet: null })}
                           onEditBudget={() => setBudgetModal({ open: true, campaign: c })}
                           onEditTags={() => setTagsModal({ open: true, campaign: c })}
                           onDefineVideo={() => setVideoModal({ open: true, campaign: c })}
@@ -348,7 +359,7 @@ export function CampaignsTable({
                           onViewInfo={() => setInfoModal({ open: true, campaign: c })}
                         >{rowContent}</CampaignContextMenu>
                       )}
-                      {isExpanded && !isUnidentified && c.adsets.length > 0 && (
+                      {isExpanded && !isUnidentified && (
                         <TableRow key={`${c.id}-adsets`}>
                           <TableCell colSpan={visibleCols.length + 2} className="p-0">
                             <AdSetsSubTable
@@ -356,6 +367,10 @@ export function CampaignsTable({
                               columns={columns}
                               onToggle={handleToggle}
                               onBudgetChange={onBudgetChange}
+                              onBidCapChange={onBidCapChange}
+                              onEditAdSet={onEditAdSet}
+                              onDuplicateAdSet={(adSet) => setNewAdSetModal({ open: true, campaign: c, sourceAdSet: adSet })}
+                              onAddNewAdSet={() => setNewAdSetModal({ open: true, campaign: c, sourceAdSet: null })}
                               taxEnabled={taxEnabled}
                               taxRate={taxRate}
                               selectedAdSetIds={selectedAdSetIds}
@@ -497,13 +512,19 @@ export function CampaignsTable({
 
       <CampaignModals
         budgetModal={budgetModal} setBudgetModal={setBudgetModal}
+        editCampaignModal={editCampaignModal} setEditCampaignModal={setEditCampaignModal}
+        newAdSetModal={newAdSetModal} setNewAdSetModal={setNewAdSetModal}
         tagsModal={tagsModal} setTagsModal={setTagsModal}
         videoModal={videoModal} setVideoModal={setVideoModal}
         checkoutModal={checkoutModal} setCheckoutModal={setCheckoutModal}
         productModal={productModal} setProductModal={setProductModal}
         infoModal={infoModal} setInfoModal={setInfoModal}
         tagsMap={tagsMap} markersMap={markersMap}
-        onBudgetChange={onBudgetChange} onSaveTags={onSaveTags} onSaveMarker={onSaveMarker}
+        onBudgetChange={onBudgetChange}
+        onEditCampaign={onEditCampaign}
+        onDuplicateAdSet={onDuplicateAdSet}
+        onCreateAdSet={onCreateAdSet}
+        onSaveTags={onSaveTags} onSaveMarker={onSaveMarker}
       />
 
       <DeactivateConfirmModal

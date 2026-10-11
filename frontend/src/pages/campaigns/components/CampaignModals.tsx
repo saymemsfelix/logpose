@@ -1,10 +1,12 @@
-import type { CampaignData } from "@/services/campaigns";
+import type { CampaignData, CampaignAdSetData } from "@/services/campaigns";
 import { BudgetModal } from "./BudgetModal";
 import { TagsModal } from "./TagsModal";
 import { DefineVideoModal } from "./DefineVideoModal";
 import { DefineCheckoutModal } from "./DefineCheckoutModal";
 import { DefineProductModal } from "./DefineProductModal";
 import { CampaignInfoModal } from "./CampaignInfoModal";
+import { EditCampaignModal } from "./EditCampaignModal";
+import { NewAdSetModal } from "./NewAdSetModal";
 import type { MarkerMap } from "@/hooks/useCampaignMarkers";
 
 export type CampaignModalState = {
@@ -12,9 +14,19 @@ export type CampaignModalState = {
   campaign: CampaignData | null;
 };
 
+export type NewAdSetModalState = {
+  open: boolean;
+  campaign: CampaignData | null;
+  sourceAdSet?: CampaignAdSetData | null;
+};
+
 interface CampaignModalsProps {
   budgetModal: CampaignModalState;
   setBudgetModal: React.Dispatch<React.SetStateAction<CampaignModalState>>;
+  editCampaignModal: CampaignModalState;
+  setEditCampaignModal: React.Dispatch<React.SetStateAction<CampaignModalState>>;
+  newAdSetModal: NewAdSetModalState;
+  setNewAdSetModal: React.Dispatch<React.SetStateAction<NewAdSetModalState>>;
   tagsModal: CampaignModalState;
   setTagsModal: React.Dispatch<React.SetStateAction<CampaignModalState>>;
   videoModal: CampaignModalState;
@@ -28,19 +40,28 @@ interface CampaignModalsProps {
   tagsMap: Record<string, string[]>;
   markersMap: MarkerMap;
   onBudgetChange: (id: string, type: "campaign" | "adset", budget: number, entityName?: string, budgetBefore?: number, metrics?: Record<string, number>) => Promise<void>;
+  onEditCampaign?: (campaignId: string, data: { name?: string; daily_budget?: number; status?: string }) => Promise<void>;
+  onDuplicateAdSet?: (sourceAdSetId: string, data: { new_name?: string; new_bid_amount?: number; new_daily_budget?: number; status?: string }) => Promise<any>;
+  onCreateAdSet?: (campaignId: string, data: { name: string; bid_strategy?: string; bid_amount?: number; daily_budget?: number; copy_ads_from_adset_id?: string; status?: string }) => Promise<any>;
   onSaveTags?: (campaignId: string, tags: string[]) => Promise<void>;
   onSaveMarker?: (campaignId: string, type: "video" | "checkout" | "product" | "platform", refId: string, refLabel: string) => Promise<void>;
 }
 
 export function CampaignModals({
   budgetModal, setBudgetModal,
+  editCampaignModal, setEditCampaignModal,
+  newAdSetModal, setNewAdSetModal,
   tagsModal, setTagsModal,
   videoModal, setVideoModal,
   checkoutModal, setCheckoutModal,
   productModal, setProductModal,
   infoModal, setInfoModal,
   tagsMap, markersMap,
-  onBudgetChange, onSaveTags, onSaveMarker,
+  onBudgetChange,
+  onEditCampaign,
+  onDuplicateAdSet,
+  onCreateAdSet,
+  onSaveTags, onSaveMarker,
 }: CampaignModalsProps) {
   return (
     <>
@@ -57,6 +78,38 @@ export function CampaignModals({
                 c.id, "campaign", newBudget, c.name, c.budget,
                 { spend: c.spend, revenue: c.revenue, profit: c.profit, sales: c.sales, roas: c.roas, cpa: c.cpa, cpc: c.cpc, ctr: c.ctr, clicks: c.clicks, impressions: c.impressions },
               );
+            }
+          }}
+        />
+      )}
+
+      {editCampaignModal.campaign && onEditCampaign && (
+        <EditCampaignModal
+          open={editCampaignModal.open}
+          onOpenChange={(open) => setEditCampaignModal((prev) => ({ ...prev, open }))}
+          campaign={editCampaignModal.campaign}
+          onSave={async (data) => {
+            if (editCampaignModal.campaign) {
+              await onEditCampaign(editCampaignModal.campaign.id, data);
+            }
+          }}
+        />
+      )}
+
+      {newAdSetModal.campaign && (
+        <NewAdSetModal
+          open={newAdSetModal.open}
+          onOpenChange={(open) => setNewAdSetModal((prev) => ({ ...prev, open }))}
+          campaign={newAdSetModal.campaign}
+          initialSourceAdSet={newAdSetModal.sourceAdSet}
+          onDuplicate={async (sourceId, data) => {
+            if (onDuplicateAdSet) {
+              return await onDuplicateAdSet(sourceId, data);
+            }
+          }}
+          onCreate={async (campId, data) => {
+            if (onCreateAdSet) {
+              return await onCreateAdSet(campId, data);
             }
           }}
         />

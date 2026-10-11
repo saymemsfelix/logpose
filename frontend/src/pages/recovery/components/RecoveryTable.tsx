@@ -129,7 +129,7 @@ export function RecoveryTable({
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-medium text-white">{row.customerName}</span>
+                        <span className="font-medium text-foreground">{row.customerName}</span>
                         {country && (
                           <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 border-border/60">
                             {flag} {country}
@@ -139,7 +139,7 @@ export function RecoveryTable({
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span className="truncate max-w-[170px]">{row.customerEmail}</span>
                         {row.customerPhone && (
-                          <span className="font-mono text-[11px] text-emerald-400/90 font-medium">
+                          <span className="font-mono text-[11px] text-emerald-500 dark:text-emerald-400 font-medium">
                             {row.customerPhone}
                           </span>
                         )}
@@ -155,7 +155,7 @@ export function RecoveryTable({
                           : typeLabels[row.type] || row.type}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right tabular-nums font-semibold text-white">
+                    <TableCell className="text-right tabular-nums font-semibold text-foreground">
                       R$ {row.amount.toFixed(2)}
                     </TableCell>
                     <TableCell>

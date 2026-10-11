@@ -186,6 +186,24 @@ export const PRODUCT_OFFER_CATALOG: ProductCatalogItem[] = [
     matchPatterns: ["atlas", "escrituras", "atlas de las escrituras", "latam"],
     offerUrl: "https://novidadesonline.net/AtlasdelasEscriturasLatam/",
   },
+  {
+    id: "sistemi_idraulici_edilizi",
+    displayName: "Sistemi Idraulici Edilizi",
+    matchPatterns: ["sistemi idraulici", "idraulici edilizi", "idraulici", "idraulico"],
+    offerUrl: "https://novidadesonline.net/SistemiIdrauliciEdilizi/",
+  },
+  {
+    id: "manuale_rilievo_topografico",
+    displayName: "Manuale Rilievo Topografico",
+    matchPatterns: ["rilievo topografico", "topografia", "calcoli topografici", "rilievo", "manuale rilievo"],
+    offerUrl: "https://novidadesonline.net/manuale-rilievo-topografico/",
+  },
+  {
+    id: "15_minuti_sicurezza",
+    displayName: "15 Minuti di Sicurezza",
+    matchPatterns: ["15 minuti", "sicurezza", "sicurezza sul trabalho", "sicurezza sul lavoro"],
+    offerUrl: "https://novidadesonline.net/15MinutidiSicurezzaItaliano/",
+  },
 ];
 
 export function findCatalogItemForProduct(productName?: string | null): ProductCatalogItem | undefined {

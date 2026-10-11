@@ -560,6 +560,353 @@ export async function getMockData(endpoint: string, _options?: any): Promise<any
     };
   }
 
+  if (path === "/guardian/rules") {
+    return {
+      rules: [
+        {
+          id: 1,
+          name: "Stop-Loss Anti-Prejuízo (Zero Vendas)",
+          description: "Pausa automaticamente o conjunto se gastar mais de R$ 80,00 no dia sem gerar nenhuma venda.",
+          entity_type: "adset",
+          condition_type: "spend_without_sales",
+          threshold_value: 80.0,
+          secondary_threshold: 0.0,
+          action: "pause",
+          action_value: 0.0,
+          is_active: true,
+          created_at: new Date().toISOString(),
+        },
+        {
+          id: 2,
+          name: "Teto de CPA Excedido (Bid Cap Guard)",
+          description: "Pausa ou alerta se o CPA médio do conjunto ultrapassar R$ 90,00 (após pelo menos 1 venda).",
+          entity_type: "adset",
+          condition_type: "cpa_above",
+          threshold_value: 90.0,
+          secondary_threshold: 1.0,
+          action: "pause",
+          action_value: 0.0,
+          is_active: true,
+          created_at: new Date().toISOString(),
+        },
+        {
+          id: 3,
+          name: "Detector de Escala (Winner / ROAS 2.5x+)",
+          description: "Alerta oportunidade de escala quando o conjunto bater ROAS acima de 2.5x com pelo menos 2 vendas.",
+          entity_type: "adset",
+          condition_type: "roas_above",
+          threshold_value: 2.5,
+          secondary_threshold: 2.0,
+          action: "notify",
+          action_value: 20.0,
+          is_active: true,
+          created_at: new Date().toISOString(),
+        },
+        {
+          id: 4,
+          name: "Alerta de CTR Crítico (Criativo Ineficiente)",
+          description: "Notifica quando o CTR ficar abaixo de 0.8% após gastar pelo menos R$ 40,00 no dia.",
+          entity_type: "adset",
+          condition_type: "ctr_below",
+          threshold_value: 0.8,
+          secondary_threshold: 40.0,
+          action: "notify",
+          action_value: 0.0,
+          is_active: true,
+          created_at: new Date().toISOString(),
+        },
+      ],
+    };
+  }
+
+  if (path === "/guardian/logs") {
+    return {
+      logs: [
+        {
+          id: 101,
+          rule_id: 1,
+          rule_name: "Stop-Loss Anti-Prejuízo (Zero Vendas)",
+          entity_id: "adset_98234",
+          entity_type: "adset",
+          entity_name: "Lookalike 1% - Compradores 30d",
+          action_taken: "paused",
+          message: "Conjunto pausado: Gastou R$ 86,40 sem nenhuma venda hoje.",
+          metrics_snapshot: { spend: 86.40, sales: 0, cpa: 86.40, roas: 0 },
+          created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
+        },
+        {
+          id: 102,
+          rule_id: 2,
+          rule_name: "Teto de CPA Excedido (Bid Cap Guard)",
+          entity_id: "adset_98235",
+          entity_type: "adset",
+          entity_name: "Interesses: Marketing Digital Aberto",
+          action_taken: "paused",
+          message: "CPA de R$ 94,20 ultrapassou o teto de R$ 90,00 (1 venda gerada).",
+          metrics_snapshot: { spend: 94.20, sales: 1, cpa: 94.20, roas: 2.09 },
+          created_at: new Date(Date.now() - 3600000 * 5).toISOString(),
+        },
+        {
+          id: 103,
+          rule_id: 3,
+          rule_name: "Detector de Escala (Winner / ROAS 2.5x+)",
+          entity_id: "adset_98236",
+          entity_type: "adset",
+          entity_name: "Retargeting VSL 7 Dias",
+          action_taken: "notified",
+          message: "Potencial de Escala: ROAS de 3,85x com 6 vendas no dia!",
+          metrics_snapshot: { spend: 306.00, sales: 6, cpa: 51.00, roas: 3.85 },
+          created_at: new Date(Date.now() - 3600000 * 8).toISOString(),
+        },
+      ],
+    };
+  }
+
+  if (path === "/guardian/evaluate") {
+    return {
+      status: "ok",
+      dry_run: false,
+      evaluated_entities: 14,
+      actions_taken: 1,
+      message: "Verificação concluída: 14 conjuntos avaliados, 1 ação aplicada com sucesso.",
+      executed_logs: [
+        {
+          rule_name: "Stop-Loss Anti-Prejuízo",
+          entity_name: "Broad Aberto 25-54",
+          action: "paused",
+          message: "Gastou R$ 82,10 sem vendas no dia.",
+        },
+      ],
+    };
+  }
+
+  if (path === "/creative-fatigue/analysis") {
+    return {
+      summary: {
+        total_ads: 8,
+        healthy_count: 5,
+        warning_count: 2,
+        critical_count: 1,
+      },
+      ads: [
+        {
+          id: "ad_101",
+          name: "VSL Gancho 01 - História Médico",
+          campaign_name: "Escala Perpétuo",
+          adset_name: "Lookalike 1%",
+          account_id: 1,
+          status: "ACTIVE",
+          spend: 3450.0,
+          impressions: 48900,
+          reach: 18200,
+          frequency: 2.68,
+          clicks: 980,
+          ctr: 0.68,
+          cpc: 3.52,
+          sales: 32,
+          cpa: 107.80,
+          roas: 1.82,
+          fatigue_score: 88,
+          fatigue_status: "critical",
+          recommendation: "🔴 Saturação severa detectada (Frequência 2.68x, CTR 0.68%). Recomenda-se pausar este anúncio ou testar novo gancho/abertura imediatamente.",
+        },
+        {
+          id: "ad_102",
+          name: "Depoimento WhatsApp - Antes e Depois",
+          campaign_name: "Escala Perpétuo",
+          adset_name: "Interesses Nutrição",
+          account_id: 1,
+          status: "ACTIVE",
+          spend: 1890.0,
+          impressions: 32100,
+          reach: 16800,
+          frequency: 1.91,
+          clicks: 640,
+          ctr: 1.45,
+          cpc: 2.95,
+          sales: 28,
+          cpa: 67.50,
+          roas: 2.91,
+          fatigue_score: 55,
+          fatigue_status: "warning",
+          recommendation: "🟡 Frequência em elevação (1.91x) e CTR moderado. Prepare criativos substitutos para evitar subida brusca de CPA.",
+        },
+        {
+          id: "ad_103",
+          name: "UGC Vídeo Curto - Unboxing & Resultado",
+          campaign_name: "Remarketing VSL",
+          adset_name: "Visitantes 14d",
+          account_id: 1,
+          status: "ACTIVE",
+          spend: 920.0,
+          impressions: 21500,
+          reach: 17200,
+          frequency: 1.25,
+          clicks: 720,
+          ctr: 3.35,
+          cpc: 1.27,
+          sales: 22,
+          cpa: 41.80,
+          roas: 4.71,
+          fatigue_score: 18,
+          fatigue_status: "healthy",
+          recommendation: "🟢 Criativo saudável com alta tração e baixa repetição de público (Frequência 1.25x). Seguro para manter ou aumentar orçamento.",
+        },
+      ],
+      date_range: { start: "2026-10-04", end: "2026-10-11" },
+    };
+  }
+
+  if (path === "/simulator/metrics") {
+    return {
+      status: "ok",
+      average_ticket: 197.0,
+      total_sales_30d: 480,
+      total_revenue_30d: 94560.0,
+      total_spend_30d: 28400.0,
+      average_cpa: 59.16,
+      average_roas: 3.32,
+      refund_rate: 2.4,
+    };
+  }
+
+  if (path === "/simulator/calculate") {
+    const b = _options?.body || {};
+    const price = b.product_price || 197.0;
+    const feeP = b.gateway_fee_percent || 8.99;
+    const feeF = b.gateway_fee_fixed || 2.49;
+    const taxP = b.tax_percent || 6.0;
+    const refP = b.refund_rate_percent || 2.5;
+    const extra = b.extra_costs_per_sale || 0;
+    const bud = b.daily_budget || 500.0;
+    const gFee = price * (feeP / 100) + feeF;
+    const tFee = price * (taxP / 100);
+    const rFee = price * (refP / 100);
+    const netRev = Math.max(0, price - gFee - tFee - rFee - extra);
+    const cpa = b.estimated_cpa || netRev * 0.5;
+    const salesDay = bud / cpa;
+    const grossDay = salesDay * price;
+    const netDay = salesDay * netRev;
+    const profitDay = netDay - bud;
+
+    return {
+      status: "ok",
+      breakeven: {
+        net_revenue_per_sale: netRev,
+        breakeven_cpa: netRev,
+        breakeven_roas: price / netRev,
+        contribution_margin_percent: (netRev / price) * 100,
+        deductions_per_sale: {
+          gateway: gFee,
+          tax: tFee,
+          refund_provision: rFee,
+          extra,
+        },
+      },
+      target_projection: {
+        daily_spend: bud,
+        target_cpa: cpa,
+        sales_per_day: salesDay,
+        gross_revenue_daily: grossDay,
+        net_profit_daily: profitDay,
+        net_profit_monthly: profitDay * 30,
+        projected_roas: grossDay / bud,
+        net_margin_percent: (profitDay / grossDay) * 100,
+      },
+      scenarios: [
+        {
+          name: "Conservador",
+          daily_spend: 200,
+          sales_per_day: 200 / cpa,
+          monthly_sales: Math.round((200 / cpa) * 30),
+          gross_revenue_month: (200 / cpa) * price * 30,
+          daily_profit: (200 / cpa) * netRev - 200,
+          monthly_profit: ((200 / cpa) * netRev - 200) * 30,
+          projected_roas: price / cpa,
+          net_margin_percent: 38.5,
+        },
+        {
+          name: "Moderado",
+          daily_spend: 500,
+          sales_per_day: 500 / cpa,
+          monthly_sales: Math.round((500 / cpa) * 30),
+          gross_revenue_month: (500 / cpa) * price * 30,
+          daily_profit: (500 / cpa) * netRev - 500,
+          monthly_profit: ((500 / cpa) * netRev - 500) * 30,
+          projected_roas: price / cpa,
+          net_margin_percent: 41.2,
+        },
+        {
+          name: "Escala Agressiva",
+          daily_spend: 1500,
+          sales_per_day: 1500 / cpa,
+          monthly_sales: Math.round((1500 / cpa) * 30),
+          gross_revenue_month: (1500 / cpa) * price * 30,
+          daily_profit: (1500 / cpa) * netRev - 1500,
+          monthly_profit: ((1500 / cpa) * netRev - 1500) * 30,
+          projected_roas: price / cpa,
+          net_margin_percent: 40.8,
+        },
+        {
+          name: "Escala Pesada",
+          daily_spend: 3000,
+          sales_per_day: 3000 / cpa,
+          monthly_sales: Math.round((3000 / cpa) * 30),
+          gross_revenue_month: (3000 / cpa) * price * 30,
+          daily_profit: (3000 / cpa) * netRev - 3000,
+          monthly_profit: ((3000 / cpa) * netRev - 3000) * 30,
+          projected_roas: price / cpa,
+          net_margin_percent: 39.5,
+        },
+        {
+          name: "Escala Ninja",
+          daily_spend: 6000,
+          sales_per_day: 6000 / cpa,
+          monthly_sales: Math.round((6000 / cpa) * 30),
+          gross_revenue_month: (6000 / cpa) * price * 30,
+          daily_profit: (6000 / cpa) * netRev - 6000,
+          monthly_profit: ((6000 / cpa) * netRev - 6000) * 30,
+          projected_roas: price / cpa,
+          net_margin_percent: 38.0,
+        },
+      ],
+    };
+  }
+
+  if (path === "/setup/status") {
+    return { is_configured: true };
+  }
+
+  if (path === "/setup") {
+    return { message: "Setup concluído com sucesso!" };
+  }
+
+  if (path === "/login") {
+    return {
+      access_token: "ninja-pro-demo-token-jwt-secret-authenticated",
+      token_type: "bearer",
+      user: {
+        id: 1,
+        name: "Sayme",
+        email: "sayme@ninjastracker.com",
+        role: "owner",
+      },
+    };
+  }
+
+  if (path === "/profile") {
+    return {
+      id: 1,
+      name: "Sayme",
+      email: "sayme@ninjastracker.com",
+      role: "owner",
+    };
+  }
+
+  if (path === "/auth/reset-password") {
+    return { message: "Senha redefinida com sucesso! Você já pode entrar." };
+  }
+
   // Return undefined to fallback to normal fetch if endpoint is not mocked
   return undefined;
 }

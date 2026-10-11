@@ -9,7 +9,7 @@ from integrations.meta_ads.helpers import (
 )
 
 # Campos de estrutura do ad
-STRUCTURE_FIELDS = "id,name,status,adset_id"
+STRUCTURE_FIELDS = "id,name,status,adset_id,creative"
 
 # Campos de métricas (insights)
 INSIGHT_FIELDS = ",".join([
@@ -94,11 +94,15 @@ async def fetch_ads(
         hook_rate = round((video_views / impr) * 100, 1) if impr > 0 else 0.0
         body_rate = round((video_p50 / video_views) * 100, 1) if video_views > 0 else 0.0
 
+        c_obj = ad.get("creative") or {}
+        cid = str(c_obj.get("id", "")) if isinstance(c_obj, dict) else ""
+
         results.append(AdInsights(
             id=ad.get("id", ""),
             ad_set_id=ad.get("adset_id", ""),
             name=ad.get("name", ""),
             status=_normalize_status(ad.get("status", "")),
+            creative_id=cid,
             budget=0.0,  # Ads herdam budget do AdSet
             spend=spend,
             clicks=clicks,

@@ -8,7 +8,7 @@ import {
 } from "@remixicon/react";
 import { MetricCard } from "@/components/MetricCard";
 import type { MetricRow } from "./campaignCellHelpers";
-import { fmtCompact, fmtNumber } from "@/utils/format";
+import { fmtNumber } from "@/utils/format";
 
 interface CampaignsKpisProps {
   data: (MetricRow & { status?: string })[];

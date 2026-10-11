@@ -45,6 +45,7 @@ from api.campaigns.filters import router as campaigns_filters_router
 from api.campaigns.conversion import router as campaigns_conversion_router
 from api.campaigns.ai_action import router as campaigns_ai_action_router
 from api.campaigns.export_details import router as campaigns_export_details_router
+from api.campaigns.edit import router as campaigns_edit_router
 from api.webhook.receive import router as webhook_receiver_router
 from api.csv_import.preview import router as import_preview_router
 from api.csv_import.execute import router as import_execute_router
@@ -67,6 +68,9 @@ from api.subscriptions.metrics import router as subscriptions_metrics_router
 from api.advanced_settings.features import router as advanced_settings_router
 from api.advanced_settings.reset_sales import router as reset_sales_router
 from api.notifications.router import router as notifications_router
+from api.guardian.router import router as guardian_router
+from api.creative_fatigue.router import router as creative_fatigue_router
+from api.simulator.router import router as simulator_router
 
 import database.models.daily_ad_spend
 from database.core.migrate_sql import run_sql_migrations
@@ -145,10 +149,31 @@ async def _scheduled_ai_campaign_actions_loop():
             logger.warning(f"Aviso no loop de ações agendadas Ninja AI: {e}")
         await asyncio.sleep(30)
 
+async def _scheduled_guardian_loop():
+    """Executa a verificação automática das regras ativas do Guardião de Lucro (a cada 15 min)."""
+    from database.models.guardian_rule import GuardianRule
+    from api.guardian.router import evaluate_guardian_rules
+
+    while True:
+        try:
+            # Espera 15 minutos entre verificações
+            await asyncio.sleep(900)
+            db = SessionLocal()
+            try:
+                active_count = db.query(GuardianRule).filter(GuardianRule.is_active.is_(True)).count()
+                if active_count > 0:
+                    logger.info("🛡️ [O Guardião] Executando verificação programada 24/7 de regras de proteção...")
+                    await evaluate_guardian_rules(dry_run=False, db=db, _=None)
+            finally:
+                db.close()
+        except Exception as e:
+            logger.warning(f"Aviso no loop do Guardião de Lucro: {e}")
+
 @app.on_event("startup")
 async def start_background_workers():
     asyncio.create_task(_scheduled_profit_notifier_loop())
     asyncio.create_task(_scheduled_ai_campaign_actions_loop())
+    asyncio.create_task(_scheduled_guardian_loop())
 
 # Health check endpoints para o Render (suporta GET e HEAD)
 @app.get("/health")
@@ -200,6 +225,7 @@ app.include_router(campaigns_filters_router, prefix="/api")
 app.include_router(campaigns_conversion_router, prefix="/api")
 app.include_router(campaigns_ai_action_router, prefix="/api")
 app.include_router(campaigns_export_details_router, prefix="/api")
+app.include_router(campaigns_edit_router, prefix="/api")
 app.include_router(webhook_receiver_router, prefix="/api")
 app.include_router(webhook_receiver_router, prefix="")
 app.include_router(import_preview_router, prefix="/api")
@@ -223,6 +249,9 @@ app.include_router(subscriptions_metrics_router, prefix="/api")
 app.include_router(advanced_settings_router, prefix="/api")
 app.include_router(reset_sales_router, prefix="/api")
 app.include_router(notifications_router, prefix="/api")
+app.include_router(guardian_router, prefix="/api")
+app.include_router(creative_fatigue_router, prefix="/api")
+app.include_router(simulator_router, prefix="/api")
 
 # SPA Middleware (serves frontend in production)
 _frontend_dir = os.path.join(os.path.dirname(__file__), "frontend_dist")

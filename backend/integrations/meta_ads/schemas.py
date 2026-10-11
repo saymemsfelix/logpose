@@ -41,6 +41,8 @@ class AdSetInsights(BaseModel):
     name: str
     status: str
     budget: float = 0.0
+    bid_amount: float | None = None
+    bid_strategy: str = ""
     spend: float = 0.0
     clicks: int = 0
     impressions: int = 0
@@ -69,6 +71,7 @@ class AdInsights(BaseModel):
     ad_set_id: str
     name: str
     status: str
+    creative_id: str = ""
     budget: float = 0.0
     spend: float = 0.0
     clicks: int = 0

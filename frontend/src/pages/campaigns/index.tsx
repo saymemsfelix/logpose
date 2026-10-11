@@ -97,7 +97,9 @@ export default function CampaignsPage() {
   const {
     campaigns, unidentified, metaError, isLoading, error,
     accounts: fbAccounts, activeAccountId, setSelectedAccountId,
-    toggle, batchToggle, batchDelete, changeBudget, silentReload,
+    toggle, batchToggle, batchDelete, changeBudget,
+    changeBidCap, modifyAdSet, modifyCampaign, cloneAdSet, addNewAdSet,
+    silentReload,
   } = useCampaigns(dateStart, dateEnd);
 
   const navigate = useNavigate();
@@ -268,6 +270,11 @@ export default function CampaignsPage() {
             onBatchToggle={batchToggle}
             onBatchDelete={batchDelete}
             onBudgetChange={changeBudget}
+            onBidCapChange={changeBidCap}
+            onEditAdSet={modifyAdSet}
+            onEditCampaign={modifyCampaign}
+            onDuplicateAdSet={cloneAdSet}
+            onCreateAdSet={addNewAdSet}
             onSaveTags={async (id, tags) => { await updateTags(id, tags); }}
             onSaveMarker={async (id, type, refId, refLabel) => {
               await saveMarker(id, type, refId, refLabel);

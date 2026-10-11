@@ -12,6 +12,10 @@ import {
   RiLoopLeftLine,
   RiBox3Line,
   RiFilter2Line,
+  RiShieldCheckLine,
+  RiFireLine,
+  RiCalculatorLine,
+  RiLinkM,
 } from "@remixicon/react";
 import { MoreDropdown } from "./MobileMoreDropdown";
 
@@ -24,6 +28,10 @@ const NAV_ITEMS = [
 ];
 
 export const MORE_ITEMS = [
+  { label: "O Guardião", icon: RiShieldCheckLine, path: "/guardian" },
+  { label: "Fadiga", icon: RiFireLine, path: "/creative-fatigue" },
+  { label: "Simulador", icon: RiCalculatorLine, path: "/simulator" },
+  { label: "UTMs", icon: RiLinkM, path: "/utm-builder" },
   { label: "Vendas", icon: RiShoppingCartLine, path: "/sales" },
   { label: "Clientes", icon: RiGroupLine, path: "/customers" },
   { label: "Reembolsos", icon: RiRefundLine, path: "/refunds" },

@@ -45,11 +45,11 @@ export function CommercialCards({
                 className="flex items-center justify-between rounded-lg bg-zinc-50/70 dark:bg-zinc-900/50 p-2 text-[12.5px]"
               >
                 <div className="min-w-0 flex-1 truncate pr-2">
-                  <p className="font-medium text-zinc-800 dark:text-zinc-200 truncate">
+                  <p className="font-medium text-zinc-800 dark:text-zinc-200 truncate" title={utm.name}>
                     {utm.name}
                   </p>
                   {utm.source && utm.source !== "-" && (
-                    <p className="text-[11px] text-zinc-400 truncate">{utm.source}</p>
+                    <p className="text-[11px] text-zinc-400 truncate" title={utm.source}>{utm.source}</p>
                   )}
                 </div>
                 <div className="text-right shrink-0">
@@ -92,7 +92,7 @@ export function CommercialCards({
                 className="flex items-center justify-between rounded-lg bg-zinc-50/70 dark:bg-zinc-900/50 p-2 text-[12.5px]"
               >
                 <div className="min-w-0 flex-1 truncate pr-2">
-                  <p className="font-medium text-zinc-800 dark:text-zinc-200 truncate">
+                  <p className="font-medium text-zinc-800 dark:text-zinc-200 truncate" title={prod.name}>
                     {prod.name}
                   </p>
                 </div>

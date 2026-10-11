@@ -9,7 +9,7 @@ import {
   fetchLatestSales,
   getLastSeenSaleId,
   setLastSeenSaleId,
-  RecentSaleItem,
+  type RecentSaleItem,
 } from "@/services/salesNotifier";
 import { playSaleCashSound, vibrateSale, speakVoice } from "@/utils/salesSound";
 import { API_BASE_URL } from "@/services/api";

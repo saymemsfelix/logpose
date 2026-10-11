@@ -17,9 +17,16 @@ function fmtDate(iso: string | null): string {
   return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" });
 }
 
-function maskCpf(cpf: string | null): string {
-  if (!cpf || cpf.length < 6) return cpf || "—";
-  return `***.${cpf.slice(3, 6)}.***-${cpf.slice(-2)}`;
+function maskDoc(doc: string | null): string {
+  if (!doc) return "—";
+  const clean = doc.replace(/\D/g, "");
+  if (clean.length === 11) {
+    return `***.${clean.slice(3, 6)}.***-${clean.slice(-2)}`;
+  }
+  if (doc.length > 6) {
+    return `${doc.slice(0, 3)}****${doc.slice(-2)}`;
+  }
+  return doc;
 }
 
 interface CustomersTableProps {
@@ -42,7 +49,7 @@ export function CustomersTable({ data, loading, total, page, onPageChange, onVie
               <TableRow>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Telefone</TableHead>
-                <TableHead>CPF</TableHead>
+                <TableHead>CPF / Doc</TableHead>
                 <TableHead>Primeira Compra</TableHead>
                 <TableHead className="text-right">Total Gasto</TableHead>
                 <TableHead className="text-right">Pedidos</TableHead>
@@ -72,7 +79,7 @@ export function CustomersTable({ data, loading, total, page, onPageChange, onVie
                       <div className="text-sm text-muted-foreground">{customer.email}</div>
                     </TableCell>
                     <TableCell className="tabular-nums">{customer.phone || "—"}</TableCell>
-                    <TableCell className="text-muted-foreground">{maskCpf(customer.cpf)}</TableCell>
+                    <TableCell className="text-muted-foreground">{maskDoc(customer.cpf)}</TableCell>
                     <TableCell className="tabular-nums text-muted-foreground whitespace-nowrap">
                       {fmtDate(customer.first_purchase_at)}
                     </TableCell>

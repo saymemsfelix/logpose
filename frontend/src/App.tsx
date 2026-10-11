@@ -22,6 +22,10 @@ import UsersPage from "@/pages/users";
 import StripePage from "@/pages/stripe";
 import SubscriptionsPage from "@/pages/subscriptions";
 import AdvancedSettingsPage from "@/pages/advanced-settings";
+import GuardianPage from "@/pages/guardian";
+import CreativeFatiguePage from "@/pages/creative-fatigue";
+import SimulatorPage from "@/pages/simulator";
+import UtmBuilderPage from "@/pages/utm-builder";
 import { AIChatProvider } from "@/components/ai-chat/AIChatProvider";
 import { Toaster } from "@/components/ui/sonner";
 import { PageDataProvider } from "@/contexts/PageDataContext";
@@ -65,6 +69,10 @@ export default function App() {
               <Route path="/stripe" element={<StripePage />} />
               <Route path="/subscriptions" element={<SubscriptionsPage />} />
               <Route path="/advanced-settings" element={<AdvancedSettingsPage />} />
+              <Route path="/guardian" element={<GuardianPage />} />
+              <Route path="/creative-fatigue" element={<CreativeFatiguePage />} />
+              <Route path="/simulator" element={<SimulatorPage />} />
+              <Route path="/utm-builder" element={<UtmBuilderPage />} />
             </Route>
 
             <Route path="/" element={<Navigate to="/dashboard" replace />} />

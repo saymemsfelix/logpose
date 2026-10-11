@@ -1,4 +1,14 @@
-import { RiMegaphoneLine, RiSearchLine, RiAddLine, RiSettings3Line, RiPercentLine } from "@remixicon/react";
+import {
+  RiMegaphoneLine,
+  RiSearchLine,
+  RiAddLine,
+  RiSettings3Line,
+  RiPercentLine,
+  RiShieldCheckLine,
+  RiFireLine,
+  RiCalculatorLine,
+  RiLinkM,
+} from "@remixicon/react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -56,6 +66,49 @@ export function CampaignsHeader({
             <p className="text-sm text-muted-foreground">
               Performance com vendas reais
             </p>
+          </div>
+
+          <div className="hidden lg:flex items-center gap-1.5 ml-4 pl-4 border-l border-border/50">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/guardian")}
+              className="h-8 text-xs gap-1.5 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+              title="O Guardião de Lucro (Stop-Loss Automático)"
+            >
+              <RiShieldCheckLine className="size-3.5" />
+              Guardião
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/creative-fatigue")}
+              className="h-8 text-xs gap-1.5 border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+              title="Radar de Fadiga de Criativos"
+            >
+              <RiFireLine className="size-3.5" />
+              Fadiga
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/simulator")}
+              className="h-8 text-xs gap-1.5 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
+              title="Simulador de Breakeven & Escala"
+            >
+              <RiCalculatorLine className="size-3.5" />
+              Simulador
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/utm-builder")}
+              className="h-8 text-xs gap-1.5 border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+              title="Gerador de UTMs & Script"
+            >
+              <RiLinkM className="size-3.5" />
+              UTMs
+            </Button>
           </div>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">

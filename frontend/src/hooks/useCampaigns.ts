@@ -7,6 +7,11 @@ import {
   batchToggleCampaignStatus,
   batchDeleteCampaigns,
   updateBudget,
+  updateBidCap,
+  editAdSet,
+  editCampaign,
+  duplicateAdSet,
+  createAdSetInCampaign,
   fetchPresets,
   createPreset,
   updatePreset,
@@ -251,6 +256,150 @@ export function useCampaigns(dateStart: string, dateEnd: string) {
     }
   };
 
+  const changeBidCap = async (
+    adSetId: string,
+    newBidAmount: number,
+    adSetName?: string,
+  ) => {
+    const targetAccountId = activeAccountId ?? accounts[0]?.id;
+    if (!targetAccountId) {
+      toast.error("Conta de anúncios não selecionada");
+      return;
+    }
+    setOptimisticOverrides((prev) => ({
+      ...prev,
+      [adSetId]: { ...prev[adSetId], bid_amount: newBidAmount } as any,
+    }));
+    try {
+      await updateBidCap(targetAccountId, adSetId, newBidAmount, adSetName);
+      invalidateCacheByPrefix("campaigns");
+      await silentReload();
+      clearOverride(adSetId, "bid_amount" as any);
+
+      const formatted = new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+        minimumFractionDigits: 2,
+      }).format(newBidAmount);
+
+      toast.success("Lance (Bid Cap) atualizado com sucesso!", {
+        description: adSetName
+          ? `${adSetName} • Novo lance: ${formatted}`
+          : `Novo teto de lance definido para ${formatted}`,
+        duration: 4000,
+      });
+    } catch (err: any) {
+      clearOverride(adSetId, "bid_amount" as any);
+      toast.error("Erro ao atualizar Bid Cap", {
+        description: err?.message || "Não foi possível atualizar o lance no Meta Ads.",
+      });
+      throw err;
+    }
+  };
+
+  const modifyAdSet = async (
+    adSetId: string,
+    payloadData: { name?: string; daily_budget?: number; bid_amount?: number; status?: string },
+  ) => {
+    const targetAccountId = activeAccountId ?? accounts[0]?.id;
+    if (!targetAccountId) {
+      toast.error("Conta de anúncios não selecionada");
+      return;
+    }
+    try {
+      await editAdSet(targetAccountId, adSetId, payloadData);
+      invalidateCacheByPrefix("campaigns");
+      await silentReload();
+      toast.success("Conjunto atualizado com sucesso no Meta Ads!");
+    } catch (err: any) {
+      toast.error("Erro ao atualizar conjunto", {
+        description: err?.message || "Não foi possível salvar alterações no Meta Ads.",
+      });
+      throw err;
+    }
+  };
+
+  const modifyCampaign = async (
+    campaignId: string,
+    payloadData: { name?: string; daily_budget?: number; status?: string },
+  ) => {
+    const targetAccountId = activeAccountId ?? accounts[0]?.id;
+    if (!targetAccountId) {
+      toast.error("Conta de anúncios não selecionada");
+      return;
+    }
+    try {
+      await editCampaign(targetAccountId, campaignId, payloadData);
+      invalidateCacheByPrefix("campaigns");
+      await silentReload();
+      toast.success("Campanha atualizada com sucesso no Meta Ads!");
+    } catch (err: any) {
+      toast.error("Erro ao atualizar campanha", {
+        description: err?.message || "Não foi possível salvar alterações no Meta Ads.",
+      });
+      throw err;
+    }
+  };
+
+  const cloneAdSet = async (
+    sourceAdSetId: string,
+    payloadData: { new_name?: string; new_bid_amount?: number; new_daily_budget?: number; status?: string },
+  ) => {
+    const targetAccountId = activeAccountId ?? accounts[0]?.id;
+    if (!targetAccountId) {
+      toast.error("Conta de anúncios não selecionada");
+      return;
+    }
+    try {
+      const res = await duplicateAdSet(targetAccountId, sourceAdSetId, payloadData);
+      invalidateCacheByPrefix("campaigns");
+      await silentReload();
+      toast.success("Conjunto duplicado com sucesso no Meta Ads!", {
+        description: payloadData.new_name ? `Criado: ${payloadData.new_name}` : undefined,
+      });
+      return res;
+    } catch (err: any) {
+      toast.error("Erro ao duplicar conjunto", {
+        description: err?.message || "Não foi possível duplicar no Meta Ads.",
+      });
+      throw err;
+    }
+  };
+
+  const addNewAdSet = async (
+    campaignId: string,
+    payloadData: {
+      name: string;
+      bid_strategy?: string;
+      bid_amount?: number;
+      daily_budget?: number;
+      pixel_id?: string;
+      targeting?: any;
+      copy_ads_from_adset_id?: string;
+      status?: string;
+    },
+  ) => {
+    const targetAccountId = activeAccountId ?? accounts[0]?.id;
+    if (!targetAccountId) {
+      toast.error("Conta de anúncios não selecionada");
+      return;
+    }
+    try {
+      const res = await createAdSetInCampaign(targetAccountId, campaignId, payloadData);
+      invalidateCacheByPrefix("campaigns");
+      await silentReload();
+      toast.success("Novo conjunto criado com sucesso no Meta Ads!", {
+        description: `Conjunto '${payloadData.name}' já está no ar na campanha!`,
+      });
+      return res;
+    } catch (err: any) {
+      toast.error("Erro ao criar conjunto", {
+        description: err?.message || "Não foi possível criar o conjunto no Meta Ads.",
+      });
+      throw err;
+    }
+  };
+
   const rawCampaigns = data?.campaigns ?? [];
   const campaigns = applyOverrides(rawCampaigns);
 
@@ -267,6 +416,11 @@ export function useCampaigns(dateStart: string, dateEnd: string) {
     batchToggle,
     batchDelete,
     changeBudget,
+    changeBidCap,
+    modifyAdSet,
+    modifyCampaign,
+    cloneAdSet,
+    addNewAdSet,
     reload,
     silentReload,
   };

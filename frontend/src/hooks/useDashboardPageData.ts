@@ -46,7 +46,7 @@ export function useDashboardPageData(
     const checkoutConvRate = k.checkout_conversion_rate ?? (ic > 0 ? (k.total_sales / ic) * 100 : 0);
     const conversionRate = k.conversion_rate ?? (totalClicks > 0 ? (k.total_sales / totalClicks) * 100 : 0);
 
-    const filtersDesc = `Preset: ${filters.preset || "custom"} | Período: ${filters.startDate || "N/A"} a ${filters.endDate || "N/A"} | Plataforma: ${filters.platform || "Todas"}`;
+    const filtersDesc = `Preset: ${filters.datePreset || "custom"} | Período: ${filters.dateStart || "N/A"} a ${filters.dateEnd || "N/A"} | Plataforma: ${filters.platform || "Todas"}`;
 
     const lines: string[] = [
       `📊 DADOS ATUAIS DO DASHBOARD (Ninja Tracker)`,

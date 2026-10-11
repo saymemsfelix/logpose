@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardHeader } from "./components/DashboardHeader";
 import { NexoKpisGrid } from "./components/NexoKpisGrid";
+import { OptimizationHubCards } from "./components/OptimizationHubCards";
 import { SfyFlow } from "./components/SfyFlow";
 import { CommercialCards } from "./components/CommercialCards";
 import { SfyCountry } from "./components/SfyCountry";
@@ -20,13 +21,26 @@ import { toast } from "sonner";
 import { Bell } from "lucide-react";
 import { NexofyNotificationModal } from "@/components/NexofyNotificationModal";
 import type { UpsellOption } from "@/types/sale";
+import GuardianPage from "@/pages/guardian";
+import CreativeFatiguePage from "@/pages/creative-fatigue";
+import SimulatorPage from "@/pages/simulator";
+import UtmBuilderPage from "@/pages/utm-builder";
+import {
+  RiBarChartLine,
+  RiShieldCheckLine,
+  RiFireLine,
+  RiCalculatorLine,
+  RiLinkM,
+  RiArrowLeftLine,
+} from "@remixicon/react";
 
 export default function DashboardPage() {
   const { data, settings, loading, filters, setFilters, reload } = useDashboard();
   useDashboardPageData(data, filters, settings);
-  const { isEnabled: notificationsEnabled, toggleNotifications, testAlertSound, testPushNotification } = useSalesListener(reload);
+  const { isEnabled: notificationsEnabled, toggleNotifications } = useSalesListener(reload);
 
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<"overview" | "guardian" | "fatigue" | "simulator" | "utms">("overview");
   const [products, setProducts] = useState<{ id: number; name: string }[]>([]);
   const [upsells, setUpsells] = useState<UpsellOption[]>([]);
   const [platforms, setPlatforms] = useState<{ value: string; label: string }[]>([]);
@@ -133,42 +147,176 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* 2. Filtros Globais (Período, Contas, Produtos, etc.) */}
-      <GlobalFilterBar
-        filters={filters}
-        onFiltersChange={setFilters}
-        settings={settings}
-        products={products}
-        upsells={upsells}
-        platforms={platforms}
-        accounts={accounts}
-      />
+      {/* Barra de Abas do Dashboard: Visão Geral + Módulos de Inteligência Ninja Pro */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-border/50 no-scrollbar">
+        <button
+          type="button"
+          onClick={() => setActiveTab("overview")}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+            activeTab === "overview"
+              ? "bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold"
+              : "text-zinc-400 hover:text-white hover:bg-zinc-800/60"
+          }`}
+        >
+          <RiBarChartLine className="w-4 h-4" />
+          <span>Visão Geral & 12 KPIs</span>
+        </button>
 
-      {loading || !data ? (
+        <button
+          type="button"
+          onClick={() => setActiveTab("guardian")}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+            activeTab === "guardian"
+              ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 shadow-md shadow-emerald-950/40 font-bold"
+              : "text-zinc-400 hover:text-emerald-400 hover:bg-emerald-950/20"
+          }`}
+        >
+          <RiShieldCheckLine className="w-4 h-4 text-emerald-400" />
+          <span>🛡️ O Guardião de Lucro</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("fatigue")}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+            activeTab === "fatigue"
+              ? "bg-amber-500/20 text-amber-400 border border-amber-500/50 shadow-md shadow-amber-950/40 font-bold"
+              : "text-zinc-400 hover:text-amber-400 hover:bg-amber-950/20"
+          }`}
+        >
+          <RiFireLine className="w-4 h-4 text-amber-400" />
+          <span>🔥 Radar de Fadiga</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("simulator")}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+            activeTab === "simulator"
+              ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 shadow-md shadow-cyan-950/40 font-bold"
+              : "text-zinc-400 hover:text-cyan-400 hover:bg-cyan-950/20"
+          }`}
+        >
+          <RiCalculatorLine className="w-4 h-4 text-cyan-400" />
+          <span>🧮 Simulador de Breakeven & Escala</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("utms")}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+            activeTab === "utms"
+              ? "bg-purple-500/20 text-purple-400 border border-purple-500/50 shadow-md shadow-purple-950/40 font-bold"
+              : "text-zinc-400 hover:text-purple-400 hover:bg-purple-950/20"
+          }`}
+        >
+          <RiLinkM className="w-4 h-4 text-purple-400" />
+          <span>🔗 Gerador de UTMs & Script</span>
+        </button>
+      </div>
+
+      {/* Renderização Condicional por Aba */}
+      {activeTab === "guardian" && (
         <div className="space-y-4">
-          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <Skeleton key={i} className="h-24 w-full rounded-xl" />
-            ))}
+          <div className="flex items-center justify-between pb-2 border-b border-border/40">
+            <button
+              onClick={() => setActiveTab("overview")}
+              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+            >
+              <RiArrowLeftLine className="w-4 h-4" /> Voltar ao Dashboard Geral
+            </button>
+            <span className="text-xs text-emerald-400 font-mono">Módulo Ativo: O Guardião de Lucro (Stop-Loss Automático)</span>
           </div>
-          <Skeleton className="h-32 w-full rounded-xl" />
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Skeleton className="h-44 w-full rounded-xl" />
-            <Skeleton className="h-44 w-full rounded-xl" />
-            <Skeleton className="h-44 w-full rounded-xl" />
-          </div>
+          <GuardianPage />
         </div>
-      ) : (
+      )}
+
+      {activeTab === "fatigue" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-border/40">
+            <button
+              onClick={() => setActiveTab("overview")}
+              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+            >
+              <RiArrowLeftLine className="w-4 h-4" /> Voltar ao Dashboard Geral
+            </button>
+            <span className="text-xs text-amber-400 font-mono">Módulo Ativo: Radar de Fadiga & Saturação de Criativos</span>
+          </div>
+          <CreativeFatiguePage />
+        </div>
+      )}
+
+      {activeTab === "simulator" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-border/40">
+            <button
+              onClick={() => setActiveTab("overview")}
+              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+            >
+              <RiArrowLeftLine className="w-4 h-4" /> Voltar ao Dashboard Geral
+            </button>
+            <span className="text-xs text-cyan-400 font-mono">Módulo Ativo: Simulador de Breakeven & Escala Preditiva</span>
+          </div>
+          <SimulatorPage />
+        </div>
+      )}
+
+      {activeTab === "utms" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-border/40">
+            <button
+              onClick={() => setActiveTab("overview")}
+              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+            >
+              <RiArrowLeftLine className="w-4 h-4" /> Voltar ao Dashboard Geral
+            </button>
+            <span className="text-xs text-purple-400 font-mono">Módulo Ativo: Gerador Inteligente de UTMs & Script Ninja</span>
+          </div>
+          <UtmBuilderPage />
+        </div>
+      )}
+
+      {activeTab === "overview" && (
         <>
-          {/* 3. Grid dos 12 KPIs Principais */}
-          <NexoKpisGrid
-            kpis={data.kpis}
-            hideAllValues={hideValues}
-            taxEnabled={filters.taxEnabled}
-            taxRate={settings?.tax_rate ?? 0}
-            opCostsEnabled={filters.opCostsEnabled}
-            opCostsTotal={settings?.operational_costs.reduce((s, c) => s + c.amount, 0) ?? 0}
+          {/* 2. Filtros Globais (Período, Contas, Produtos, etc.) */}
+          <GlobalFilterBar
+            filters={filters}
+            onFiltersChange={setFilters}
+            settings={settings}
+            products={products}
+            upsells={upsells}
+            platforms={platforms}
+            accounts={accounts}
           />
+
+          {/* 2.1. Central Ninja de Inteligência & Escala (Sempre visível no topo da Visão Geral) */}
+          <OptimizationHubCards onSelectTab={(t) => setActiveTab(t)} />
+
+          {loading || !data ? (
+            <div className="space-y-4">
+              <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <Skeleton key={i} className="h-24 w-full rounded-xl" />
+                ))}
+              </div>
+              <Skeleton className="h-32 w-full rounded-xl" />
+              <div className="grid gap-4 sm:grid-cols-3">
+                <Skeleton className="h-44 w-full rounded-xl" />
+                <Skeleton className="h-44 w-full rounded-xl" />
+                <Skeleton className="h-44 w-full rounded-xl" />
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* 3. Grid dos 12 KPIs Principais */}
+              <NexoKpisGrid
+                kpis={data.kpis}
+                hideAllValues={hideValues}
+                taxEnabled={filters.taxEnabled}
+                taxRate={settings?.tax_rate ?? 0}
+                opCostsEnabled={filters.opCostsEnabled}
+                opCostsTotal={settings?.operational_costs.reduce((s, c) => s + c.amount, 0) ?? 0}
+              />
 
           {/* 4. SFY Flow: Funil de Conversão em Tempo Real */}
           <SfyFlow flow={data.conversion_flow} />
@@ -213,6 +361,8 @@ export default function DashboardPage() {
             </div>
             <PlatformChart data={data.platform_distribution} />
           </div>
+            </>
+          )}
         </>
       )}
     </div>

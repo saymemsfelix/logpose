@@ -14,11 +14,14 @@ import { ConfirmDeleteModal } from "@/components/ConfirmDeleteModal";
 import { deleteSale } from "@/services/sales";
 import { toast } from "sonner";
 
+import { getCountryFlag } from "@/pages/dashboard/components/SfyCountry";
+
 const statusConfig: Record<string, { label: string; className: string }> = {
   approved: { label: "Aprovada", className: "bg-[var(--color-success)]/15 text-[var(--color-success)] border-transparent" },
-  refunded: { label: "Reembolso", className: "" },
+  refunded: { label: "Reembolso", className: "bg-red-500/15 text-red-500 border-red-500/20" },
   chargeback: { label: "Chargeback", className: "bg-destructive/15 text-destructive border-transparent" },
-  pending: { label: "Pendente", className: "" },
+  pending: { label: "Pendente", className: "bg-amber-500/15 text-amber-500 border-amber-500/20" },
+  trial: { label: "Trial", className: "bg-blue-500/15 text-blue-500 border-blue-500/20" },
 };
 
 const platformColors: Record<string, string> = {
@@ -125,8 +128,11 @@ export function SalesTable({ data, loading, total, page, onPageChange, onSaleDel
                         <TableCell className="text-right tabular-nums font-medium">
                           R$ {sale.amount.toFixed(2)}
                         </TableCell>
-                        <TableCell className="text-muted-foreground max-w-[160px] truncate">
-                          {sale.customer_email || "—"}
+                        <TableCell className="text-muted-foreground max-w-[180px] truncate">
+                          <div className="flex items-center gap-1.5 truncate">
+                            {sale.country && <span title={sale.country} className="text-sm shrink-0">{getCountryFlag(sale.country)}</span>}
+                            <span className="truncate">{sale.customer_email || "—"}</span>
+                          </div>
                         </TableCell>
                         <SaleActions
                           sale={sale}

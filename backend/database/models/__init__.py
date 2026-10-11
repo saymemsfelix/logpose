@@ -20,6 +20,8 @@ from database.models.scheduled_campaign_action import ScheduledCampaignAction
 from database.models.stripe_account import StripeAccount
 from database.models.product_alias import ProductAlias
 from database.models.push_subscription import PushSubscription
+from database.models.guardian_rule import GuardianRule
+from database.models.guardian_log import GuardianLog
 
 __all__ = [
     "Admin",
@@ -55,4 +57,6 @@ __all__ = [
     "StripeAccount",
     "ProductAlias",
     "PushSubscription",
+    "GuardianRule",
+    "GuardianLog",
 ]

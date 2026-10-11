@@ -9,7 +9,7 @@ from integrations.meta_ads.helpers import (
 )
 
 # Campos de estrutura do adset
-STRUCTURE_FIELDS = "id,name,status,campaign_id,daily_budget,lifetime_budget"
+STRUCTURE_FIELDS = "id,name,status,campaign_id,daily_budget,lifetime_budget,bid_amount,bid_strategy,bid_constraints"
 
 # Campos de métricas (insights)
 INSIGHT_FIELDS = ",".join([
@@ -99,12 +99,18 @@ async def fetch_adsets(
             or adset.get("lifetime_budget", 0)
         ) / 100
 
+        bid_raw = adset.get("bid_amount")
+        bid_amount = round(float(bid_raw) / 100.0, 2) if bid_raw else None
+        bid_strategy = str(adset.get("bid_strategy") or "")
+
         results.append(AdSetInsights(
             id=adset.get("id", ""),
             campaign_id=adset.get("campaign_id", ""),
             name=adset.get("name", ""),
             status=_normalize_status(adset.get("status", "")),
             budget=budget,
+            bid_amount=bid_amount,
+            bid_strategy=bid_strategy,
             spend=spend,
             clicks=clicks,
             impressions=impr,

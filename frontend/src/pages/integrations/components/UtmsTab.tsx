@@ -17,7 +17,7 @@ export function UtmsTab() {
 
   // Parâmetros dinâmicos oficiais para o campo de Rastreamento da Meta
   const metaUrlParams =
-    "utm_source=FB&utm_campaign={{campaign.name}}|{{campaign.id}}&utm_medium={{adset.name}}|{{adset.id}}&utm_content={{ad.name}}|{{ad.id}}&utm_term={{ad.id}}&src={{ad.id}}";
+    "utm_source=FB&utm_campaign={{campaign.name}}|{{campaign.id}}&utm_medium={{adset.name}}|{{adset.id}}&utm_content={{ad.name}}|{{ad.id}}&utm_term={{ad.id}}&src={{ad.id}}&sck={{campaign.id}}";
 
   // Script de repasse automático de UTMs blindado para páginas de vendas / presell / VSLs
   const utmScriptCode = `<script>
@@ -68,6 +68,7 @@ export function UtmsTab() {
       lower.indexOf('kiwify.com.br') !== -1 ||
       lower.indexOf('pay.kiwify.com.br') !== -1 ||
       lower.indexOf('payt.net.br') !== -1 ||
+      lower.indexOf('payt.com.br') !== -1 ||
       lower.indexOf('checkout') !== -1 ||
       lower.indexOf('pagamento') !== -1
     );

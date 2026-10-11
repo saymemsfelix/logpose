@@ -1,4 +1,4 @@
-import { MousePointerClick, Eye, Receipt, ShoppingCart, CheckCircle2, ChevronRight } from "lucide-react";
+import { MousePointerClick, Eye, Receipt, CheckCircle2, ChevronRight } from "lucide-react";
 import type { ConversionFlow } from "@/types/dashboard";
 
 export interface SfyFlowProps {

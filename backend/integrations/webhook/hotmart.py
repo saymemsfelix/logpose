@@ -394,8 +394,13 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
 
         # 3. Se ainda for BR ou não identificado, verifica moeda e nicho do infoproduto
         prod_lower = prod_name.lower()
-        is_italian = any(w in prod_lower for w in ["diagnosi", "guida", "visive", "hardware e software", "solda", "saldatura", "tornitura", "fresatura", "navigazione", "mappe", "pinout", "multimetro"])
-        is_spanish = any(w in prod_lower for w in ["atlas", "escrituras", "latam", "español", "espanhol"])
+        is_italian = any(w in prod_lower for w in [
+            "diagnosi", "guida", "visive", "hardware e software", "solda", "saldatura",
+            "tornitura", "fresatura", "navigazione", "mappe", "pinout", "multimetro",
+            "idraulici", "idraulico", "idrosanitari", "topografia", "rilievo", "calcoli",
+            "pittura", "patologie", "sicurezza", "impermepro", "impermeabilizzazione"
+        ])
+        is_spanish = any(w in prod_lower for w in ["atlas", "escrituras", "latam", "español", "espanhol", "guía", "visuales"])
 
         if customer_country in ["BR", ""] and is_italian:
             customer_country = "CH" if clean_phone.startswith("41") or currency == "CHF" else "IT"
@@ -415,6 +420,59 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
                 amount = round(amount * 5.45, 2)
             elif currency == "CHF" or (not currency and customer_country in ["CH"]):
                 amount = round(amount * 5.50, 2)
+
+        # Extração de Order Bumps (Hotmart 1.0 e 2.0)
+        raw_bumps = (
+            purchase.get("order_bump")
+            or data.get("order_bump")
+            or payload.get("order_bump")
+            or purchase.get("order_bumps")
+            or data.get("order_bumps")
+            or payload.get("order_bumps")
+            or []
+        )
+        if isinstance(raw_bumps, dict):
+            raw_bumps = [raw_bumps]
+        elif not isinstance(raw_bumps, list):
+            raw_bumps = []
+
+        items_list = purchase.get("items") or data.get("items") or payload.get("items") or []
+        if isinstance(items_list, list):
+            for it in items_list:
+                if isinstance(it, dict) and (it.get("order_bump") or it.get("is_order_bump") or it.get("item_type") == "ORDER_BUMP"):
+                    raw_bumps.append(it)
+
+        order_bumps = []
+        for ob in raw_bumps:
+            if not isinstance(ob, dict):
+                continue
+            ob_id = ob.get("id") or ob.get("product_id") or ob.get("ucode") or ""
+            ob_name = ob.get("name") or ob.get("product_name") or "Order Bump"
+            ob_price = 0.0
+            p_obj = ob.get("price") or ob.get("value") or ob.get("amount")
+            if isinstance(p_obj, dict):
+                try:
+                    ob_price = float(str(p_obj.get("value") or 0.0).replace(",", "."))
+                except Exception:
+                    ob_price = 0.0
+            elif p_obj is not None:
+                try:
+                    ob_price = float(str(p_obj).replace(",", "."))
+                except Exception:
+                    ob_price = 0.0
+
+            if currency == "EUR" or (not currency and customer_country in ["IT", "PT", "ES", "FR", "DE"]):
+                ob_price = round(ob_price * 5.1865, 2)
+            elif currency == "USD" or (not currency and customer_country in ["US", "MX", "CO", "CL", "PE", "EC"]):
+                ob_price = round(ob_price * 5.45, 2)
+            elif currency == "CHF" or (not currency and customer_country in ["CH"]):
+                ob_price = round(ob_price * 5.50, 2)
+
+            order_bumps.append({
+                "id": str(ob_id),
+                "name": str(ob_name),
+                "price": ob_price,
+            })
 
         # Extração de código de oferta e URL do checkout Hotmart
         offer_info = purchase.get("offer") or data.get("offer") or {}
@@ -456,7 +514,7 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
             utm_term=utm_term,
             src=src,
             checkout_url=checkout_url_val,
-            order_bumps=[]
+            order_bumps=order_bumps
         )
 
     except Exception as e:

@@ -25,7 +25,7 @@ export function CustomerDetailModal({ customer, onClose }: CustomerDetailModalPr
     { label: "Nome", value: customer.name || "—" },
     { label: "Email", value: customer.email },
     { label: "Telefone", value: customer.phone || "—" },
-    { label: "CPF", value: customer.cpf || "—" },
+    { label: "CPF / Documento", value: customer.cpf || "—" },
     { label: "Total Gasto", value: fmt(customer.total_spent) },
     { label: "Pedidos", value: String(customer.total_orders) },
     { label: "Primeira Compra", value: fmtDate(customer.first_purchase_at) },

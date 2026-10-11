@@ -14,6 +14,10 @@ import {
   RiRepeatLine,
   RiBankCardLine,
   RiPuzzleLine,
+  RiShieldCheckLine,
+  RiFireLine,
+  RiCalculatorLine,
+  RiLinkM,
 } from "@remixicon/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -53,6 +57,15 @@ const navGroups: NavGroup[] = [
       { title: "Campanhas", icon: RiMegaphoneLine, url: "/campaigns" },
       { title: "Empresa", icon: RiBuildingLine, url: "/company" },
       { title: "Assinatura", icon: RiRepeatLine, url: "/subscriptions", featureKey: "stripe_enabled" },
+    ],
+  },
+  {
+    label: "Inteligência & Otimização",
+    items: [
+      { title: "O Guardião", icon: RiShieldCheckLine, url: "/guardian" },
+      { title: "Fadiga de Criativos", icon: RiFireLine, url: "/creative-fatigue" },
+      { title: "Simulador de Escala", icon: RiCalculatorLine, url: "/simulator" },
+      { title: "Gerador de UTMs", icon: RiLinkM, url: "/utm-builder" },
     ],
   },
   {

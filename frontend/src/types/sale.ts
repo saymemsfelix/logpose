@@ -13,7 +13,9 @@ export interface SaleAPI {
   utm_medium: string | null;
   utm_campaign: string | null;
   utm_content: string | null;
+  utm_term: string | null;
   src: string | null;
+  country: string | null;
   webhook_slug: string | null;
   checkout_url: string | null;
   order_bumps: unknown[] | null;

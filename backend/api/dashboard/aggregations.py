@@ -206,10 +206,11 @@ def _country_distribution(base, db):
     for tx in approved_txs:
         p_name = (tx.product_name or "").lower()
         is_italian_offer = any(k in p_name for k in [
-            "diagnosi", "visive", "hardware", "software", "pinout", "multimetro", "solda", "saldatura", "atlante", "tornitura", "fresatura", "navigazione", "mappe"
+            "diagnosi", "visive", "hardware", "software", "pinout", "multimetro", "solda", "saldatura", "atlante", "tornitura", "fresatura", "navigazione", "mappe",
+            "idraulici", "idraulico", "idrosanitari", "topografia", "rilievo", "calcoli", "pittura", "patologie", "sicurezza", "impermepro", "impermeabilizzazione"
         ])
         is_spanish_offer = any(k in p_name for k in [
-            "atlas", "escrituras", "latam", "español", "espanhol"
+            "atlas", "escrituras", "latam", "español", "espanhol", "guía", "visuales"
         ])
 
         phone = ""
@@ -370,10 +371,19 @@ def _payment_method_distribution(base, db):
     if total_sales == 0:
         return []
 
-    # Verificar se as vendas são internacionais (Itália, Suíça, Europa)
+    # Verificar se as vendas são internacionais (Itália, Suíça, Europa, Latam)
     has_intl = approved.filter(
-        (Transaction.country.in_(["IT", "CH", "ES", "PT", "FR", "DE", "GB", "US"]))
+        (Transaction.country.in_(["IT", "CH", "ES", "PT", "FR", "DE", "GB", "US", "MX", "CO", "AR", "CL", "PE", "UY", "EC"]))
         | (Transaction.product_name.ilike("%diagnosi%"))
+        | (Transaction.product_name.ilike("%idraulici%"))
+        | (Transaction.product_name.ilike("%topograf%"))
+        | (Transaction.product_name.ilike("%pittura%"))
+        | (Transaction.product_name.ilike("%tornitura%"))
+        | (Transaction.product_name.ilike("%saldatura%"))
+        | (Transaction.product_name.ilike("%navigazione%"))
+        | (Transaction.product_name.ilike("%sicurezza%"))
+        | (Transaction.product_name.ilike("%impermepro%"))
+        | (Transaction.product_name.ilike("%atlas%"))
     ).first() is not None
 
     if has_intl:

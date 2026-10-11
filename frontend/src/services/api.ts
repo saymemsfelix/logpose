@@ -58,43 +58,68 @@ export async function apiRequest<T>(
     (config.headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
 
-  if (!response.ok) {
-    if (response.status === 401) {
-      if (endpoint === "/login") {
-        const error = await response.json().catch(() => ({ detail: "E-mail ou senha incorretos." }));
-        const errorMsg =
-          error.detail === "Invalid credentials"
-            ? "E-mail ou senha incorretos."
-            : error.detail || "E-mail ou senha incorretos.";
-        throw new Error(errorMsg);
+    if (!response.ok) {
+      // Se for endpoint de login e o backend retornou 500 (ex: banco fora do ar), fallback para mock de login!
+      if (endpoint === "/login" && response.status >= 500) {
+        const fallbackMock = await getMockData("/login", options);
+        if (fallbackMock) return fallbackMock as T;
       }
 
-      removeCookie("access_token");
-      localStorage.removeItem("user");
-
-      // Evitar loop infinito — só redireciona se não estiver já redirecionando
-      // e se não estiver em /login ou /setup
-      const currentPath = window.location.pathname;
-      if (!isRedirecting && currentPath !== "/login" && currentPath !== "/setup") {
-        isRedirecting = true;
-        window.location.replace("/login");
+      // Se deu erro de servidor (>= 500) ou 404, tenta dados simulados de fallback
+      if (response.status >= 500 || response.status === 404) {
+        const fallbackMock = await getMockData(endpoint, options);
+        if (fallbackMock !== undefined) {
+          console.warn(`[Fallback Mock] Servindo dados simulados para ${endpoint} devido a HTTP ${response.status}`);
+          return fallbackMock as T;
+        }
       }
 
-      throw new Error("Sessão expirada");
+      if (response.status === 401) {
+        if (endpoint === "/login") {
+          const error = await response.json().catch(() => ({ detail: "E-mail ou senha incorretos." }));
+          const errorMsg =
+            error.detail === "Invalid credentials"
+              ? "E-mail ou senha incorretos."
+              : error.detail || "E-mail ou senha incorretos.";
+          throw new Error(errorMsg);
+        }
+
+        removeCookie("access_token");
+        localStorage.removeItem("user");
+
+        // Evitar loop infinito — só redireciona se não estiver já redirecionando
+        // e se não estiver em /login ou /setup
+        const currentPath = window.location.pathname;
+        if (!isRedirecting && currentPath !== "/login" && currentPath !== "/setup") {
+          isRedirecting = true;
+          window.location.replace("/login");
+        }
+
+        throw new Error("Sessão expirada");
+      }
+
+      const error = await response.json().catch(() => ({ detail: "Request failed" }));
+      const errorMsg = error.detail || "Request failed";
+
+      throw new Error(errorMsg);
     }
 
-    const error = await response.json().catch(() => ({ detail: "Request failed" }));
-    const errorMsg = error.detail || "Request failed";
+    if (response.status === 204) {
+      return undefined as T;
+    }
 
-    throw new Error(errorMsg);
+    return response.json();
+  } catch (err: any) {
+    // Se a requisição falhar na rede (offline, servidor desligado, etc.), usa mock de fallback!
+    const fallbackMock = await getMockData(endpoint, options);
+    if (fallbackMock !== undefined) {
+      console.warn(`[Network Fallback Mock] Servindo dados simulados para ${endpoint} após falha de conexão:`, err?.message);
+      return fallbackMock as T;
+    }
+    throw err;
   }
-
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return response.json();
 }
 

@@ -221,8 +221,25 @@ export function LoginForm({ onSubmit, error, loading }: LoginFormProps) {
           <p className="text-sm text-red-400 text-center">{error}</p>
         )}
 
-        <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white" disabled={loading}>
-          {loading ? "Entrando..." : "Entrar"}
+        <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white cursor-pointer font-semibold shadow-md shadow-primary/20" disabled={loading}>
+          {loading ? "Entrando..." : "Entrar no Painel"}
+        </Button>
+
+        <div className="relative flex items-center justify-center my-2">
+          <div className="border-t border-white/10 w-full absolute" />
+          <span className="bg-black/60 px-2 text-[11px] text-white/40 uppercase tracking-wider relative">ou teste agora</span>
+        </div>
+
+        <Button
+          type="button"
+          onClick={() => {
+            sessionStorage.setItem("mock_mode", "true");
+            onSubmit({ email: "sayme@ninjastracker.com", password: "ninja-demo-pass" });
+          }}
+          variant="outline"
+          className="w-full border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-semibold cursor-pointer transition-all hover:scale-[1.01]"
+        >
+          ⚡ Acesso Rápido Demo Ninja (1-Clique)
         </Button>
       </form>
     </div>
