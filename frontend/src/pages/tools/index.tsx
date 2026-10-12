@@ -113,6 +113,36 @@ export default function ToolsHubPage() {
         <div className="space-y-6">
           <OptimizationHubCards onSelectTab={(tab) => setActiveTab(tab)} />
 
+          {/* Card Especial da Nova Inteligência de Horários da IA */}
+          <div className="relative overflow-hidden rounded-2xl border border-blue-500/30 bg-gradient-to-r from-blue-950/40 via-card to-indigo-950/30 p-5 sm:p-6 backdrop-blur-md shadow-xl">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-1.5 max-w-3xl">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 font-mono">
+                    NOVA INTELIGÊNCIA IA
+                  </span>
+                  <h3 className="text-base font-bold text-foreground">
+                    ⚡ Smart Dayparting & Acelerador por Horários
+                  </h3>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Sua IA do Ninja Tracker agora lê seu Heatmap e performance hora a hora em tempo real. Você pode comandar no chat para aumentar o orçamento nas Janelas de Ouro de conversão e diminuir na madrugada:
+                </p>
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <span className="text-[11px] font-mono px-2.5 py-1 rounded-lg bg-zinc-900/80 border border-zinc-700/60 text-zinc-300">
+                    💬 "Ninja, quais meus horários de pico e onde estou perdendo dinheiro?"
+                  </span>
+                  <span className="text-[11px] font-mono px-2.5 py-1 rounded-lg bg-zinc-900/80 border border-zinc-700/60 text-zinc-300">
+                    💬 "Aumente 20% do orçamento da melhor campanha no horário de pico"
+                  </span>
+                  <span className="text-[11px] font-mono px-2.5 py-1 rounded-lg bg-zinc-900/80 border border-zinc-700/60 text-zinc-300">
+                    💬 "Programe para diminuir o orçamento de madrugada"
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="rounded-2xl border border-border/40 bg-card/60 p-5 sm:p-6 backdrop-blur-sm">
             <h3 className="text-sm font-semibold text-foreground mb-1">
               Como funcionam as Ferramentas Pro?

@@ -63,7 +63,7 @@ const navGroups: NavGroup[] = [
   {
     label: "Ferramentas Pro",
     items: [
-      { title: "Central de Ferramentas", icon: RiSparklingFill, url: "/tools" },
+      { title: "Central Pro", icon: RiSparklingFill, url: "/tools" },
       { title: "O Guardião", icon: RiShieldCheckLine, url: "/guardian" },
       { title: "Fadiga de Criativos", icon: RiFireLine, url: "/creative-fatigue" },
       { title: "Simulador de Escala", icon: RiCalculatorLine, url: "/simulator" },

@@ -104,6 +104,8 @@ def _get_handlers():
         "products": _handle_products,
         "customers": _handle_customers,
         "refunds": _handle_refunds,
+        "hourly_performance": _handle_hourly_performance,
+        "hourly_profit": _handle_hourly_performance,
     })
     return _HANDLER_CACHE
 
@@ -219,4 +221,55 @@ def _handle_meta_campaigns(db, date_start, date_end, **kwargs):
     total = sum(i.spend for i in data)
     lines.append(f"Total spend: R${total:,.2f} | Total: {len(data)}")
     return "\n".join(lines)
+
+
+def _handle_hourly_performance(db, date_start, date_end, **kwargs):
+    """Retorna análise de vendas e faturamento por hora do dia (00h às 23h)."""
+    from sqlalchemy import extract, func
+    approved = db.query(Transaction).filter(
+        Transaction.created_at >= date_start,
+        Transaction.created_at <= date_end,
+        Transaction.status == TransactionStatus.APPROVED,
+    )
+    rows = (
+        approved.with_entities(
+            extract("hour", Transaction.created_at).label("hour"),
+            func.count(Transaction.id).label("sales"),
+            func.sum(Transaction.amount).label("revenue"),
+        )
+        .group_by(extract("hour", Transaction.created_at))
+        .all()
+    )
+    hour_map = {int(r.hour): {"sales": int(r.sales or 0), "revenue": float(r.revenue or 0)} for r in rows}
+
+    total_sales = sum(h["sales"] for h in hour_map.values())
+    total_rev = sum(h["revenue"] for h in hour_map.values())
+
+    sorted_hours = sorted(
+        [(h, hour_map.get(h, {"sales": 0, "revenue": 0.0})) for h in range(24)],
+        key=lambda x: (x[1]["revenue"], x[1]["sales"]),
+        reverse=True,
+    )
+
+    peak_hours = [f"{h:02d}:00 (R$ {d['revenue']:,.2f} - {d['sales']} vendas)" for h, d in sorted_hours[:5] if d["sales"] > 0]
+    dead_hours = [f"{h:02d}:00" for h, d in sorted_hours[-8:] if d["sales"] == 0]
+
+    lines = [
+        f"📊 ANÁLISE DE HORÁRIOS & HEATMAP DE CONVERSÃO ({date_start.strftime('%d/%m')} a {date_end.strftime('%d/%m')}):",
+        f"• Total Aprovado no período analisado: {total_sales} vendas (R$ {total_rev:,.2f})",
+        f"• 🔥 Picos de Venda (Golden Hours): {', '.join(peak_hours) if peak_hours else 'Sem vendas suficientes registradas'}",
+        f"• ❄️ Horários de Baixa Conversão (Economizar Orçamento): {', '.join(dead_hours) if dead_hours else 'Nenhum horário zerado'}",
+        "",
+        "Distribuição Completa Hora a Hora (00:00 às 23:00):",
+    ]
+
+    for h in range(24):
+        d = hour_map.get(h, {"sales": 0, "revenue": 0.0})
+        is_peak = d["sales"] >= (total_sales / 24 * 1.4 if total_sales > 0 else 1) and d["sales"] > 0
+        is_zero = d["sales"] == 0
+        icon = "🔥" if is_peak else ("❄️" if is_zero else "⚡")
+        lines.append(f"{icon} {h:02d}:00 → R$ {d['revenue']:,.2f} ({d['sales']} vendas)")
+
+    return "\n".join(lines)
+
 

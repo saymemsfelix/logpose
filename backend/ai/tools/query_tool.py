@@ -25,6 +25,7 @@ def query_business_data(queries: list[dict]) -> str:
     - "kpis": KPIs principais (revenue, spend, profit, ROAS, CPA)
     - "meta_campaigns": campanhas do Meta Ads (extras: level=campaign|adset|ad, status=active|all)
     - "creatives": melhores criativos/anúncios (extras: sort_by=roas|sales|cpa, limit)
+    - "hourly_performance": mapa de calor/performance de vendas por hora do dia (00h às 23h), picos (Golden Hours) e horários mortos
     - "recovery": recuperação de vendas (carrinho abandonado, pix, cartão)
     - "funnel": funil de conversão por campanha (identifica gargalos)
     - "products": performance por produto
