@@ -18,6 +18,7 @@ import {
   RiFireLine,
   RiCalculatorLine,
   RiLinkM,
+  RiSparklingFill,
 } from "@remixicon/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -60,8 +61,9 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
-    label: "Inteligência & Otimização",
+    label: "Ferramentas Pro",
     items: [
+      { title: "Central de Ferramentas", icon: RiSparklingFill, url: "/tools" },
       { title: "O Guardião", icon: RiShieldCheckLine, url: "/guardian" },
       { title: "Fadiga de Criativos", icon: RiFireLine, url: "/creative-fatigue" },
       { title: "Simulador de Escala", icon: RiCalculatorLine, url: "/simulator" },

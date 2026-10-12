@@ -16,6 +16,7 @@ import {
   RiFireLine,
   RiCalculatorLine,
   RiLinkM,
+  RiSparklingFill,
 } from "@remixicon/react";
 import { MoreDropdown } from "./MobileMoreDropdown";
 
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
 ];
 
 export const MORE_ITEMS = [
+  { label: "Ferramentas Pro", icon: RiSparklingFill, path: "/tools" },
   { label: "O Guardião", icon: RiShieldCheckLine, path: "/guardian" },
   { label: "Fadiga", icon: RiFireLine, path: "/creative-fatigue" },
   { label: "Simulador", icon: RiCalculatorLine, path: "/simulator" },

@@ -26,6 +26,7 @@ import GuardianPage from "@/pages/guardian";
 import CreativeFatiguePage from "@/pages/creative-fatigue";
 import SimulatorPage from "@/pages/simulator";
 import UtmBuilderPage from "@/pages/utm-builder";
+import ToolsHubPage from "@/pages/tools";
 import { AIChatProvider } from "@/components/ai-chat/AIChatProvider";
 import { Toaster } from "@/components/ui/sonner";
 import { PageDataProvider } from "@/contexts/PageDataContext";
@@ -73,6 +74,8 @@ export default function App() {
               <Route path="/creative-fatigue" element={<CreativeFatiguePage />} />
               <Route path="/simulator" element={<SimulatorPage />} />
               <Route path="/utm-builder" element={<UtmBuilderPage />} />
+              <Route path="/tools" element={<ToolsHubPage />} />
+              <Route path="/ferramentas" element={<ToolsHubPage />} />
             </Route>
 
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
