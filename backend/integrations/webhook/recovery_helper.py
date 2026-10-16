@@ -109,12 +109,11 @@ def create_recovery_if_pending(
         phone = recovery.customer_phone
         clean_digits = "".join(filter(str.isdigit, phone or ""))
         if clean_digits:
-            lang = "pt" if (recovery.customer_country or "").upper() == "BR" else "it"
             schedule_auto_cadence_for_lead(
                 db=db,
                 recovery=recovery,
                 clean_digits=clean_digits,
-                lang=lang,
+                lang="auto",
             )
     except Exception:
         pass

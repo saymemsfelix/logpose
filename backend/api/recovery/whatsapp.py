@@ -53,7 +53,28 @@ class ScheduleCadenceRequest(BaseModel):
     customer_name: Optional[str] = None
     product_name: Optional[str] = None
     checkout_link: Optional[str] = None
-    lang: Optional[str] = "it"
+    lang: Optional[str] = "auto"
+
+
+def _detect_country_lang(phone: str, country: str = "", requested_lang: str = "auto") -> str:
+    """Detecta automaticamente o idioma correto do lead baseado no DDI do telefone ou país da Hotmart."""
+    if requested_lang and requested_lang.lower() not in ("auto", ""):
+        return requested_lang.lower()
+
+    clean = "".join(filter(str.isdigit, phone or ""))
+    c = (country or "").strip().upper()
+
+    if c == "FR" or clean.startswith("33") or clean.startswith("0033"):
+        return "fr"
+    if c == "ES" or clean.startswith("34") or clean.startswith("0034"):
+        return "es"
+    if c == "BR" or clean.startswith("55") or clean.startswith("0055"):
+        return "pt"
+    if c in ("US", "GB", "CA", "AU") or clean.startswith("1") or clean.startswith("44"):
+        return "en"
+    if c == "IT" or clean.startswith("39") or clean.startswith("0039"):
+        return "it"
+    return "it"
 
 
 # ── Helper Copies para Cadência Automática ────────────────
@@ -63,47 +84,119 @@ def _generate_auto_copy(
     product: str,
     link: str = "",
     lang: str = "it",
+    phone: str = "",
+    country: str = "",
 ) -> str:
     first_name = (name or "Cliente").strip().split(" ")[0]
     prod = product or "corso"
-    link_cta = f"\n\n👉 Ecco il link sicuro: {link}" if link else ""
+    final_lang = _detect_country_lang(phone=phone, country=country, requested_lang=lang)
 
-    if lang == "it":
+    # 1. ITALIANO (IT)
+    if final_lang == "it":
+        link_cta = f"\n\n👉 Ecco il link sicuro: {link}" if link else ""
+        footer = "\n\n_ℹ️ Notifica automatica del sistema pagamenti. Per supporto o domande, scrivi a supporto via email._"
         if step == 1:
             return (
                 f"Ciao {first_name}! 👋 Ti contatto dal supporto di *{prod}*.\n\n"
                 f"Ho visto che il tuo ordine è rimasto in sospeso. Nella maggior parte dei casi in Italia "
                 f"si tratta solo della notifica *3D Secure* da autorizzare nell'app della tua banca (PostePay, Intesa, UniCredit, ecc.).{link_cta}\n\n"
-                f"Hai riscontrato qualche difficoltà? Se hai dubbi sono a tua completa disposizione!\n_Equipe Info Courses_"
+                f"Hai riscontrato qualche difficoltà? Se hai dubbi sono a tua completa disposizione!\n_Equipe Info Courses_{footer}"
             )
         elif step == 2:
             return (
                 f"Ciao {first_name}! 🎉 So quanto ci tenevi ad accedere a *{prod}*.\n\n"
                 f"Per venirti incontro, ho fatto abilitare un coupon esclusivo con il *10% DI SCONTO* valido solo per le prossime 2 ore!{link_cta}\n\n"
-                f"Approfitta dell'offerta riservata prima della chiusura. Qualsiasi dubbio sono qui! 🏷️\n_Equipe Info Courses_"
+                f"Approfitta dell'offerta riservata prima della chiusura. Qualsiasi dubbio sono qui! 🏷️\n_Equipe Info Courses_{footer}"
             )
         else:
             return (
                 f"Ciao {first_name}, ti scrivo rapidamente: la tua prenotazione per *{prod}* sta per scadere "
                 f"e il posto promozionale verrà riassegnato alla lista d'attesa.{link_cta}\n\n"
-                f"Volevo darti la precedenza prima che il prezzo torni regolare. Posso aiutarti a completare? ⚡\n_Equipe Info Courses_"
+                f"Volevo darti la precedenza prima che il prezzo torni regolare. Posso aiutarti a completare? ⚡\n_Equipe Info Courses_{footer}"
             )
 
-    # Fallback Português
+    # 2. FRANCÊS (FR)
+    if final_lang == "fr":
+        link_cta = f"\n\n👉 Voici votre lien sécurisé: {link}" if link else ""
+        footer = "\n\n_ℹ️ Notification automatique du système de paiement. Pour toute assistance après-vente, écrivez au support par email._"
+        if step == 1:
+            return (
+                f"Bonjour {first_name} ! 👋 Je vous contacte du support officiel de *{prod}*.\n\n"
+                f"J'ai remarqué que votre commande est restée en attente. En France, il s'agit souvent de la validation *3D Secure* "
+                f"à confirmer sur l'application de votre banque (BoursoBank, BNP, Crédit Agricole, etc.).{link_cta}\n\n"
+                f"Avez-vous rencontré une difficulté ? Je reste à votre entière disposition !\n_Équipe Support_{footer}"
+            )
+        elif step == 2:
+            return (
+                f"Bonjour {first_name} ! 🎉 Afin de vous permettre de rejoindre *{prod}*, nous avons activé un coupon exclusif de *10% DE RÉDUCTION* valable pendant 2 heures !{link_cta}\n\n"
+                f"Profitez de ce tarif préférentiel avant expiration ! 🏷️\n_Équipe Support_{footer}"
+            )
+        else:
+            return (
+                f"Bonjour {first_name}, votre réservation pour *{prod}* arrive à expiration sous peu.{link_cta}\n\n"
+                f"C'est le dernier rappel avant la réattribution de votre place au tarif régulier. ⚡\n_Équipe Support_{footer}"
+            )
+
+    # 3. ESPANHOL (ES)
+    if final_lang == "es":
+        link_cta = f"\n\n👉 Aquí tienes tu enlace seguro: {link}" if link else ""
+        footer = "\n\n_ℹ️ Notificación automática del sistema de pagos. Para atención post-venta contacte por correo electrónico._"
+        if step == 1:
+            return (
+                f"¡Hola {first_name}! 👋 Te contacto del soporte oficial de *{prod}*.\n\n"
+                f"Vi que tu pedido quedó pendiente. En la mayoría de los casos se trata de la autorización *3D Secure* "
+                f"en la app de tu banco (BBVA, Santander, CaixaBank, etc.).{link_cta}\n\n"
+                f"¿Tuviste alguna dificultad? ¡Estoy aquí para ayudarte a completar tu acceso!\n_Equipo de Soporte_{footer}"
+            )
+        elif step == 2:
+            return (
+                f"¡Hola {first_name}! 🎉 Para ayudarte a ingresar a *{prod}*, te habilité un cupón exclusivo con *10% DE DESCUENTO* válido solo por las próximas 2 horas.{link_cta}\n\n"
+                f"¡Aprovecha antes de que finalice! 🏷️\n_Equipo de Soporte_{footer}"
+            )
+        else:
+            return (
+                f"Hola {first_name}, tu reserva especial para *{prod}* está por vencer.{link_cta}\n\n"
+                f"Queríamos darte prioridad antes de que el precio vuelva a su valor habitual. ¿Te ayudo a finalizar? ⚡\n_Equipo de Soporte_{footer}"
+            )
+
+    # 4. PORTUGUÊS (PT)
+    if final_lang == "pt":
+        link_cta = f"\n\n👉 Link seguro de finalização: {link}" if link else ""
+        footer = "\n\n_ℹ️ Notificação automática do sistema. Para suporte pós-venda, entre em contato via e-mail._"
+        if step == 1:
+            return (
+                f"Olá {first_name}! 👋 Vi que seu pedido de *{prod}* ficou pendente.{link_cta}\n\n"
+                f"Teve alguma dúvida ou dificuldade no pagamento? Estou à disposição para te ajudar a garantir seu acesso! 🚀{footer}"
+            )
+        elif step == 2:
+            return (
+                f"Oi {first_name}! Separei um *CUPOM ESPECIAL DE 10% OFF* válido pelas próximas 2 horas para você garantir seu acesso a *{prod}*!{link_cta}\n\n"
+                f"Aproveite a condição exclusiva antes do encerramento! 🏷️{footer}"
+            )
+        else:
+            return (
+                f"Olá {first_name}, sua vaga promocional para *{prod}* expira em instantes!{link_cta}\n\n"
+                f"Se precisar de ajuda para garantir antes do preço voltar ao valor normal, me avise aqui. ⚡{footer}"
+            )
+
+    # 5. INGLÊS (EN / DEFAULT)
+    link_cta = f"\n\n👉 Secure checkout link: {link}" if link else ""
+    footer = "\n\n_ℹ️ Automated payment system notification. For post-sales inquiries, please contact email support._"
     if step == 1:
         return (
-            f"Olá {first_name}! 👋 Vi que seu pedido de *{prod}* ficou pendente.{link_cta}\n\n"
-            f"Teve alguma dúvida ou dificuldade no checkout? Estou à disposição para te ajudar! 🚀"
+            f"Hello {first_name}! 👋 This is official payment support for *{prod}*.\n\n"
+            f"We noticed your order is still pending. Usually this is just the *3D Secure* authorization required in your banking app.{link_cta}\n\n"
+            f"Did you run into any issues? I'm here to help you get started! 🚀{footer}"
         )
     elif step == 2:
         return (
-            f"Oi {first_name}! Separei um *CUPOM ESPECIAL DE 10% OFF* válido pelas próximas 2 horas para você garantir seu acesso a *{prod}*!{link_cta}\n\n"
-            f"Aproveite a condição exclusiva!"
+            f"Hi {first_name}! To help you join *{prod}*, we've activated a special *10% DISCOUNT* coupon valid for the next 2 hours!{link_cta}\n\n"
+            f"Take advantage of this reserved offer before it expires! 🏷️{footer}"
         )
     else:
         return (
-            f"Olá {first_name}, sua vaga promocional para *{prod}* expira em instantes!{link_cta}\n\n"
-            f"Se precisar de ajuda para garantir antes do encerramento, me avise aqui. ⚡"
+            f"Hello {first_name}, your promotional reservation for *{prod}* is about to expire.{link_cta}\n\n"
+            f"Last call before the slot is released at regular pricing. Let us know if you need assistance! ⚡{footer}"
         )
 
 
@@ -428,7 +521,9 @@ def schedule_cadence_for_recovery(
             name=payload.customer_name or rec.customer_name or "",
             product=payload.product_name or rec.product_name or "",
             link=payload.checkout_link or "",
-            lang=payload.lang or "it",
+            lang=payload.lang or "auto",
+            phone=clean_digits,
+            country=rec.customer_country or "",
         )
 
         disp = RecoveryDispatch(
@@ -577,7 +672,9 @@ def schedule_auto_cadence_for_lead(
             name=recovery.customer_name or "",
             product=recovery.product_name or "",
             link=checkout_link,
-            lang=lang,
+            lang=lang or "auto",
+            phone=clean_digits,
+            country=recovery.customer_country or "",
         )
 
         disp = RecoveryDispatch(
