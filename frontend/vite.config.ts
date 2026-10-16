@@ -10,6 +10,10 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    outDir: path.resolve(__dirname, '../backend/frontend_dist'),
+    emptyOutDir: true,
+  },
   optimizeDeps: {
     // Excluir do pre-bundle pois são lazy loaded
     exclude: [

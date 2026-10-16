@@ -51,16 +51,16 @@ def calc_kpis(base, meta_summary: Optional[AccountInsightsSummary]) -> dict:
     cpa = round(total_spend / total_sales, 2) if total_sales > 0 else 0.0
     profit_margin = round((profit / total_revenue) * 100, 2) if total_revenue > 0 else 0.0
 
-    # Tráfego & Leilão
-    cpc = meta_summary.cpc if (meta_summary and meta_summary.cpc > 0) else (round(total_spend / total_clicks, 2) if total_clicks > 0 and total_spend > 0 else 0.0)
-    ctr = meta_summary.ctr if (meta_summary and meta_summary.ctr > 0) else (round((total_clicks / total_impressions) * 100, 2) if total_impressions > 0 and total_clicks > 0 else 0.0)
-    cpm = meta_summary.cpm if (meta_summary and meta_summary.cpm > 0) else (round((total_spend / total_impressions) * 1000, 2) if total_impressions > 0 and total_spend > 0 else 0.0)
+    # Tráfego & Leilão: cálculo dinâmico baseado no total_spend e contadores consolidados
+    cpc = round(total_spend / total_clicks, 2) if (total_clicks > 0 and total_spend > 0) else (meta_summary.cpc if (meta_summary and meta_summary.cpc > 0) else 0.0)
+    ctr = round((total_clicks / total_impressions) * 100, 2) if (total_impressions > 0 and total_clicks > 0) else (meta_summary.ctr if (meta_summary and meta_summary.ctr > 0) else 0.0)
+    cpm = round((total_spend / total_impressions) * 1000, 2) if (total_impressions > 0 and total_spend > 0) else (meta_summary.cpm if (meta_summary and meta_summary.cpm > 0) else 0.0)
 
     # Funil & Páginas
-    cpv = meta_summary.cpv if (meta_summary and meta_summary.cpv > 0) else (round(total_spend / pageviews, 2) if pageviews > 0 and total_spend > 0 else 0.0)
-    connect_rate = meta_summary.connect_rate if (meta_summary and meta_summary.connect_rate > 0) else (round((pageviews / total_clicks) * 100, 2) if total_clicks > 0 and pageviews > 0 else 0.0)
-    cost_per_ic = meta_summary.cost_per_ic if (meta_summary and meta_summary.cost_per_ic > 0) else (round(total_spend / initiate_checkout, 2) if initiate_checkout > 0 and total_spend > 0 else 0.0)
-    checkout_rate = meta_summary.checkout_rate if (meta_summary and meta_summary.checkout_rate > 0) else (round((initiate_checkout / pageviews) * 100, 2) if pageviews > 0 and initiate_checkout > 0 else 0.0)
+    cpv = round(total_spend / pageviews, 2) if (pageviews > 0 and total_spend > 0) else (meta_summary.cpv if (meta_summary and meta_summary.cpv > 0) else 0.0)
+    connect_rate = round((pageviews / total_clicks) * 100, 2) if (total_clicks > 0 and pageviews > 0) else (meta_summary.connect_rate if (meta_summary and meta_summary.connect_rate > 0) else 0.0)
+    cost_per_ic = round(total_spend / initiate_checkout, 2) if (initiate_checkout > 0 and total_spend > 0) else (meta_summary.cost_per_ic if (meta_summary and meta_summary.cost_per_ic > 0) else 0.0)
+    checkout_rate = round((initiate_checkout / pageviews) * 100, 2) if (pageviews > 0 and initiate_checkout > 0) else (meta_summary.checkout_rate if (meta_summary and meta_summary.checkout_rate > 0) else 0.0)
     checkout_conversion_rate = round((total_sales / initiate_checkout) * 100, 2) if initiate_checkout > 0 else 0.0
     page_conversion_rate = round((total_sales / pageviews) * 100, 2) if pageviews > 0 else 0.0
     conversion_rate = round((total_sales / total_clicks) * 100, 2) if total_clicks > 0 else 0.0

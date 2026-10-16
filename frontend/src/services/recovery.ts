@@ -16,6 +16,14 @@ export interface RecoveryRow {
   channel: string;
   recoveredAt: string | null;
   checkoutUrl?: string | null;
+  dispatch?: {
+    status: "pending" | "sent" | "failed" | "cancelled";
+    stepNumber: number;
+    strategy: string;
+    scheduledAt: string | null;
+    sentAt: string | null;
+    errorMessage?: string | null;
+  };
 }
 
 export interface ChannelConfig {
@@ -147,6 +155,169 @@ export async function updateRecoveryStatus(
     {
       method: "PUT",
       body: payload,
+    },
+  );
+}
+
+// ── WhatsApp Evolution API Integration ────────────────────
+export interface WhatsAppConfig {
+  base_url: string;
+  api_key: string;
+  instance_name: string;
+  is_active: boolean;
+  auto_dispatch_enabled: boolean;
+  cadence_delays_minutes: string;
+}
+
+export interface WhatsAppConnectionTestResult {
+  success: boolean;
+  connected?: boolean;
+  state?: string;
+  instanceName?: string;
+  message?: string;
+  error?: string;
+}
+
+export interface RecoveryDispatchItem {
+  id: number;
+  recoveryId?: string;
+  customerName?: string;
+  customerPhone: string;
+  customerEmail?: string;
+  productName?: string;
+  stepNumber: number;
+  strategy: string;
+  messageText: string;
+  scheduledAt?: string;
+  sentAt?: string;
+  status: "pending" | "sent" | "failed" | "cancelled";
+  errorMessage?: string;
+  evolutionMessageId?: string;
+  createdAt?: string;
+}
+
+export async function fetchWhatsAppConfig(): Promise<WhatsAppConfig> {
+  return apiRequest<WhatsAppConfig>("/recovery/whatsapp/config");
+}
+
+export async function saveWhatsAppConfig(
+  payload: WhatsAppConfig,
+): Promise<WhatsAppConfig> {
+  return apiRequest<WhatsAppConfig>("/recovery/whatsapp/config", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function testWhatsAppConnection(
+  payload?: Partial<WhatsAppConfig>,
+): Promise<WhatsAppConnectionTestResult> {
+  return apiRequest<WhatsAppConnectionTestResult>("/recovery/whatsapp/test", {
+    method: "POST",
+    body: payload || {},
+  });
+}
+
+export async function fetchWhatsAppInstances(): Promise<{
+  success: boolean;
+  instances?: Array<{ instanceName: string; status: string; connectionStatus?: string }>;
+  error?: string;
+}> {
+  return apiRequest<{
+    success: boolean;
+    instances?: Array<{ instanceName: string; status: string; connectionStatus?: string }>;
+    error?: string;
+  }>("/recovery/whatsapp/instances");
+}
+
+export async function fetchWhatsAppQrCode(): Promise<{
+  success: boolean;
+  base64?: string;
+  code?: string;
+  pairingCode?: string;
+  error?: string;
+}> {
+  return apiRequest<{
+    success: boolean;
+    base64?: string;
+    code?: string;
+    pairingCode?: string;
+    error?: string;
+  }>("/recovery/whatsapp/qrcode");
+}
+
+export async function sendRecoveryWhatsApp(
+  recoveryId: string,
+  payload: {
+    phone?: string;
+    text: string;
+    strategy?: string;
+    media_url?: string;
+    media_type?: string;
+  },
+): Promise<{ success: boolean; message: string; messageId?: string; error?: string }> {
+  return apiRequest<{ success: boolean; message: string; messageId?: string; error?: string }>(
+    `/recovery/whatsapp/${recoveryId}/send`,
+    {
+      method: "POST",
+      body: payload,
+    },
+  );
+}
+
+export async function directSendWhatsApp(payload: {
+  phone: string;
+  text: string;
+  customer_name?: string;
+  customer_email?: string;
+  product_name?: string;
+  strategy?: string;
+}): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  return apiRequest<{ success: boolean; messageId?: string; error?: string }>(
+    "/recovery/whatsapp/direct-send",
+    {
+      method: "POST",
+      body: payload,
+    },
+  );
+}
+
+export async function scheduleRecoveryCadence(
+  recoveryId: string,
+  payload: {
+    phone: string;
+    customer_name?: string;
+    product_name?: string;
+    checkout_link?: string;
+    lang?: string;
+  },
+): Promise<{ success: boolean; message: string; steps: any[] }> {
+  return apiRequest<{ success: boolean; message: string; steps: any[] }>(
+    `/recovery/whatsapp/${recoveryId}/schedule-cadence`,
+    {
+      method: "POST",
+      body: payload,
+    },
+  );
+}
+
+export async function fetchRecoveryDispatches(
+  recoveryId?: string,
+  status?: string,
+): Promise<RecoveryDispatchItem[]> {
+  const qs = new URLSearchParams();
+  if (recoveryId) qs.set("recovery_id", recoveryId);
+  if (status) qs.set("status", status);
+  return apiRequest<RecoveryDispatchItem[]>(`/recovery/whatsapp/dispatches?${qs.toString()}`);
+}
+
+export async function cancelRecoveryDispatch(
+  dispatchId: number,
+): Promise<{ success: boolean; message: string }> {
+  return apiRequest<{ success: boolean; message: string }>(
+    `/recovery/whatsapp/dispatches/${dispatchId}`,
+    {
+      method: "DELETE",
     },
   );
 }

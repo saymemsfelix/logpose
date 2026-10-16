@@ -274,6 +274,32 @@ def list_recoveries(
     start = (page - 1) * per_page
     paginated = items[start: start + per_page]
 
+    # Enriquecer itens paginados com status de disparo do Robô WhatsApp
+    rec_ids = [item["rawId"] for item in paginated if str(item.get("id", "")).startswith("r-") and item.get("rawId")]
+    if rec_ids:
+        try:
+            from database.models.whatsapp_integration import RecoveryDispatch
+            dispatches = db.query(RecoveryDispatch).filter(
+                RecoveryDispatch.recovery_id.in_(rec_ids)
+            ).order_by(RecoveryDispatch.created_at.desc()).all()
+            dispatch_map = {}
+            for d in dispatches:
+                if d.recovery_id not in dispatch_map:
+                    dispatch_map[d.recovery_id] = {
+                        "status": d.status,
+                        "stepNumber": d.step_number,
+                        "strategy": d.strategy,
+                        "scheduledAt": d.scheduled_at.isoformat() if d.scheduled_at else None,
+                        "sentAt": d.sent_at.isoformat() if d.sent_at else None,
+                        "errorMessage": d.error_message,
+                    }
+            for item in paginated:
+                raw_id = item.get("rawId")
+                if raw_id in dispatch_map:
+                    item["dispatch"] = dispatch_map[raw_id]
+        except Exception:
+            pass
+
     return {
         "total": total,
         "page": page,

@@ -142,5 +142,7 @@ export interface DashboardOverview {
   top_products?: TopProduct[];
   payment_methods?: PaymentMethod[];
   conversion_flow?: ConversionFlow;
+  monthly_revenue?: number;
+  today_revenue?: number;
   meta_error?: string | null;
 }

@@ -81,7 +81,7 @@ export function NexoKpisGrid({
     ? `-${formatCurrency(taxDeduction)} impostos (${taxRate}%)`
     : null;
   const taxSubtextProfit = taxEnabled
-    ? `-${formatCurrency(taxDeduction)} impostos (${taxRate}% s/ faturamento)`
+    ? `-${formatCurrency(taxDeduction)} (${taxRate}% s/ fat.)`
     : null;
   const opSubtext = opCostsEnabled
     ? `-${formatCurrency(opDeduction)} custos fixos`

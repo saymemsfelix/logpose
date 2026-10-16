@@ -101,6 +101,23 @@ def create_recovery_if_pending(
         webhook_slug=event.webhook_slug,
     )
     db.add(recovery)
+    db.flush()
+
+    # Dispara agendamento automático de cadência WhatsApp caso habilitado
+    try:
+        from api.recovery.whatsapp import schedule_auto_cadence_for_lead
+        phone = recovery.customer_phone
+        clean_digits = "".join(filter(str.isdigit, phone or ""))
+        if clean_digits:
+            lang = "pt" if (recovery.customer_country or "").upper() == "BR" else "it"
+            schedule_auto_cadence_for_lead(
+                db=db,
+                recovery=recovery,
+                clean_digits=clean_digits,
+                lang=lang,
+            )
+    except Exception:
+        pass
 
 
 def mark_recovery_as_recovered(
@@ -113,6 +130,7 @@ def mark_recovery_as_recovered(
     Marca uma recovery pendente como recuperada quando a venda é aprovada.
     Atualiza o src e o channel com base no evento aprovado, pois é o src
     do approved que indica por qual canal a recuperação aconteceu.
+    Cancela automaticamente quaisquer mensagens de recuperação pendentes agendadas.
     """
     pending_recovery = db.query(Recovery).filter(
         Recovery.customer_email == customer_email,
@@ -128,3 +146,10 @@ def mark_recovery_as_recovered(
             approved_src or pending_recovery.src, db,
         )
         pending_recovery.channel = channel
+
+    # Cancela envios agendados pendentes para não incomodar o cliente que já comprou
+    try:
+        from api.recovery.whatsapp import cancel_pending_cadences_for_customer
+        cancel_pending_cadences_for_customer(db, customer_email, product_name)
+    except Exception:
+        pass

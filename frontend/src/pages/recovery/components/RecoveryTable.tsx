@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { RiCheckboxCircleLine, RiTimeLine, RiWhatsappFill, RiMailSendLine } from "@remixicon/react";
+import { RiCheckboxCircleLine, RiTimeLine, RiWhatsappFill, RiMailSendLine, RiRobotLine } from "@remixicon/react";
 import type { RecoveryRow, ChannelConfig } from "@/services/recovery";
 import { PaginationBar } from "@/components/PaginationBar";
 
@@ -168,6 +168,35 @@ export function RecoveryTable({
                         <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
                           <RiTimeLine className="size-4 shrink-0 text-amber-400" />
                           <span className="text-amber-400/90 font-medium">Pendente</span>
+                        </div>
+                      )}
+                      {row.dispatch && (
+                        <div className="mt-1">
+                          {row.dispatch.status === "sent" && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-mono font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded">
+                              <RiRobotLine className="size-2.5" />
+                              Robô P{row.dispatch.stepNumber} Enviado
+                            </span>
+                          )}
+                          {row.dispatch.status === "pending" && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-mono text-amber-300 bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 rounded">
+                              <RiTimeLine className="size-2.5" />
+                              Robô P{row.dispatch.stepNumber} Agendado
+                            </span>
+                          )}
+                          {row.dispatch.status === "cancelled" && (
+                            <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-slate-800/80 px-1.5 py-0.5 rounded">
+                              Cancelado (Pago)
+                            </span>
+                          )}
+                          {row.dispatch.status === "failed" && (
+                            <span
+                              className="inline-flex items-center gap-1 text-[10px] text-rose-400 bg-rose-500/10 border border-rose-500/30 px-1.5 py-0.5 rounded"
+                              title={row.dispatch.errorMessage || "Erro no envio"}
+                            >
+                              Falha Robô
+                            </span>
+                          )}
                         </div>
                       )}
                     </TableCell>

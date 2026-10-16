@@ -9,8 +9,14 @@ from integrations.meta_ads.schemas import CampaignInsights
 
 
 def _daily_revenue(base, db, meta_campaigns: list[CampaignInsights] = None,
-                   date_start: str = None, date_end: str = None):
-    """Agrupa revenue/profit por dia, incluindo spend da Meta Ads."""
+                   date_start: str = None, date_end: str = None, total_spend: float = 0.0):
+    """
+    Agrupa faturamento, gasto e lucro por dia contínuo no período.
+    Cruza transações com DailyAdSpend e/ou spend proporcional da Meta Ads.
+    """
+    from database.models.daily_ad_spend import DailyAdSpend
+    from database.core.timezone import today_sp_str
+
     approved = base.filter(Transaction.status == TransactionStatus.APPROVED)
     rows = (
         approved.with_entities(
@@ -22,28 +28,65 @@ def _daily_revenue(base, db, meta_campaigns: list[CampaignInsights] = None,
         .order_by(func.date(Transaction.created_at))
         .all()
     )
+    rev_by_date = {str(r.day): (float(r.revenue or 0), int(r.sales or 0)) for r in rows}
 
-    # Calcular spend total da Meta para distribuir proporcionalmente por dia
-    total_meta_spend = sum(c.spend for c in meta_campaigns) if meta_campaigns else 0
-    total_revenue_all = sum(float(r.revenue or 0) for r in rows)
+    # Buscar DailyAdSpend para o intervalo de datas
+    daily_spends_map = {}
+    try:
+        q_spend = db.query(DailyAdSpend)
+        if date_start and date_end:
+            ds_d = datetime.strptime(date_start, "%Y-%m-%d").date()
+            de_d = datetime.strptime(date_end, "%Y-%m-%d").date()
+            q_spend = q_spend.filter(
+                DailyAdSpend.spend_date >= ds_d,
+                DailyAdSpend.spend_date <= de_d,
+            )
+        for row in q_spend.all():
+            daily_spends_map[str(row.spend_date)] = float(row.spend or 0.0)
+    except Exception:
+        pass
+
+    # Determinar datas a exibir de forma contínua
+    all_dates = []
+    if date_start and date_end:
+        try:
+            curr = datetime.strptime(date_start, "%Y-%m-%d").date()
+            end_d = datetime.strptime(date_end, "%Y-%m-%d").date()
+            if curr > end_d:
+                curr, end_d = end_d, curr
+            if (end_d - curr).days <= 90:
+                while curr <= end_d:
+                    all_dates.append(curr.strftime("%Y-%m-%d"))
+                    curr += timedelta(days=1)
+        except Exception:
+            pass
+
+    if not all_dates:
+        date_set = set(rev_by_date.keys()) | set(daily_spends_map.keys())
+        if not date_set:
+            date_set.add(today_sp_str())
+        all_dates = sorted(list(date_set))
+
+    camp_spend = sum(float(c.spend or 0) for c in meta_campaigns) if meta_campaigns else 0.0
+    effective_spend = camp_spend if camp_spend > 0 else total_spend
+    has_daily_spend_records = len(daily_spends_map) > 0 and sum(daily_spends_map.values()) > 0
+    num_days = max(1, len(all_dates))
+    flat_daily_spend = effective_spend / num_days if (effective_spend > 0 and not has_daily_spend_records) else 0.0
 
     result = []
-    for r in rows:
-        rev = float(r.revenue or 0)
-        # Distribuir spend proporcionalmente à receita de cada dia
-        if total_meta_spend > 0 and total_revenue_all > 0:
-            day_spend = total_meta_spend * (rev / total_revenue_all)
-        elif total_meta_spend > 0 and len(rows) > 0:
-            day_spend = total_meta_spend / len(rows)
+    for d_str in all_dates:
+        rev, sales = rev_by_date.get(d_str, (0.0, 0))
+        if has_daily_spend_records:
+            day_spend = daily_spends_map.get(d_str, 0.0)
         else:
-            day_spend = 0
+            day_spend = flat_daily_spend
 
         result.append({
-            "date": str(r.day),
-            "revenue": rev,
+            "date": d_str,
+            "revenue": round(rev, 2),
             "spend": round(day_spend, 2),
             "profit": round(rev - day_spend, 2),
-            "sales": int(r.sales or 0),
+            "sales": sales,
         })
 
     return result
@@ -114,7 +157,7 @@ def _hourly_sales(base, db):
     return result
 
 
-def _hourly_profit_breakdown(base, db, meta_spend: float = 0.0):
+def _hourly_profit_breakdown(base, db, meta_spend: float = 0.0, preset: str = "30d"):
     """
     Retorna cada uma das 24 horas (00:00 a 23:00) com:
     - hour: "00:00", "01:00", etc.
@@ -123,6 +166,8 @@ def _hourly_profit_breakdown(base, db, meta_spend: float = 0.0):
     - profit: lucro líquido (revenue - spend)
     - sales: quantidade de vendas
     """
+    from database.core.timezone import now_sp
+
     approved = base.filter(Transaction.status == TransactionStatus.APPROVED)
     rows = (
         approved.with_entities(
@@ -135,18 +180,28 @@ def _hourly_profit_breakdown(base, db, meta_spend: float = 0.0):
     )
     hour_map = {int(r.hour): {"sales": int(r.sales or 0), "revenue": float(r.revenue or 0)} for r in rows}
 
-    # Distribuição do gasto de anúncio:
-    # Se meta_spend > 0, dividimos pelos blocos de 24 horas (peso ligeiramente maior no horário comercial / noturno)
-    # ou distribuído por 24 horas igualmente como base
-    hourly_spend_base = meta_spend / 24.0 if meta_spend > 0 else 0.0
+    now = now_sp()
+    current_hour = now.hour
+
+    # Se preset for "today", o spend de hoje só ocorreu até a hora atual.
+    # Horas futuras não devem exibir prejuízo falso em vermelho.
+    if preset == "today":
+        elapsed_hours = max(1, current_hour + 1)
+        hourly_spend_base = meta_spend / elapsed_hours if meta_spend > 0 else 0.0
+    else:
+        hourly_spend_base = meta_spend / 24.0 if meta_spend > 0 else 0.0
 
     result = []
     for h in range(24):
         entry = hour_map.get(h, {"sales": 0, "revenue": 0.0})
         rev = round(entry["revenue"], 2)
-        # Ajuste de spend hora a hora
-        spend = round(hourly_spend_base, 2)
-        profit = round(rev - spend, 2)
+
+        if preset == "today" and h > current_hour:
+            spend = 0.0
+            profit = 0.0
+        else:
+            spend = round(hourly_spend_base, 2)
+            profit = round(rev - spend, 2)
 
         result.append({
             "hour": f"{h:02d}:00",
@@ -203,6 +258,13 @@ def _country_distribution(base, db):
     country_counts = {}
     total_rev = 0.0
 
+    # Otimização Ninja Tracker: Pre-fetch de todos os clientes em lote único (Elimina N+1 queries)
+    cust_ids = {tx.customer_id for tx in approved_txs if tx.customer_id}
+    cust_map = {}
+    if cust_ids:
+        customers = db.query(Customer).filter(Customer.id.in_(cust_ids)).all()
+        cust_map = {c.id: c for c in customers}
+
     for tx in approved_txs:
         p_name = (tx.product_name or "").lower()
         is_italian_offer = any(k in p_name for k in [
@@ -215,12 +277,11 @@ def _country_distribution(base, db):
 
         phone = ""
         cust_country = ""
-        if tx.customer_id:
-            cust = db.query(Customer).filter(Customer.id == tx.customer_id).first()
-            if cust:
-                cust_country = str(getattr(cust, "country", "") or "").strip().upper()
-                if cust.phone:
-                    phone = cust.phone.replace("+", "").replace(" ", "").replace("-", "").strip()
+        if tx.customer_id and tx.customer_id in cust_map:
+            cust = cust_map[tx.customer_id]
+            cust_country = str(getattr(cust, "country", "") or "").strip().upper()
+            if cust.phone:
+                phone = cust.phone.replace("+", "").replace(" ", "").replace("-", "").strip()
 
         raw_c = str(getattr(tx, "country", "") or "").strip().upper()
 
@@ -431,11 +492,11 @@ def _conversion_flow(base, meta_summary):
     ics = max(meta_ics, sales_init)
 
     # Taxas de conversão com limites consistentes (0 a 100%)
-    rate_click_to_pv = round((pageviews / clicks * 100), 1) if clicks > 0 else 0.0
-    rate_pv_to_ic = round((ics / pageviews * 100), 1) if pageviews > 0 else 0.0
-    rate_ic_to_init = round((sales_init / ics * 100), 1) if ics > 0 else 0.0
-    rate_init_to_app = round((sales_app / sales_init * 100), 1) if sales_init > 0 else 0.0
-    rate_ic_to_app = round((sales_app / ics * 100), 1) if ics > 0 else 0.0
+    rate_click_to_pv = min(100.0, round((pageviews / clicks * 100), 1)) if clicks > 0 else 0.0
+    rate_pv_to_ic = min(100.0, round((ics / pageviews * 100), 1)) if pageviews > 0 else 0.0
+    rate_ic_to_init = min(100.0, round((sales_init / ics * 100), 1)) if ics > 0 else 0.0
+    rate_init_to_app = min(100.0, round((sales_app / sales_init * 100), 1)) if sales_init > 0 else 0.0
+    rate_ic_to_app = min(100.0, round((sales_app / ics * 100), 1)) if ics > 0 else 0.0
 
     return {
         "clicks": clicks,

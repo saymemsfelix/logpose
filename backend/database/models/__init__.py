@@ -22,6 +22,7 @@ from database.models.product_alias import ProductAlias
 from database.models.push_subscription import PushSubscription
 from database.models.guardian_rule import GuardianRule
 from database.models.guardian_log import GuardianLog
+from database.models.whatsapp_integration import WhatsAppConfig, RecoveryDispatch
 
 __all__ = [
     "Admin",
@@ -59,4 +60,6 @@ __all__ = [
     "PushSubscription",
     "GuardianRule",
     "GuardianLog",
+    "WhatsAppConfig",
+    "RecoveryDispatch",
 ]

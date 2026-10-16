@@ -25,8 +25,14 @@ import {
   RiAlertLine,
   RiLinkM,
   RiSmartphoneLine,
+  RiRobotLine,
+  RiTimeLine,
 } from "@remixicon/react";
-import type { RecoveryRow } from "@/services/recovery";
+import {
+  type RecoveryRow,
+  sendRecoveryWhatsApp,
+  scheduleRecoveryCadence,
+} from "@/services/recovery";
 
 export type RecoveryLanguage = "it" | "es" | "pt" | "de";
 export type RecoveryStrategy = "support" | "discount" | "urgency";
@@ -542,10 +548,17 @@ export function WhatsAppRecoveryModal({
 
   const [copied, setCopied] = useState(false);
   const [isMarking, setIsMarking] = useState(false);
+  const [isSendingRobot, setIsSendingRobot] = useState(false);
+  const [isSchedulingCadence, setIsSchedulingCadence] = useState(false);
+  const [robotFeedback, setRobotFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
 
   // Lead change effect
   useEffect(() => {
     if (lead) {
+      setRobotFeedback(null);
       const autoLang = detectLanguage(lead);
       setSelectedLang(autoLang);
       setSelectedStrategy("support");
@@ -709,6 +722,73 @@ export function WhatsAppRecoveryModal({
       onOpenChange(false);
     } finally {
       setIsMarking(false);
+    }
+  };
+
+  const handleSendRobotWhatsApp = async () => {
+    if (!lead) return;
+    if (!cleanPhone) {
+      alert("Por favor, digite um número de WhatsApp com DDI (ex: 39340...).");
+      return;
+    }
+    try {
+      setIsSendingRobot(true);
+      setRobotFeedback(null);
+      const res = await sendRecoveryWhatsApp(lead.id, {
+        phone: cleanPhone,
+        text: customWhatsAppText,
+        strategy: selectedStrategy,
+      });
+      if (res.success) {
+        setRobotFeedback({
+          type: "success",
+          message: `Mensagem enviada com sucesso para +${cleanPhone} via Robô WhatsApp!`,
+        });
+      } else {
+        setRobotFeedback({
+          type: "error",
+          message: res.error || "Falha no envio via Evolution API. Verifique a configuração.",
+        });
+      }
+    } catch (err: any) {
+      setRobotFeedback({
+        type: "error",
+        message: err.message || "Erro ao conectar com a Evolution API.",
+      });
+    } finally {
+      setIsSendingRobot(false);
+    }
+  };
+
+  const handleScheduleCadence = async () => {
+    if (!lead) return;
+    if (!cleanPhone) {
+      alert("Por favor, digite um número de WhatsApp com DDI para agendar.");
+      return;
+    }
+    try {
+      setIsSchedulingCadence(true);
+      setRobotFeedback(null);
+      const res = await scheduleRecoveryCadence(lead.id, {
+        phone: cleanPhone,
+        customer_name: lead.customerName,
+        product_name: lead.product,
+        checkout_link: checkoutLink,
+        lang: selectedLang,
+      });
+      if (res.success) {
+        setRobotFeedback({
+          type: "success",
+          message: `Cadência de 3 passos agendada no robô para +${cleanPhone}! (Passo 1: 5min, Passo 2: 2h, Passo 3: 24h)`,
+        });
+      }
+    } catch (err: any) {
+      setRobotFeedback({
+        type: "error",
+        message: err.message || "Erro ao agendar cadência.",
+      });
+    } finally {
+      setIsSchedulingCadence(false);
     }
   };
 
@@ -1200,6 +1280,33 @@ export function WhatsAppRecoveryModal({
           </div>
         )}
 
+        {/* Robot Feedback Alert */}
+        {robotFeedback && (
+          <div
+            className={`p-3 rounded-lg border text-xs flex items-center justify-between ${
+              robotFeedback.type === "success"
+                ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-300"
+                : "bg-rose-950/40 border-rose-500/40 text-rose-300"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              {robotFeedback.type === "success" ? (
+                <RiCheckboxCircleLine className="size-4 text-emerald-400 shrink-0" />
+              ) : (
+                <RiAlertLine className="size-4 text-rose-400 shrink-0" />
+              )}
+              <span>{robotFeedback.message}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRobotFeedback(null)}
+              className="text-[10px] underline ml-2 cursor-pointer text-slate-300 hover:text-white"
+            >
+              Fechar
+            </button>
+          </div>
+        )}
+
         {/* Modal Actions */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3.5 border-t border-border/50 shrink-0">
           <div className="flex items-center gap-2">
@@ -1244,16 +1351,43 @@ export function WhatsAppRecoveryModal({
             </Button>
 
             {activeChannel === "whatsapp" && (
-              <Button
-                size="sm"
-                onClick={handleOpenWhatsApp}
-                disabled={!cleanPhone}
-                className="bg-[#25D366] hover:bg-[#20ba5a] text-slate-950 font-bold text-xs shadow-lg shadow-[#25D366]/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2"
-              >
-                <RiWhatsappFill className="size-4 mr-1.5" />
-                Abrir no WhatsApp
-                <RiExternalLinkLine className="size-3.5 ml-1 opacity-70" />
-              </Button>
+              <>
+                <Button
+                  size="sm"
+                  onClick={handleSendRobotWhatsApp}
+                  disabled={!cleanPhone || isSendingRobot}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/25 transition-all cursor-pointer disabled:opacity-50 px-3.5 py-2"
+                  title="Dispara a mensagem imediatamente em segundo plano via Evolution API sem precisar abrir abas"
+                >
+                  <RiRobotLine className="size-4 mr-1.5" />
+                  {isSendingRobot ? "Enviando..." : "Enviar via Robô WhatsApp"}
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleScheduleCadence}
+                  disabled={!cleanPhone || isSchedulingCadence}
+                  className="border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 text-xs font-medium cursor-pointer disabled:opacity-50 px-3 py-2"
+                  title="Agenda automaticamente os 3 passos de recuperação (Passo 1: 5min, Passo 2: 2h cupom, Passo 3: 24h urgência) com auto-cancelamento se o cliente comprar"
+                >
+                  <RiTimeLine className="size-3.5 mr-1 text-emerald-400" />
+                  {isSchedulingCadence ? "Agendando..." : "Agendar Cadência (3 Passos)"}
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleOpenWhatsApp}
+                  disabled={!cleanPhone}
+                  className="border-border/60 hover:bg-slate-800 text-slate-300 text-xs cursor-pointer disabled:opacity-50 px-3 py-2"
+                  title="Abre a conversa no WhatsApp Web pelo link wa.me"
+                >
+                  <RiWhatsappFill className="size-3.5 mr-1 text-[#25D366]" />
+                  Abrir Manual (wa.me)
+                  <RiExternalLinkLine className="size-3 ml-1 opacity-70" />
+                </Button>
+              </>
             )}
 
             {activeChannel === "email" && (

@@ -34,6 +34,7 @@ from api.customers.list import router as customers_router
 from api.customers.filter_options import router as customers_filter_options_router
 from api.recovery.config import router as recovery_config_router
 from api.recovery.list import router as recovery_list_router
+from api.recovery.whatsapp import router as recovery_whatsapp_router
 from api.dashboard.overview import router as dashboard_router
 from api.campaigns.list import router as campaigns_data_router
 from api.campaigns.toggle import router as campaigns_toggle_router
@@ -169,11 +170,82 @@ async def _scheduled_guardian_loop():
         except Exception as e:
             logger.warning(f"Aviso no loop do Guardião de Lucro: {e}")
 
+async def _scheduled_recovery_dispatches_loop():
+    """
+    Motor de cadência de recuperação via WhatsApp Evolution API (superpoder do Reflow).
+    Verifica a cada 30 segundos se há mensagens com status 'pending' e scheduled_at <= now_sp().
+    Se o cliente já tiver recuperado a compra (recovered == True), cancela automaticamente o envio.
+    """
+    from database.models.whatsapp_integration import WhatsAppConfig, RecoveryDispatch
+    from database.models.recovery import Recovery, RecoveryChannel
+    from services import evolution_service
+
+    while True:
+        try:
+            db = SessionLocal()
+            try:
+                cfg = db.query(WhatsAppConfig).first()
+                if cfg and cfg.is_active and cfg.base_url and cfg.api_key and cfg.instance_name:
+                    current_time = now_sp()
+                    pending_dispatches = (
+                        db.query(RecoveryDispatch)
+                        .filter(
+                            RecoveryDispatch.status == "pending",
+                            RecoveryDispatch.scheduled_at <= current_time,
+                        )
+                        .order_by(RecoveryDispatch.scheduled_at.asc())
+                        .limit(20)
+                        .all()
+                    )
+
+                    for disp in pending_dispatches:
+                        # 1. Verifica se a recovery já foi recuperada
+                        if disp.recovery_id:
+                            rec = db.query(Recovery).filter(Recovery.id == disp.recovery_id).first()
+                            if rec and rec.recovered:
+                                disp.status = "cancelled"
+                                disp.error_message = "Cliente já recuperou a compra!"
+                                db.commit()
+                                logger.info(f"🛑 [Recovery Dispatch] Cancelando passo {disp.step_number} para {disp.customer_phone}: compra já aprovada!")
+                                continue
+
+                        # 2. Executa disparo via Evolution API
+                        logger.info(f"🚀 [Recovery Dispatch] Disparando passo {disp.step_number} ({disp.strategy}) para {disp.customer_phone} via Evolution API")
+                        res = evolution_service.send_whatsapp_message(
+                            base_url=cfg.base_url,
+                            api_key=cfg.api_key,
+                            instance_name=cfg.instance_name,
+                            number=disp.customer_phone,
+                            content=disp.message_text,
+                        )
+
+                        if res.get("success"):
+                            disp.status = "sent"
+                            disp.sent_at = now_sp()
+                            disp.evolution_message_id = str(res.get("messageId")) if res.get("messageId") else None
+                            if disp.recovery_id:
+                                rec = db.query(Recovery).filter(Recovery.id == disp.recovery_id).first()
+                                if rec:
+                                    rec.channel = RecoveryChannel.WHATSAPP
+                            logger.info(f"✅ [Recovery Dispatch] Mensagem enviada com sucesso para {disp.customer_phone}")
+                        else:
+                            disp.status = "failed"
+                            disp.error_message = str(res.get("error", "Erro ao enviar via Evolution API"))
+                            logger.warning(f"❌ [Recovery Dispatch] Falha ao enviar para {disp.customer_phone}: {disp.error_message}")
+
+                        db.commit()
+            finally:
+                db.close()
+        except Exception as e:
+            logger.warning(f"Aviso no loop de recuperação WhatsApp: {e}")
+        await asyncio.sleep(30)
+
 @app.on_event("startup")
 async def start_background_workers():
     asyncio.create_task(_scheduled_profit_notifier_loop())
     asyncio.create_task(_scheduled_ai_campaign_actions_loop())
     asyncio.create_task(_scheduled_guardian_loop())
+    asyncio.create_task(_scheduled_recovery_dispatches_loop())
 
 # Health check endpoints para o Render (suporta GET e HEAD)
 @app.get("/health")
@@ -215,6 +287,7 @@ app.include_router(customers_filter_options_router, prefix="/api")
 app.include_router(recovery_config_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
 app.include_router(recovery_list_router, prefix="/api")
+app.include_router(recovery_whatsapp_router, prefix="/api")
 app.include_router(campaigns_data_router, prefix="/api")
 app.include_router(campaigns_toggle_router, prefix="/api")
 app.include_router(campaigns_budget_router, prefix="/api")

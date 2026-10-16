@@ -15,7 +15,7 @@ const chartConfig = {
 
 const COLORS = ["#f97316", "var(--color-chart-1)", "var(--color-chart-2)", "var(--color-chart-3)"];
 
-function CustomTooltip({ active, payload }: any) {
+function CustomTooltip({ active, payload, hideValues }: any) {
   if (!active || !payload?.length) return null;
   const entry = payload[0]?.payload;
   if (!entry) return null;
@@ -45,7 +45,7 @@ function CustomTooltip({ active, payload }: any) {
           <div className="flex flex-1 items-center justify-between gap-4">
             <span className="text-xs text-muted-foreground">Faturamento</span>
             <span className="text-sm font-semibold tabular-nums">
-              R$ {Number(entry.value).toLocaleString("pt-BR")}
+              {hideValues ? "••••••" : `R$ ${Number(entry.value).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
             </span>
           </div>
         </div>
@@ -56,9 +56,10 @@ function CustomTooltip({ active, payload }: any) {
 
 interface PlatformChartProps {
   data: PlatformDist[];
+  hideValues?: boolean;
 }
 
-export function PlatformChart({ data }: PlatformChartProps) {
+export function PlatformChart({ data, hideValues = false }: PlatformChartProps) {
   const total = data.reduce((sum, i) => sum + i.value, 0);
 
   if (data.length === 0) {
@@ -80,31 +81,34 @@ export function PlatformChart({ data }: PlatformChartProps) {
       <CardContent>
         <ChartContainer config={chartConfig} className="mx-auto aspect-square max-h-[200px]">
           <PieChart>
-            <ChartTooltip content={<CustomTooltip />} />
+            <ChartTooltip content={<CustomTooltip hideValues={hideValues} />} />
             <Pie data={data} dataKey="value" nameKey="name"
                  cx="50%" cy="50%" innerRadius={55} outerRadius={80}
                  strokeWidth={2} stroke="var(--background)">
-              {data.map((_entry, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.fill || COLORS[index % COLORS.length]} />
               ))}
             </Pie>
           </PieChart>
         </ChartContainer>
         <div className="mt-3 flex flex-col gap-2">
-          {data.map((item, index) => (
-            <div key={item.name} className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full" style={{ backgroundColor: COLORS[index] }} />
-                <span className="text-sm font-medium">{item.name}</span>
+          {data.map((item, index) => {
+            const itemColor = item.fill || COLORS[index % COLORS.length];
+            return (
+              <div key={item.name} className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full" style={{ backgroundColor: itemColor }} />
+                  <span className="text-sm font-medium">{item.name}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-muted-foreground tabular-nums">{item.sales} vendas</span>
+                  <span className="text-sm font-semibold tabular-nums">
+                    {total > 0 ? ((item.value / total) * 100).toFixed(0) : 0}%
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-muted-foreground tabular-nums">{item.sales} vendas</span>
-                <span className="text-sm font-semibold tabular-nums">
-                  {total > 0 ? ((item.value / total) * 100).toFixed(0) : 0}%
-                </span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </CardContent>
     </Card>

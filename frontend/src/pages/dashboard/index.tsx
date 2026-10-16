@@ -202,16 +202,25 @@ export default function DashboardPage() {
 
           {/* 8. Metas de Faturamento (Mês, Semana, Dia) */}
           <GoalsCards
-            currentMonthlyRevenue={data.kpis?.total_revenue ?? 0}
+            currentMonthlyRevenue={data.monthly_revenue ?? data.kpis?.total_revenue ?? 0}
+            todayRevenue={data.today_revenue ?? (filters.datePreset === "today" ? data.kpis?.total_revenue : undefined)}
             hideValues={hideValues}
           />
 
           {/* 9. Histórico de Evolução Diária & Distribuição por Plataforma */}
           <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
             <div className="lg:col-span-2">
-              <RevenueChart data={data.daily_revenue} />
+              <RevenueChart
+                data={data.daily_revenue}
+                taxEnabled={filters.taxEnabled}
+                taxRate={settings?.tax_rate ?? 0}
+                hideValues={hideValues}
+              />
             </div>
-            <PlatformChart data={data.platform_distribution} />
+            <PlatformChart
+              data={data.platform_distribution}
+              hideValues={hideValues}
+            />
           </div>
             </>
           )}

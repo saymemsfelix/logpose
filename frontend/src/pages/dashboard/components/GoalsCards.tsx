@@ -3,10 +3,11 @@ import { Target, Check } from "lucide-react";
 
 interface GoalsCardsProps {
   currentMonthlyRevenue?: number;
+  todayRevenue?: number;
   hideValues?: boolean;
 }
 
-export function GoalsCards({ currentMonthlyRevenue = 0, hideValues = false }: GoalsCardsProps) {
+export function GoalsCards({ currentMonthlyRevenue = 0, todayRevenue, hideValues = false }: GoalsCardsProps) {
   const [monthlyGoal, setMonthlyGoal] = useState<number>(() => {
     const saved = localStorage.getItem("ninja_monthly_goal") || localStorage.getItem("sfy_monthly_goal") || localStorage.getItem("logpose_monthly_goal");
     return saved ? parseFloat(saved) : 0;
@@ -41,6 +42,9 @@ export function GoalsCards({ currentMonthlyRevenue = 0, hideValues = false }: Go
   const progressPercent = hasGoal ? Math.min((currentMonthlyRevenue / monthlyGoal) * 100, 100) : 0;
   const weeklyGoal = hasGoal ? monthlyGoal / 4.0 : 0;
   const dailyGoal = hasGoal ? monthlyGoal / 30.0 : 0;
+  const dailyProgressPercent = (hasGoal && todayRevenue !== undefined && dailyGoal > 0)
+    ? Math.min((todayRevenue / dailyGoal) * 100, 100)
+    : 0;
 
   return (
     <>
@@ -137,12 +141,27 @@ export function GoalsCards({ currentMonthlyRevenue = 0, hideValues = false }: Go
               Defina a meta mensal para calcular.
             </p>
           ) : (
-            <div className="py-2">
-              <div className="text-lg font-bold tabular-nums text-zinc-900 dark:text-white">
-                {formatCurrency(dailyGoal)}
+            <div className="py-2 space-y-1.5">
+              <div className="flex items-baseline justify-between">
+                <div className="text-lg font-bold tabular-nums text-zinc-900 dark:text-white">
+                  {todayRevenue !== undefined ? formatCurrency(todayRevenue) : formatCurrency(dailyGoal)}
+                </div>
+                {todayRevenue !== undefined && (
+                  <span className="text-[11px] font-medium text-zinc-400">
+                    / {formatCurrency(dailyGoal)}
+                  </span>
+                )}
               </div>
-              <p className="mt-1 text-[11px] text-zinc-400">
-                Meta diária para bater o mês
+              {todayRevenue !== undefined && (
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-blue-600 to-cyan-400 transition-all duration-500"
+                    style={{ width: `${dailyProgressPercent}%` }}
+                  />
+                </div>
+              )}
+              <p className="text-[10px] text-zinc-400">
+                {todayRevenue !== undefined ? `${dailyProgressPercent.toFixed(1)}% atingido hoje` : "Meta diária para bater o mês"}
               </p>
             </div>
           )}

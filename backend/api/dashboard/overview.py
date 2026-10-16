@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -81,12 +82,21 @@ def _apply_filters(query, db, preset, start, end, platform, product_id, account_
     return query
 
 
-def _date_range_strings(preset, start, end):
+def _date_range_strings(preset, start, end, db: Session = None):
     """Retorna date strings YYYY-MM-DD para a Meta API."""
     d_start, d_end = _parse_date_range(preset, start, end)
     if not d_start or not d_end:
         now = now_sp()
-        d_start = now - timedelta(days=30)
+        if preset == "all" and db:
+            min_date = db.query(func.min(Transaction.created_at)).scalar()
+            if min_date:
+                # Meta API aceita até ~37 meses no passado
+                min_allowed = now - timedelta(days=36 * 30)
+                d_start = max(min_date, min_allowed)
+            else:
+                d_start = now - timedelta(days=365)
+        else:
+            d_start = now - timedelta(days=30)
         d_end = now
     return d_start.strftime("%Y-%m-%d"), d_end.strftime("%Y-%m-%d")
 
@@ -108,7 +118,7 @@ async def dashboard_overview(
     base = _apply_filters(base, db, preset, start_date, end_date, platform, product_id, account_slug, upsell_id=upsell_id)
 
     # Datas formatadas para a Meta API
-    ds, de = _date_range_strings(preset, start_date, end_date)
+    ds, de = _date_range_strings(preset, start_date, end_date, db=db)
 
     # Buscar dados da Meta Ads em paralelo
     meta_summary, meta_error = await fetch_meta_account_summary(db, ds, de, account_id=account_id)
@@ -134,7 +144,6 @@ async def dashboard_overview(
             )
         else:
             # Sincroniza 100% com a soma exata das campanhas individuais da Meta
-            # Garante que o gasto exibido no Dashboard e na tela de Campanhas seja perfeitamente idêntico
             meta_summary.spend = camp_spend
             if camp_clicks > 0:
                 meta_summary.clicks = camp_clicks
@@ -144,6 +153,18 @@ async def dashboard_overview(
                 meta_summary.landing_page_views = camp_lpv
             if camp_ic > 0:
                 meta_summary.initiate_checkout = camp_ic
+
+        # Recalcular métricas derivadas para garantir consistência matemática perfeita
+        if meta_summary.spend > 0:
+            if meta_summary.clicks > 0:
+                meta_summary.cpc = round(meta_summary.spend / meta_summary.clicks, 2)
+            if meta_summary.impressions > 0:
+                meta_summary.ctr = round((meta_summary.clicks / meta_summary.impressions) * 100, 2)
+                meta_summary.cpm = round((meta_summary.spend / meta_summary.impressions) * 1000, 2)
+            if meta_summary.landing_page_views > 0:
+                meta_summary.cpv = round(meta_summary.spend / meta_summary.landing_page_views, 2)
+            if meta_summary.initiate_checkout > 0:
+                meta_summary.cost_per_ic = round(meta_summary.spend / meta_summary.initiate_checkout, 2)
 
     # Se a Meta não retornou spend (>0), buscar da tabela daily_ad_spends para o período
     if not meta_summary or meta_summary.spend == 0.0:
@@ -176,20 +197,55 @@ async def dashboard_overview(
     # KPIs com dados da Meta ou Gasto Manual
     kpis = calc_kpis(base, meta_summary)
 
-    # Daily revenue com spend diário da Meta
-    daily = _daily_revenue(base, db, meta_campaigns, ds, de)
+    # Daily revenue com spend diário da Meta ou gastos manuais
+    daily = _daily_revenue(
+        base, db, meta_campaigns, ds, de,
+        total_spend=float(kpis.get("total_spend", 0.0))
+    )
 
     platforms = _platform_dist(base, db)
     top_campaigns = build_top_campaigns(base, meta_campaigns)
     hourly = _hourly_sales(base, db)
 
     # Dados adicionais padrão NexoFy
-    hourly_profit = _hourly_profit_breakdown(base, db, meta_spend=float(kpis.get("total_spend", 0.0)))
+    hourly_profit = _hourly_profit_breakdown(
+        base, db,
+        meta_spend=float(kpis.get("total_spend", 0.0)),
+        preset=preset
+    )
     countries = _country_distribution(base, db)
     utm_origins = _utm_distribution(base, db)
     top_products = _top_products_distribution(base, db)
     payment_methods = _payment_method_distribution(base, db)
     conversion_flow = _conversion_flow(base, meta_summary)
+
+    # Faturamento acumulado do mês atual e de hoje para Metas Globais (Goals)
+    now = now_sp()
+    start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    month_q = db.query(func.sum(Transaction.amount)).filter(
+        Transaction.status == TransactionStatus.APPROVED,
+        Transaction.created_at >= start_of_month,
+        Transaction.created_at <= now,
+    )
+    today_q = db.query(func.sum(Transaction.amount)).filter(
+        Transaction.status == TransactionStatus.APPROVED,
+        Transaction.created_at >= start_of_today,
+        Transaction.created_at <= now,
+    )
+    if account_slug and account_slug != "all":
+        month_q = month_q.filter(Transaction.webhook_slug == account_slug)
+        today_q = today_q.filter(Transaction.webhook_slug == account_slug)
+    if platform and platform != "all":
+        try:
+            month_q = month_q.filter(Transaction.platform == PaymentPlatform(platform))
+            today_q = today_q.filter(Transaction.platform == PaymentPlatform(platform))
+        except ValueError:
+            pass
+
+    monthly_revenue = round(float(month_q.scalar() or 0.0), 2)
+    today_revenue = round(float(today_q.scalar() or 0.0), 2)
 
     return {
         "kpis": kpis,
@@ -203,6 +259,8 @@ async def dashboard_overview(
         "top_products": top_products,
         "payment_methods": payment_methods,
         "conversion_flow": conversion_flow,
+        "monthly_revenue": monthly_revenue,
+        "today_revenue": today_revenue,
         "meta_error": meta_error,
     }
 
