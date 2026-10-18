@@ -2,8 +2,9 @@
 Lógica de merge entre dados do Meta Ads e transações do banco.
 Cruza por ID (confiável), por nome, por substring/tokens e por atribuição inteligente de tráfego.
 """
+from __future__ import annotations
 from collections import defaultdict
-from typing import Any
+from typing import Any, Optional
 import re
 import unicodedata
 

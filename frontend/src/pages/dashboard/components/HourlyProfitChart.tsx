@@ -83,25 +83,47 @@ export function HourlyProfitChart({ data = [], hideValues = false }: HourlyProfi
       </div>
 
       {/* Tooltip com info do horário sob hover */}
-      <div className="h-6 mb-2">
+      <div className="min-h-[30px] mb-2.5">
         {hoveredHour ? (
-          <div className="flex items-center gap-3 text-[12px] bg-zinc-100 dark:bg-zinc-800/80 px-2.5 py-1 rounded-md w-fit border border-zinc-200 dark:border-zinc-700/60 animate-in fade-in duration-150">
-            <span className="font-semibold text-zinc-900 dark:text-white">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12px] bg-zinc-100 dark:bg-zinc-800/90 px-3 py-1.5 rounded-lg w-fit border border-zinc-200 dark:border-zinc-700/60 shadow-xs animate-in fade-in duration-150">
+            <span className="font-bold text-zinc-900 dark:text-white px-1.5 py-0.5 rounded bg-zinc-200/70 dark:bg-zinc-700/60 text-[11px]">
               {hoveredHour.hour}
             </span>
             <span className="text-zinc-500 dark:text-zinc-400">
-              Receita: <strong className="text-zinc-700 dark:text-zinc-200">{formatCurrency(hoveredHour.revenue)}</strong>
+              Receita: <strong className="text-zinc-700 dark:text-zinc-200 font-semibold">{formatCurrency(hoveredHour.revenue)}</strong>
             </span>
             <span className="text-zinc-500 dark:text-zinc-400">
-              Gasto: <strong className="text-zinc-700 dark:text-zinc-200">{formatCurrency(hoveredHour.spend)}</strong>
+              Gasto: <strong className="text-zinc-700 dark:text-zinc-200 font-semibold">{formatCurrency(hoveredHour.spend)}</strong>
             </span>
             <span className={hoveredHour.profit >= 0 ? "font-bold text-emerald-500" : "font-bold text-rose-500"}>
               Lucro: {formatCurrency(hoveredHour.profit)}
             </span>
+            {hoveredHour.products && hoveredHour.products.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 pl-2 border-l border-zinc-300 dark:border-zinc-700">
+                <span className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500">
+                  {hoveredHour.products.length === 1 && hoveredHour.products[0].count === 1 ? "Produto:" : "Produtos:"}
+                </span>
+                {hoveredHour.products.map((p, idx) => (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30"
+                    title={p.name}
+                  >
+                    <span>📦</span>
+                    <span className="max-w-[240px] truncate">{p.name}</span>
+                    {p.count > 1 && (
+                      <span className="font-bold text-emerald-800 dark:text-emerald-200 bg-emerald-500/20 px-1 rounded text-[10px]">
+                        {p.count}x
+                      </span>
+                    )}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
-          <div className="text-[11px] text-zinc-400 dark:text-zinc-500 italic">
-            Passe o mouse sobre as horas para ver receita, gasto e lucro detalhado
+          <div className="text-[11px] text-zinc-400 dark:text-zinc-500 italic py-1">
+            Passe o mouse sobre as horas para ver receita, gasto, lucro e produtos vendidos
           </div>
         )}
       </div>

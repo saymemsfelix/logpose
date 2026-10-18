@@ -79,12 +79,18 @@ export interface HourlySale {
   revenue: number;
 }
 
+export interface HourlyProductItem {
+  name: string;
+  count: number;
+}
+
 export interface HourlyProfit {
   hour: string;
   revenue: number;
   spend: number;
   profit: number;
   sales: number;
+  products?: HourlyProductItem[];
 }
 
 export interface CountryData {

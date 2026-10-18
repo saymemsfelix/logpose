@@ -180,6 +180,27 @@ def _hourly_profit_breakdown(base, db, meta_spend: float = 0.0, preset: str = "3
     )
     hour_map = {int(r.hour): {"sales": int(r.sales or 0), "revenue": float(r.revenue or 0)} for r in rows}
 
+    # Mapear produtos por hora
+    product_rows = (
+        approved.with_entities(
+            extract("hour", Transaction.created_at).label("hour"),
+            Transaction.product_name,
+            func.count(Transaction.id).label("qty"),
+        )
+        .group_by(extract("hour", Transaction.created_at), Transaction.product_name)
+        .all()
+    )
+    products_by_hour = {}
+    for pr in product_rows:
+        if pr.hour is not None and pr.product_name:
+            h_val = int(pr.hour)
+            if h_val not in products_by_hour:
+                products_by_hour[h_val] = []
+            products_by_hour[h_val].append({
+                "name": str(pr.product_name).strip(),
+                "count": int(pr.qty or 0)
+            })
+
     now = now_sp()
     current_hour = now.hour
 
@@ -209,6 +230,7 @@ def _hourly_profit_breakdown(base, db, meta_spend: float = 0.0, preset: str = "3
             "spend": spend,
             "profit": profit,
             "sales": entry["sales"],
+            "products": products_by_hour.get(h, []),
         })
     return result
 

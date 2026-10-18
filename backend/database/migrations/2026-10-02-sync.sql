@@ -38,9 +38,9 @@ BEGIN
     WHERE account_id = 'act_949690764845924';
   END IF;
 
-  -- 3. Atualiza os gastos com anúncios de hoje da Meta Ads (R$ 438,92)
+  -- 3. Atualiza os gastos com anúncios históricos da Meta Ads de 02/10/2026
   INSERT INTO daily_ad_spends (spend_date, spend, clicks, impressions)
-  VALUES (CURRENT_DATE, 438.92, 174, 3513)
+  VALUES ('2026-10-02'::DATE, 438.92, 174, 3513)
   ON CONFLICT (spend_date) DO UPDATE 
   SET spend = EXCLUDED.spend, clicks = EXCLUDED.clicks, impressions = EXCLUDED.impressions;
 

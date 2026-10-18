@@ -51,6 +51,10 @@ def seed_sync_data(engine):
 
             # 7. Sincronizar datas reais e campanhas das transações Hotmart
             try:
+                # Limpa transações fictícias de testes anteriores
+                db.execute(text("DELETE FROM transactions WHERE external_id LIKE 'HT_%';"))
+
+                # 18/10/2026: APENAS Cartongesso (1 venda real na Hotmart)
                 db.execute(text("""
                     UPDATE transactions 
                     SET created_at = '2026-10-18 04:42:07', 
@@ -61,6 +65,7 @@ def seed_sync_data(engine):
                        OR LOWER(product_name) LIKE '%carto%';
                 """))
 
+                # 12/10/2026: 120 Diagnosi Visive per Hardware e Software (1 venda real)
                 db.execute(text("""
                     UPDATE transactions 
                     SET created_at = '2026-10-12 19:27:35', 
@@ -74,6 +79,7 @@ def seed_sync_data(engine):
                        );
                 """))
 
+                # 14/10/2026: Sistemi Idraulici (1 principal + 4 bumps)
                 db.execute(text("""
                     UPDATE transactions 
                     SET created_at = '2026-10-14 22:24:15', 
@@ -87,6 +93,7 @@ def seed_sync_data(engine):
                        OR LOWER(product_name) LIKE '%guasti & anomalie%';
                 """))
 
+                # 10/10/2026: Sistemi Idraulici e Club VIP Hardware & Software
                 db.execute(text("""
                     UPDATE transactions 
                     SET created_at = '2026-10-10 05:33:48', 
@@ -101,6 +108,24 @@ def seed_sync_data(engine):
                         utm_campaign = NULL,
                         country = 'IT'
                     WHERE external_id = 'HP2915202196';
+                """))
+
+                db.execute(text("""
+                    UPDATE transactions 
+                    SET created_at = '2026-10-10 04:25:28', 
+                        utm_campaign = NULL,
+                        country = 'IT'
+                    WHERE external_id = 'HP3087569704' OR LOWER(product_name) LIKE '%club vip%';
+                """))
+
+                # Blindagem: NENHUMA transação de Hardware/Software/Idraulici pode estar em 18/10/2026
+                db.execute(text("""
+                    UPDATE transactions
+                    SET created_at = '2026-10-12 19:27:35'
+                    WHERE created_at >= '2026-10-18 00:00:00'
+                      AND external_id != 'HP3880108633'
+                      AND LOWER(product_name) NOT LIKE '%cartongesso%'
+                      AND LOWER(product_name) NOT LIKE '%carto%';
                 """))
                 db.commit()
             except Exception as e_sql:
@@ -121,6 +146,10 @@ def seed_sync_data(engine):
                     t.country = "IT"
                 elif any(k in pn for k in ["idraulic", "scarico", "collaudi", "diametri", "guasti & anomalie"]) or ext.startswith("HP24"):
                     t.created_at = datetime(2026, 10, 14, 22, 24, 15)
+                    t.utm_campaign = None
+                    t.country = "IT"
+                elif ext == "HP3087569704" or "club vip" in pn:
+                    t.created_at = datetime(2026, 10, 10, 4, 25, 28)
                     t.utm_campaign = None
                     t.country = "IT"
                 elif ext in ("HP0725196133", "HP2915202196"):

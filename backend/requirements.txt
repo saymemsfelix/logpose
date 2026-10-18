@@ -17,3 +17,4 @@ stripe
 pywebpush
 email-validator
 Pillow
+tzdata
