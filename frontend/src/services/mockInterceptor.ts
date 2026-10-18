@@ -543,6 +543,12 @@ export async function getMockData(endpoint: string, _options?: any): Promise<any
     return { response };
   }
 
+  if (path === "/gemini/transcribe") {
+    return {
+      text: "Qual é o faturamento e o ROAS das minhas campanhas hoje?",
+    };
+  }
+
   if (path === "/gemini/daily-report") {
     return {
       spend_today: 1580,

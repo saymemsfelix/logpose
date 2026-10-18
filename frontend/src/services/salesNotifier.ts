@@ -367,7 +367,8 @@ export function notifyNewSale(sale: RecentSaleItem) {
   );
 
   const creative = sale.creative_name || sale.ad_name || sale.utm_content || "Criativo Direto";
-  const badge = sale.offer_badge || "🛒 Front-End";
+  const badge = sale.offer_badge || "🛒 Oferta Principal";
+  const badgeVoice = badge.replace(/[^\p{L}\p{N}\s-]/gu, "").trim() || "Oferta Principal";
   const insight = sale.smart_insight || "Nova Venda Aprovada";
   const todayCount = sale.today_sales_count ? ` • Venda #${sale.today_sales_count} de hoje` : "";
   const todayRev = sale.today_revenue_formatted ? ` (Hoje: ${sale.today_revenue_formatted})` : "";
@@ -378,19 +379,19 @@ export function notifyNewSale(sale: RecentSaleItem) {
     try {
       let voiceText = "";
       if (countryCode === "IT") {
-        voiceText = `Nova venda aprovada na Itália! ${voiceVal}! ${badge}: ${creative}. ${insight}.`;
+        voiceText = `Nova venda aprovada na Itália! ${voiceVal}! ${badgeVoice}: ${creative}. ${insight}.`;
       } else if (countryCode === "ES") {
-        voiceText = `Nova venda aprovada na Espanha! ${voiceVal}! ${badge}: ${creative}. ${insight}.`;
+        voiceText = `Nova venda aprovada na Espanha! ${voiceVal}! ${badgeVoice}: ${creative}. ${insight}.`;
       } else if (countryCode === "PT") {
-        voiceText = `Nova venda aprovada em Portugal! ${voiceVal}! ${badge}: ${creative}. ${insight}.`;
+        voiceText = `Nova venda aprovada em Portugal! ${voiceVal}! ${badgeVoice}: ${creative}. ${insight}.`;
       } else if (countryCode === "US") {
-        voiceText = `Nova venda aprovada nos Estados Unidos! ${voiceVal}! ${badge}: ${creative}. ${insight}.`;
+        voiceText = `Nova venda aprovada nos Estados Unidos! ${voiceVal}! ${badgeVoice}: ${creative}. ${insight}.`;
       } else if (countryCode === "CH") {
-        voiceText = `Nova venda aprovada na Suíça! ${voiceVal}! ${badge}: ${creative}. ${insight}.`;
+        voiceText = `Nova venda aprovada na Suíça! ${voiceVal}! ${badgeVoice}: ${creative}. ${insight}.`;
       } else if (countryCode === "BR") {
-        voiceText = `Venda aprovada! ${voiceVal}! ${badge}: ${creative}. ${insight}.`;
+        voiceText = `Venda aprovada! ${voiceVal}! ${badgeVoice}: ${creative}. ${insight}.`;
       } else {
-        voiceText = `Nova venda aprovada em ${countryName}! ${voiceVal}! ${badge}: ${creative}. ${insight}.`;
+        voiceText = `Nova venda aprovada em ${countryName}! ${voiceVal}! ${badgeVoice}: ${creative}. ${insight}.`;
       }
       speakVoice(voiceText);
     } catch (err) {

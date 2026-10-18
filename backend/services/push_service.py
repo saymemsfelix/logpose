@@ -155,12 +155,20 @@ def send_sale_push_notification(db: Session, event: StandardizedWebhookEvent) ->
     elif any(k in p_name for k in ["downsell", "base", "essenziale", "starter"]):
         badge = "💎 Downsell"
     else:
-        badge = "🛒 Front-End"
+        badge = "🛒 Oferta Principal"
 
-    # Se o produto principal teve order bumps inclusos na compra
+    # Se o produto principal teve order bumps reais inclusos na compra
     bump_tag = ""
-    if not is_bump and getattr(event, "order_bumps", None) and isinstance(event.order_bumps, list) and len(event.order_bumps) > 0:
-        bump_tag = " (+ Bump)"
+    if not is_bump and getattr(event, "order_bumps", None) and isinstance(event.order_bumps, list):
+        valid_bumps = [
+            b for b in event.order_bumps
+            if isinstance(b, dict)
+            and b.get("is_order_bump") is not False
+            and (b.get("name") or b.get("id"))
+            and (b.get("name") != "Order Bump" or float(b.get("price") or 0.0) > 0)
+        ]
+        if len(valid_bumps) > 0:
+            bump_tag = f" (+ {len(valid_bumps)} Bump)" if len(valid_bumps) == 1 else f" (+ {len(valid_bumps)} Bumps)"
 
     # 3. Criativo e Produto
     raw_creative = event.utm_content or event.utm_campaign or event.src or "Anúncio Direto"

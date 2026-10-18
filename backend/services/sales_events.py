@@ -156,12 +156,12 @@ def format_smart_sale(t, db: Optional[Session] = None) -> dict:
     elif any(k in p_name for k in ["downsell", "base", "essenziale", "starter"]):
         offer_type = "downsell"
         offer_badge = "💎 Downsell"
-    elif (getattr(t, "order_bumps", None) and len(t.order_bumps) > 0) or any(k in p_name for k in ["bump", "order bump", "+"]):
+    elif any(k in p_name for k in ["order bump", "bump", "multimetro", "guasti & anomalie", "diametri & portate", "sistemi di scarico", "protocollo operativo"]):
         offer_type = "order_bump"
         offer_badge = "⚡ Order Bump"
     else:
         offer_type = "front_end"
-        offer_badge = "🛒 Front-End"
+        offer_badge = "🛒 Oferta Principal"
 
     # 4. Decodificação do Criativo e Origem
     utm_c = str(t.utm_content or "").strip()

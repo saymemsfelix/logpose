@@ -283,6 +283,16 @@ export async function geminiDailyReport(): Promise<{ response: string; spend_tod
   });
 }
 
+export async function geminiTranscribeAudio(
+  audioBase64: string,
+  mimeType: string = "audio/webm"
+): Promise<{ text: string }> {
+  return apiRequest<{ text: string }>("/gemini/transcribe", {
+    method: "POST",
+    body: { audio_base64: audioBase64, mime_type: mimeType },
+  });
+}
+
 export interface AiAction {
   action: string;
   entity_id: string;

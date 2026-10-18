@@ -92,8 +92,22 @@ def process_webhook_event(db: Session, event: StandardizedWebhookEvent):
             existing_tx.src = event.src
         if event.customer_country and not getattr(existing_tx, "country", None):
             existing_tx.country = event.customer_country
-        if event.order_bumps and not existing_tx.order_bumps:
-            existing_tx.order_bumps = event.order_bumps
+        clean_incoming_bumps = [
+            b for b in (event.order_bumps or [])
+            if isinstance(b, dict)
+            and b.get("is_order_bump") is not False
+            and ((b.get("name") and str(b.get("name")).lower() != "order bump") or b.get("id") or float(b.get("price") or 0.0) > 0)
+        ]
+        if clean_incoming_bumps and not existing_tx.order_bumps:
+            existing_tx.order_bumps = clean_incoming_bumps
+        elif existing_tx.order_bumps:
+            # Se a transação já tinha bumps corrompidos, limpa
+            existing_tx.order_bumps = [
+                b for b in (existing_tx.order_bumps or [])
+                if isinstance(b, dict)
+                and b.get("is_order_bump") is not False
+                and ((b.get("name") and str(b.get("name")).lower() != "order bump") or b.get("id") or float(b.get("price") or 0.0) > 0)
+            ] or None
         if event.order_date and existing_tx.created_at != event.order_date:
             existing_tx.created_at = event.order_date
 
@@ -188,7 +202,12 @@ def process_webhook_event(db: Session, event: StandardizedWebhookEvent):
         src=event.src,
         webhook_slug=event.webhook_slug,
         checkout_url=event.checkout_url,
-        order_bumps=event.order_bumps,
+        order_bumps=[
+            b for b in (event.order_bumps or [])
+            if isinstance(b, dict)
+            and b.get("is_order_bump") is not False
+            and ((b.get("name") and str(b.get("name")).lower() != "order bump") or b.get("id") or float(b.get("price") or 0.0) > 0)
+        ] or None,
         country=tx_country,
         created_at=tx_time,
     )

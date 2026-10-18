@@ -457,12 +457,11 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
             elif currency == "CHF" or (not currency and customer_country in ["CH"]):
                 amount = round(amount * 5.50, 2)
 
-        # Extração de Order Bumps (Hotmart 1.0 e 2.0)
+        # Extração de Order Bumps adicionais inclusos na compra
+        # ATENÇÃO: No webhook Hotmart 2.0, purchase.order_bump é um dicionário como {"is_order_bump": false}
+        # indicando se a transação atual É um bump. NÃO é uma lista de bumps adicionais inclusos.
         raw_bumps = (
-            purchase.get("order_bump")
-            or data.get("order_bump")
-            or payload.get("order_bump")
-            or purchase.get("order_bumps")
+            purchase.get("order_bumps")
             or data.get("order_bumps")
             or payload.get("order_bumps")
             or []
@@ -475,15 +474,21 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
         items_list = purchase.get("items") or data.get("items") or payload.get("items") or []
         if isinstance(items_list, list):
             for it in items_list:
-                if isinstance(it, dict) and (it.get("order_bump") or it.get("is_order_bump") or it.get("item_type") == "ORDER_BUMP"):
+                if isinstance(it, dict) and (it.get("is_order_bump") is True or str(it.get("item_type") or "").upper() == "ORDER_BUMP"):
                     raw_bumps.append(it)
 
         order_bumps = []
         for ob in raw_bumps:
             if not isinstance(ob, dict):
                 continue
+            # Ignora se explicitamente não for order bump
+            if ob.get("is_order_bump") is False:
+                continue
             ob_id = ob.get("id") or ob.get("product_id") or ob.get("ucode") or ""
-            ob_name = ob.get("name") or ob.get("product_name") or "Order Bump"
+            ob_name = ob.get("name") or ob.get("product_name") or ""
+            # Se não tem id nem nome real, não é um item de bump válido
+            if not ob_id and not ob_name:
+                continue
             ob_price = 0.0
             p_obj = ob.get("price") or ob.get("value") or ob.get("amount")
             if isinstance(p_obj, dict):
@@ -506,7 +511,7 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
 
             order_bumps.append({
                 "id": str(ob_id),
-                "name": str(ob_name),
+                "name": str(ob_name or "Order Bump"),
                 "price": ob_price,
             })
 
@@ -542,11 +547,15 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
         parsed_order_date = _parse_hotmart_date(order_date_raw)
 
         # Detecção de item que é Order Bump (e não produto principal)
+        ob_obj_purchase = purchase.get("order_bump")
+        ob_obj_data = data.get("order_bump")
         is_order_bump = bool(
-            purchase.get("is_order_bump")
-            or purchase.get("order_bump") is True
-            or data.get("is_order_bump")
-            or payload.get("is_order_bump")
+            purchase.get("is_order_bump") is True
+            or (isinstance(ob_obj_purchase, dict) and ob_obj_purchase.get("is_order_bump") is True)
+            or ob_obj_purchase is True
+            or (isinstance(ob_obj_data, dict) and ob_obj_data.get("is_order_bump") is True)
+            or ob_obj_data is True
+            or payload.get("is_order_bump") is True
             or str(purchase.get("item_type") or "").upper() == "ORDER_BUMP"
             or str(data.get("item_type") or "").upper() == "ORDER_BUMP"
             or any(k in prod_name.lower() for k in ["order bump", "bump", "multimetro", "guasti & anomalie", "diametri & portate", "sistemi di scarico", "protocollo operativo"])

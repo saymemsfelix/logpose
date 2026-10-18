@@ -123,3 +123,42 @@ def run_enum_migrations(engine: Engine) -> None:
             except Exception as e:
                 logger.error(f"Erro {table}.{column}: {e}", exc_info=True)
                 conn.rollback()
+
+    # 3. Sanitização automática de order_bumps corrompidos / falsos
+    with engine.connect() as conn:
+        try:
+            import json
+            rows = conn.execute(text("SELECT id, order_bumps FROM transactions WHERE order_bumps IS NOT NULL")).fetchall()
+            fixed_count = 0
+            for row in rows:
+                tx_id, raw_b = row[0], row[1]
+                if not raw_b:
+                    continue
+                bumps = raw_b
+                if isinstance(bumps, str):
+                    try:
+                        bumps = json.loads(bumps)
+                    except Exception:
+                        bumps = []
+                if isinstance(bumps, list):
+                    clean = []
+                    for b in bumps:
+                        if isinstance(b, dict) and b.get("is_order_bump") is not False:
+                            b_name = str(b.get("name") or b.get("product_name") or "").strip()
+                            b_id = str(b.get("id") or b.get("product_id") or "").strip()
+                            b_price = float(b.get("price") or b.get("value") or 0.0)
+                            if (b_name and b_name.lower() != "order bump") or b_id or b_price > 0:
+                                clean.append(b)
+                    if len(clean) != len(bumps):
+                        conn.execute(
+                            text("UPDATE transactions SET order_bumps = :val WHERE id = :id"),
+                            {"val": json.dumps(clean) if clean else None, "id": tx_id}
+                        )
+                        fixed_count += 1
+            if fixed_count > 0:
+                conn.commit()
+                logger.info(f"✅ Sanitizados {fixed_count} transações com order_bumps falsos.")
+        except Exception as e:
+            logger.warning(f"Aviso na sanitização de order_bumps: {e}")
+            conn.rollback()
+
