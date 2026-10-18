@@ -32,8 +32,45 @@ def _extract_tokens(s: str) -> set[str]:
     nfkd = unicodedata.normalize("NFKD", s)
     no_accents = "".join([c for c in nfkd if not unicodedata.combining(c)]).lower()
     words = re.findall(r"[a-z0-9]+", no_accents)
-    stopwords = {"de", "da", "do", "para", "com", "em", "um", "uma", "os", "as", "new", "offer"}
+    stopwords = {
+        "de", "da", "do", "para", "com", "em", "um", "uma", "os", "as", "new", "offer",
+        "bidcap", "cbo", "abo", "bid", "cap", "teste", "test", "ad", "ads", "copy",
+        "criativo", "feed", "geral", "aberto", "broad", "interesses", "lookalike", "lla"
+    }
     return {w for w in words if len(w) >= 2 and w not in stopwords}
+
+
+NICHES = [
+    {"keys": ["cartongesso", "carto", "gesso", "drywall"]},
+    {"keys": ["diagnosi", "hardware", "software", "multimetro", "pinout", "scheda madre"]},
+    {"keys": ["idraulic", "idrosanitari", "scarico", "ventilazione", "tubi", "collaudi"]},
+    {"keys": ["saldatura", "saldare", "saldatrice"]},
+    {"keys": ["tornitura", "fresatura", "meccanica"]},
+    {"keys": ["haccp", "alimentar"]},
+    {"keys": ["rilievo", "topografico"]},
+]
+
+
+def are_products_compatible(campaign_name: str, product_name: str) -> bool:
+    """Verifica se a campanha e o produto são do mesmo nicho para evitar contaminação cruzada."""
+    if not campaign_name or not product_name:
+        return False
+    c_low = campaign_name.lower()
+    p_low = product_name.lower()
+
+    for niche in NICHES:
+        in_camp = any(k in c_low for k in niche["keys"])
+        in_prod = any(k in p_low for k in niche["keys"])
+        if in_camp and in_prod:
+            return True
+        if in_camp and not in_prod:
+            return False
+        if in_prod and not in_camp:
+            return False
+
+    c_tokens = _extract_tokens(campaign_name)
+    p_tokens = _extract_tokens(product_name)
+    return bool(c_tokens.intersection(p_tokens))
 
 
 def _group_transactions_by_level(
@@ -301,47 +338,45 @@ def merge_campaigns(
             "_attributed_tx_ids": list(camp_tx_ids),
         })
 
-    # Atribuição Inteligente para Vendas Sem UTM / Transações Não Atribuídas
+    # Atribuição Inteligente Segura: vincula APENAS se o PRODUTO for comprovadamente compatível com a campanha
     unattributed_txs = [t for t in transactions if t.id not in attributed_tx_ids]
 
     if unattributed_txs and results:
-        # Campanhas com gasto ativo no período
-        camps_with_spend = [c for c in results if c["spend"] > 0 or c["status"] == "active"]
-        camps_with_spend.sort(key=lambda x: x["spend"], reverse=True)
+        for tx in unattributed_txs:
+            p_name = tx.product_name or ""
+            # Buscar campanhas compatíveis com este produto específico
+            compatible_camps = [
+                c for c in results
+                if are_products_compatible(c["name"], p_name) and (c["spend"] > 0 or c["status"] == "active")
+            ]
+            if not compatible_camps:
+                # Tentar campanhas compatíveis mesmo sem gasto ativo
+                compatible_camps = [c for c in results if are_products_compatible(c["name"], p_name)]
 
-        if camps_with_spend:
-            top_camp = camps_with_spend[0]
-            total_spend_all = sum(c["spend"] for c in camps_with_spend)
+            if compatible_camps:
+                # Se houver campanhas compatíveis, prioriza a que teve gasto no período
+                compatible_camps.sort(key=lambda x: x["spend"], reverse=True)
+                target_camp = compatible_camps[0]
 
-            # Se só há 1 campanha com gasto ou uma principal dominante (>= 50% do gasto total)
-            if top_camp["spend"] >= 5.0 and (total_spend_all == 0 or (top_camp["spend"] / total_spend_all) >= 0.50 or len(camps_with_spend) == 1):
-                extra_data = _calc_sales_metrics(unattributed_txs)
-                top_camp["sales"] += extra_data["sales"]
-                top_camp["revenue"] = round(top_camp["revenue"] + extra_data["revenue"], 2)
-                top_camp["profit"] = round(top_camp["revenue"] - top_camp["spend"], 2)
-                top_camp["roas"] = safe_division(top_camp["revenue"], top_camp["spend"])
-                top_camp["cpa"] = safe_division(top_camp["spend"], top_camp["sales"]) if top_camp["sales"] > 0 else 0.0
-                top_camp["no_id_sales"] += extra_data["sales"]
-                for t in unattributed_txs:
-                    attributed_tx_ids.add(t.id)
-                    if "_attributed_tx_ids" in top_camp:
-                        top_camp["_attributed_tx_ids"].append(t.id)
+                target_camp["sales"] += 1
+                target_camp["revenue"] = round(target_camp["revenue"] + float(tx.amount or 0.0), 2)
+                target_camp["profit"] = round(target_camp["revenue"] - target_camp["spend"], 2)
+                target_camp["roas"] = safe_division(target_camp["revenue"], target_camp["spend"])
+                target_camp["cpa"] = safe_division(target_camp["spend"], target_camp["sales"]) if target_camp["sales"] > 0 else 0.0
+                target_camp["no_id_sales"] += 1
+                attributed_tx_ids.add(tx.id)
+                if "_attributed_tx_ids" in target_camp:
+                    target_camp["_attributed_tx_ids"].append(tx.id)
+                if "_txs" in target_camp:
+                    target_camp["_txs"].append(tx)
 
-                if top_camp.get("adsets"):
-                    active_adset = max(top_camp["adsets"], key=lambda a: a["spend"], default=top_camp["adsets"][0])
-                    active_adset["sales"] += extra_data["sales"]
-                    active_adset["revenue"] = round(active_adset["revenue"] + extra_data["revenue"], 2)
+                if target_camp.get("adsets"):
+                    active_adset = max(target_camp["adsets"], key=lambda a: a["spend"], default=target_camp["adsets"][0])
+                    active_adset["sales"] += 1
+                    active_adset["revenue"] = round(active_adset["revenue"] + float(tx.amount or 0.0), 2)
                     active_adset["profit"] = round(active_adset["revenue"] - active_adset["spend"], 2)
                     active_adset["roas"] = safe_division(active_adset["revenue"], active_adset["spend"])
                     active_adset["cpa"] = safe_division(active_adset["spend"], active_adset["sales"]) if active_adset["sales"] > 0 else 0.0
-
-                    if active_adset.get("ads"):
-                        active_ad = max(active_adset["ads"], key=lambda ad: ad["spend"], default=active_adset["ads"][0])
-                        active_ad["sales"] += extra_data["sales"]
-                        active_ad["revenue"] = round(active_ad["revenue"] + extra_data["revenue"], 2)
-                        active_ad["profit"] = round(active_ad["revenue"] - active_ad["spend"], 2)
-                        active_ad["roas"] = safe_division(active_ad["revenue"], active_ad["spend"])
-                        active_ad["cpa"] = safe_division(active_ad["spend"], active_ad["sales"]) if active_ad["sales"] > 0 else 0.0
 
     return results
 

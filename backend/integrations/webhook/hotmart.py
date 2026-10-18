@@ -1,4 +1,5 @@
 from typing import Any, Dict, Optional
+from datetime import datetime
 import uuid
 import logging
 import re
@@ -6,6 +7,41 @@ from integrations.webhook.schemas import StandardizedWebhookEvent
 from database.models.transaction import TransactionStatus, PaymentPlatform
 
 logger = logging.getLogger(__name__)
+
+def _parse_hotmart_date(val: Any) -> Optional[datetime]:
+    """Parseia datas e timestamps vindos da Hotmart para datetime no fuso de SP."""
+    if not val:
+        return None
+    try:
+        if isinstance(val, (int, float)) or (isinstance(val, str) and val.isdigit() and len(val) >= 10):
+            ts = float(val)
+            if ts > 1e11:  # milissegundos
+                ts /= 1000.0
+            import zoneinfo
+            sp_tz = zoneinfo.ZoneInfo("America/Sao_Paulo")
+            return datetime.fromtimestamp(ts, tz=sp_tz).replace(tzinfo=None)
+        
+        if isinstance(val, str):
+            clean = val.strip().replace("Z", "+00:00")
+            for fmt in (
+                "%Y-%m-%dT%H:%M:%S%z",
+                "%Y-%m-%dT%H:%M:%S.%f%z",
+                "%Y-%m-%d %H:%M:%S",
+                "%Y-%m-%dT%H:%M:%S",
+                "%Y-%m-%d",
+            ):
+                try:
+                    dt = datetime.strptime(clean, fmt)
+                    if dt.tzinfo:
+                        import zoneinfo
+                        sp_tz = zoneinfo.ZoneInfo("America/Sao_Paulo")
+                        return dt.astimezone(sp_tz).replace(tzinfo=None)
+                    return dt
+                except ValueError:
+                    pass
+    except Exception as e:
+        logger.warning(f"Erro ao parsear data da Hotmart '{val}': {e}")
+    return None
 
 def _map_hotmart_status(event_name: str, purchase_status: str) -> TransactionStatus:
     """
@@ -491,6 +527,31 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
             or (f"https://pay.hotmart.com/{prod_id}" if prod_id and prod_id != "hotmart_prod" else None)
         )
 
+        # Data original da compra na Hotmart (essencial para histórico real)
+        order_date_raw = (
+            purchase.get("order_date")
+            or purchase.get("approved_date")
+            or purchase.get("order_date_approved")
+            or data.get("order_date")
+            or data.get("approved_date")
+            or payload.get("order_date")
+            or payload.get("order_date_approved")
+            or payload.get("confirmation_purchase_date")
+            or payload.get("date")
+        )
+        parsed_order_date = _parse_hotmart_date(order_date_raw)
+
+        # Detecção de item que é Order Bump (e não produto principal)
+        is_order_bump = bool(
+            purchase.get("is_order_bump")
+            or purchase.get("order_bump") is True
+            or data.get("is_order_bump")
+            or payload.get("is_order_bump")
+            or str(purchase.get("item_type") or "").upper() == "ORDER_BUMP"
+            or str(data.get("item_type") or "").upper() == "ORDER_BUMP"
+            or any(k in prod_name.lower() for k in ["order bump", "bump", "multimetro", "guasti & anomalie", "diametri & portate", "sistemi di scarico", "protocollo operativo"])
+        )
+
         return StandardizedWebhookEvent(
             external_id=str(external_id),
             platform=PaymentPlatform.HOTMART,
@@ -502,6 +563,7 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
             product_external_id=prod_id,
             product_name=prod_name,
             product_price=price_val if price_val > 0 else amount,
+            is_order_bump=is_order_bump,
             customer_email=email,
             customer_name=name,
             customer_cpf=cpf,
@@ -513,6 +575,7 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
             utm_content=utm_content,
             utm_term=utm_term,
             src=src,
+            order_date=parsed_order_date,
             checkout_url=checkout_url_val,
             order_bumps=order_bumps
         )

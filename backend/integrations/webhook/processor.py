@@ -94,13 +94,15 @@ def process_webhook_event(db: Session, event: StandardizedWebhookEvent):
             existing_tx.country = event.customer_country
         if event.order_bumps and not existing_tx.order_bumps:
             existing_tx.order_bumps = event.order_bumps
+        if event.order_date and existing_tx.created_at != event.order_date:
+            existing_tx.created_at = event.order_date
 
         existing_tx.status = event.status
         
         if is_newly_approved:
             customer.total_spent += existing_tx.amount
             customer.total_orders += 1
-            customer.last_purchase_at = get_saopaulo_time()
+            customer.last_purchase_at = event.order_date or get_saopaulo_time()
             if not customer.first_purchase_at:
                 customer.first_purchase_at = customer.last_purchase_at
             mark_recovery_as_recovered(db, event.customer_email, event.product_name, event.src)
@@ -140,10 +142,11 @@ def process_webhook_event(db: Session, event: StandardizedWebhookEvent):
     # -------------------------------------------------------------
     # 3. TRANSAÇÃO NOVA
     # -------------------------------------------------------------
+    tx_time = event.order_date or get_saopaulo_time()
     if event.status == TransactionStatus.APPROVED:
         customer.total_spent += event.amount
         customer.total_orders += 1
-        customer.last_purchase_at = get_saopaulo_time()
+        customer.last_purchase_at = tx_time
         if not customer.first_purchase_at:
             customer.first_purchase_at = customer.last_purchase_at
 
@@ -187,6 +190,7 @@ def process_webhook_event(db: Session, event: StandardizedWebhookEvent):
         checkout_url=event.checkout_url,
         order_bumps=event.order_bumps,
         country=tx_country,
+        created_at=tx_time,
     )
     db.add(new_tx)
     

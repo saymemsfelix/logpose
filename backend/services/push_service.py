@@ -104,13 +104,24 @@ def send_sale_push_notification(db: Session, event: StandardizedWebhookEvent) ->
         logger.info("Nenhum dispositivo cadastrado para Web Push no momento.")
         return 0
 
+    # Não disparar notificação push se a compra for antiga (ex: sincronização de histórico / webhooks passados)
+    if getattr(event, "order_date", None):
+        try:
+            from database.core.timezone import now_sp
+            diff = (now_sp() - event.order_date).total_seconds()
+            if diff > 7200:  # Mais de 2 horas atrás
+                logger.info(f"Ignorando push notification para venda histórica ({event.external_id}, data: {event.order_date})")
+                return 0
+        except Exception:
+            pass
+
     # 1. Formatação Inteligente de Moeda e País
     country = getattr(event, "customer_country", "") or getattr(event, "country", "") or "BR"
     p_name = (event.product_name or "").lower()
     amount_brl = float(event.amount) if event.amount is not None else 0.0
 
     if not country or country == "BR":
-        if any(k in p_name for k in ["diagnosi", "visive", "hardware", "software", "pinout", "multimetro", "solda", "saldatura", "tornitura", "fresatura"]):
+        if any(k in p_name for k in ["cartongesso", "carto", "gesso", "diagnosi", "visive", "hardware", "software", "pinout", "multimetro", "solda", "saldatura", "tornitura", "fresatura", "idraulic", "scarico"]):
             country = "IT"
 
     flag = get_country_flag(country)
@@ -132,15 +143,24 @@ def send_sale_push_notification(db: Session, event: StandardizedWebhookEvent) ->
         title_amount = formatted_brl
         body_amount = formatted_brl
 
-    # 2. Posição no Funil
-    if any(k in p_name for k in ["upsell", "vip", "avanzat", "plus", "completo"]):
+    # 2. Posição no Funil (Identificação Precisa)
+    is_bump = getattr(event, "is_order_bump", False) or any(k in p_name for k in [
+        "order bump", "bump", "multimetro", "guasti & anomalie", "diametri & portate", "sistemi di scarico", "protocollo operativo"
+    ])
+
+    if is_bump:
+        badge = "⚡ Order Bump"
+    elif any(k in p_name for k in ["upsell", "vip", "avanzat", "plus", "completo"]):
         badge = "🚀 Upsell VIP"
     elif any(k in p_name for k in ["downsell", "base", "essenziale", "starter"]):
         badge = "💎 Downsell"
-    elif getattr(event, "order_bumps", None) or any(k in p_name for k in ["bump", "+"]):
-        badge = "⚡ Order Bump"
     else:
         badge = "🛒 Front-End"
+
+    # Se o produto principal teve order bumps inclusos na compra
+    bump_tag = ""
+    if not is_bump and getattr(event, "order_bumps", None) and isinstance(event.order_bumps, list) and len(event.order_bumps) > 0:
+        bump_tag = " (+ Bump)"
 
     # 3. Criativo e Produto
     raw_creative = event.utm_content or event.utm_campaign or event.src or "Anúncio Direto"
@@ -181,7 +201,7 @@ def send_sale_push_notification(db: Session, event: StandardizedWebhookEvent) ->
     # 5. Monta o Payload do Pop-up Nativo do Celular
     payload = {
         "title": f"💰 Venda Aprovada: {title_amount}",
-        "body": f"{flag} {badge} • {product_name} • {body_amount}{today_stats_suffix}\n🎨 Criativo: {creative}",
+        "body": f"{flag} {badge}{bump_tag} • {product_name} • {body_amount}{today_stats_suffix}\n🎨 Criativo: {creative}",
         "icon": "/icons/pwa-192.png",
         "badge": "/icons/pwa-192.png",
         "tag": f"ninja-sale-{event.external_id}",

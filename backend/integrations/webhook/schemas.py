@@ -1,10 +1,11 @@
 from typing import Optional
+from datetime import datetime
 from pydantic import BaseModel, EmailStr
 from database.models.transaction import TransactionStatus, PaymentPlatform
 
 class StandardizedWebhookEvent(BaseModel):
     """
-    Schema padronizado que toda integração de webhook (PayT, Kiwify)
+    Schema padronizado que toda integração de webhook (PayT, Kiwify, Hotmart)
     deve retornar após parsear o payload bruto recebido da plataforma.
     """
     external_id: str
@@ -20,6 +21,7 @@ class StandardizedWebhookEvent(BaseModel):
     product_external_id: str
     product_name: str
     product_price: float = 0.0  # Preço do produto (diferente de amount/comissão)
+    is_order_bump: bool = False
     
     # Dados do cliente
     customer_external_id: Optional[str] = None
@@ -38,6 +40,7 @@ class StandardizedWebhookEvent(BaseModel):
     src: Optional[str] = None
 
     # Detalhes complementares
+    order_date: Optional[datetime] = None
     checkout_url: Optional[str] = None
     order_bumps: list[dict] = []
 

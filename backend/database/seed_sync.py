@@ -5,7 +5,7 @@ Total: R$ 588,94 | Lucro: R$ 418,18 | Margem: 71,01% | ROAS: 3.45x | Gastos: R$ 
 12 Vendas Aprovadas (6 principais + 6 bumps)
 """
 import logging
-from datetime import timedelta
+from datetime import timedelta, datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
@@ -49,13 +49,35 @@ def seed_sync_data(engine):
             # As transações reais entram 100% via Webhook ou importação CSV da Hotmart.
 
 
-            # 7. Corrigir qualquer transação remanescente de produto italiano
+            # 7. Sincronizar datas reais e campanhas das transações Hotmart
+            known_hotmart_dates = {
+                "HP3880108633": (datetime(2026, 10, 18, 4, 42, 7), "BIDCAP-CARTOGESSO|120249920858860390", "IT"),
+                "HP2449571184": (datetime(2026, 10, 14, 22, 24, 25), None, "IT"),
+                "HP2444954197": (datetime(2026, 10, 14, 22, 24, 21), None, "IT"),
+                "HP2464191642": (datetime(2026, 10, 14, 22, 24, 17), None, "IT"),
+                "HP2456881413": (datetime(2026, 10, 14, 22, 24, 13), None, "IT"),
+                "HP2465345889": (datetime(2026, 10, 14, 22, 24, 8), None, "IT"),
+                "HP0330641855": (datetime(2026, 10, 12, 19, 27, 35), "BIDCAP-120DiagnosiVisiveHardwareeSoftware|120249917808390390", "IT"),
+                "HP0725196133": (datetime(2026, 10, 10, 5, 33, 48), None, "IT"),
+                "HP2915202196": (datetime(2026, 10, 10, 4, 41, 58), None, "IT"),
+            }
+
+            for ext_id, (real_dt, camp_val, c_code) in known_hotmart_dates.items():
+                tx_item = db.query(Transaction).filter(Transaction.external_id == ext_id).first()
+                if tx_item:
+                    tx_item.created_at = real_dt
+                    if camp_val and not tx_item.utm_campaign:
+                        tx_item.utm_campaign = camp_val
+                    if c_code:
+                        tx_item.country = c_code
+
             all_txs = db.query(Transaction).all()
             for t in all_txs:
                 pn = (t.product_name or "").lower()
-                if any(k in pn for k in ["diagnosi", "visive", "hardware", "software", "pinout", "multimetro", "ecografici", "interpretazione"]):
+                if any(k in pn for k in ["cartongesso", "carto", "gesso", "diagnosi", "visive", "hardware", "software", "pinout", "multimetro", "ecografici", "interpretazione", "idraulic", "scarico"]):
                     if t.country not in ("CH", "IT"):
                         t.country = "IT"
+            db.commit()
 
             # 8. Sincronizar Recuperações de Vendas (Recoveries) para os 4 idiomas solicitados:
             # 🇮🇹 IT (Cosimo Franco, Gianluca Rizzo)
