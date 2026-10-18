@@ -124,10 +124,58 @@ async def dashboard_overview(
     meta_summary, meta_error = await fetch_meta_account_summary(db, ds, de, account_id=account_id)
     meta_campaigns = await fetch_meta_campaigns_for_dashboard(db, ds, de, account_id=account_id)
 
-    # Sincronização inteligente em tempo real (estilo UTMify):
-    # A API da Meta no nível conta (account insights) costuma demorar horas para consolidar no dia de hoje.
-    # Se a soma das campanhas ativas for maior, usamos os dados mais recentes das campanhas!
-    if meta_campaigns:
+    # Identificar se há filtro ativo por produto ou upsell
+    target_product_names = []
+    if upsell_id:
+        u_name = get_upsell_name_for_filter(db, upsell_id)
+        if u_name:
+            target_product_names.append(u_name)
+    elif product_id:
+        target_product_names = get_product_names_for_filter(db, product_id)
+
+    # Se filtrou por produto, filtra rigorosamente as campanhas da Meta Ads correspondentes
+    if target_product_names:
+        from api.campaigns.merge import are_products_compatible
+        tx_rows = base.all()
+        tx_camp_names = {t.utm_campaign.lower().strip() for t in tx_rows if t.utm_campaign}
+        tx_camp_ids = {str(t.src).strip() for t in tx_rows if t.src}
+
+        filtered_camps = []
+        for c in (meta_campaigns or []):
+            c_name = c.name or ""
+            c_id = str(c.id or "")
+            is_match = False
+            for p_name in target_product_names:
+                if are_products_compatible(c_name, p_name):
+                    is_match = True
+                    break
+            if not is_match and c_name.lower().strip() in tx_camp_names:
+                is_match = True
+            if not is_match and c_id and c_id in tx_camp_ids:
+                is_match = True
+
+            if is_match:
+                filtered_camps.append(c)
+
+        meta_campaigns = filtered_camps
+
+        camp_spend = round(sum(float(c.spend or 0.0) for c in meta_campaigns), 2)
+        camp_clicks = sum(int(c.clicks or 0) for c in meta_campaigns)
+        camp_impr = sum(int(c.impressions or 0) for c in meta_campaigns)
+        camp_lpv = sum(int(c.landing_page_views or 0) for c in meta_campaigns)
+        camp_ic = sum(int(c.initiate_checkout or 0) for c in meta_campaigns)
+
+        meta_summary = AccountInsightsSummary(
+            spend=camp_spend,
+            clicks=camp_clicks,
+            impressions=camp_impr,
+            landing_page_views=camp_lpv,
+            initiate_checkout=camp_ic,
+        )
+    elif meta_campaigns:
+        # Sincronização inteligente em tempo real (estilo UTMify) para Todos os produtos:
+        # A API da Meta no nível conta costuma demorar horas para consolidar no dia de hoje.
+        # Se a soma das campanhas ativas for maior, usamos os dados mais recentes das campanhas!
         camp_spend = round(sum(float(c.spend or 0.0) for c in meta_campaigns), 2)
         camp_clicks = sum(int(c.clicks or 0) for c in meta_campaigns)
         camp_impr = sum(int(c.impressions or 0) for c in meta_campaigns)
@@ -154,7 +202,8 @@ async def dashboard_overview(
             if camp_ic > 0:
                 meta_summary.initiate_checkout = camp_ic
 
-        # Recalcular métricas derivadas para garantir consistência matemática perfeita
+    # Recalcular métricas derivadas para garantir consistência matemática perfeita
+    if meta_summary:
         if meta_summary.spend > 0:
             if meta_summary.clicks > 0:
                 meta_summary.cpc = round(meta_summary.spend / meta_summary.clicks, 2)
@@ -165,9 +214,13 @@ async def dashboard_overview(
                 meta_summary.cpv = round(meta_summary.spend / meta_summary.landing_page_views, 2)
             if meta_summary.initiate_checkout > 0:
                 meta_summary.cost_per_ic = round(meta_summary.spend / meta_summary.initiate_checkout, 2)
+        if meta_summary.clicks > 0 and meta_summary.landing_page_views > 0:
+            meta_summary.connect_rate = round((meta_summary.landing_page_views / meta_summary.clicks) * 100, 2)
+        if meta_summary.landing_page_views > 0 and meta_summary.initiate_checkout > 0:
+            meta_summary.checkout_rate = round((meta_summary.initiate_checkout / meta_summary.landing_page_views) * 100, 2)
 
-    # Se a Meta não retornou spend (>0), buscar da tabela daily_ad_spends para o período
-    if not meta_summary or meta_summary.spend == 0.0:
+    # Se a Meta não retornou spend (>0) e não é filtro de produto específico com 0 gastos, buscar da tabela daily_ad_spends para o período
+    if not target_product_names and (not meta_summary or meta_summary.spend == 0.0):
         d_start, d_end = _parse_date_range(preset, start_date, end_date)
         manual_q = db.query(DailyAdSpend)
         if d_start and d_end:

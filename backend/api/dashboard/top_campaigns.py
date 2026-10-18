@@ -13,7 +13,7 @@ from api.campaigns.helpers import parse_utm_campaign, safe_division
 def build_top_campaigns(
     base,
     meta_campaigns: list[CampaignInsights],
-    limit: int = 3,
+    limit: int = 20,
 ) -> list[dict]:
     """
     Monta top campanhas cruzando Meta Ads com transações.
