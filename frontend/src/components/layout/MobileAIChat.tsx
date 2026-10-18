@@ -143,6 +143,7 @@ export function MobileAIChat({ isOpen, onClose }: MobileAIChatProps) {
         isLoading={isLoading}
         messagesEndRef={messagesEndRef}
         onExecuteAction={handleExecuteAction}
+        onSend={handleSend}
       />
 
       {/* Page Data Toggle + Input */}

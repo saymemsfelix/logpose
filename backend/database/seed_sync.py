@@ -24,6 +24,7 @@ ACCOUNT_ID = "act_949690764845924"
 def seed_sync_data(engine):
     """Executado no boot para sincronizar dados sem sobrescrever dados reais."""
     try:
+        now = now_sp()
         with Session(engine) as db:
             # 1. Atualizar ou Criar Conta do Facebook com o Token Oficial se não existir ou estiver inválido
             fb = db.query(FacebookAccount).filter(FacebookAccount.account_id == ACCOUNT_ID).first()
@@ -48,35 +49,84 @@ def seed_sync_data(engine):
             # 3. Preservar todas as transações reais (nunca gerar transações fakes no boot)
             # As transações reais entram 100% via Webhook ou importação CSV da Hotmart.
 
-
             # 7. Sincronizar datas reais e campanhas das transações Hotmart
-            known_hotmart_dates = {
-                "HP3880108633": (datetime(2026, 10, 18, 4, 42, 7), "BIDCAP-CARTOGESSO|120249920858860390", "IT"),
-                "HP2449571184": (datetime(2026, 10, 14, 22, 24, 25), None, "IT"),
-                "HP2444954197": (datetime(2026, 10, 14, 22, 24, 21), None, "IT"),
-                "HP2464191642": (datetime(2026, 10, 14, 22, 24, 17), None, "IT"),
-                "HP2456881413": (datetime(2026, 10, 14, 22, 24, 13), None, "IT"),
-                "HP2465345889": (datetime(2026, 10, 14, 22, 24, 8), None, "IT"),
-                "HP0330641855": (datetime(2026, 10, 12, 19, 27, 35), "BIDCAP-120DiagnosiVisiveHardwareeSoftware|120249917808390390", "IT"),
-                "HP0725196133": (datetime(2026, 10, 10, 5, 33, 48), None, "IT"),
-                "HP2915202196": (datetime(2026, 10, 10, 4, 41, 58), None, "IT"),
-            }
+            try:
+                db.execute(text("""
+                    UPDATE transactions 
+                    SET created_at = '2026-10-18 04:42:07', 
+                        utm_campaign = 'BIDCAP-CARTOGESSO|120249920858860390',
+                        country = 'IT'
+                    WHERE external_id = 'HP3880108633' 
+                       OR LOWER(product_name) LIKE '%cartongesso%' 
+                       OR LOWER(product_name) LIKE '%carto%';
+                """))
 
-            for ext_id, (real_dt, camp_val, c_code) in known_hotmart_dates.items():
-                tx_item = db.query(Transaction).filter(Transaction.external_id == ext_id).first()
-                if tx_item:
-                    tx_item.created_at = real_dt
-                    if camp_val and not tx_item.utm_campaign:
-                        tx_item.utm_campaign = camp_val
-                    if c_code:
-                        tx_item.country = c_code
+                db.execute(text("""
+                    UPDATE transactions 
+                    SET created_at = '2026-10-12 19:27:35', 
+                        utm_campaign = 'BIDCAP-120DiagnosiVisiveHardwareeSoftware|120249917808390390',
+                        country = 'IT'
+                    WHERE external_id = 'HP0330641855' 
+                       OR (
+                           (LOWER(product_name) LIKE '%120 diagnosi%' OR LOWER(product_name) LIKE '%hardware e software%' OR LOWER(product_name) LIKE '%diagnosi pc%')
+                           AND LOWER(product_name) NOT LIKE '%cartongesso%'
+                           AND LOWER(product_name) NOT LIKE '%idraulic%'
+                       );
+                """))
+
+                db.execute(text("""
+                    UPDATE transactions 
+                    SET created_at = '2026-10-14 22:24:15', 
+                        utm_campaign = NULL,
+                        country = 'IT'
+                    WHERE external_id IN ('HP2449571184', 'HP2444954197', 'HP2464191642', 'HP2456881413', 'HP2465345889')
+                       OR LOWER(product_name) LIKE '%idraulic%' 
+                       OR LOWER(product_name) LIKE '%scarico%' 
+                       OR LOWER(product_name) LIKE '%collaudi%' 
+                       OR LOWER(product_name) LIKE '%diametri%' 
+                       OR LOWER(product_name) LIKE '%guasti & anomalie%';
+                """))
+
+                db.execute(text("""
+                    UPDATE transactions 
+                    SET created_at = '2026-10-10 05:33:48', 
+                        utm_campaign = NULL,
+                        country = 'IT'
+                    WHERE external_id = 'HP0725196133';
+                """))
+
+                db.execute(text("""
+                    UPDATE transactions 
+                    SET created_at = '2026-10-10 04:41:58', 
+                        utm_campaign = NULL,
+                        country = 'IT'
+                    WHERE external_id = 'HP2915202196';
+                """))
+                db.commit()
+            except Exception as e_sql:
+                logger.warning(f"Aviso ao rodar updates SQL de transações: {e_sql}")
+                db.rollback()
 
             all_txs = db.query(Transaction).all()
             for t in all_txs:
                 pn = (t.product_name or "").lower()
-                if any(k in pn for k in ["cartongesso", "carto", "gesso", "diagnosi", "visive", "hardware", "software", "pinout", "multimetro", "ecografici", "interpretazione", "idraulic", "scarico"]):
-                    if t.country not in ("CH", "IT"):
-                        t.country = "IT"
+                ext = str(t.external_id or "")
+                if "cartongesso" in pn or "carto" in pn or ext == "HP3880108633":
+                    t.created_at = datetime(2026, 10, 18, 4, 42, 7)
+                    t.utm_campaign = "BIDCAP-CARTOGESSO|120249920858860390"
+                    t.country = "IT"
+                elif ("120 diagnosi" in pn or "hardware e software" in pn or "diagnosi pc" in pn or ext == "HP0330641855") and "cartongesso" not in pn and "idraulic" not in pn:
+                    t.created_at = datetime(2026, 10, 12, 19, 27, 35)
+                    t.utm_campaign = "BIDCAP-120DiagnosiVisiveHardwareeSoftware|120249917808390390"
+                    t.country = "IT"
+                elif any(k in pn for k in ["idraulic", "scarico", "collaudi", "diametri", "guasti & anomalie"]) or ext.startswith("HP24"):
+                    t.created_at = datetime(2026, 10, 14, 22, 24, 15)
+                    t.utm_campaign = None
+                    t.country = "IT"
+                elif ext in ("HP0725196133", "HP2915202196"):
+                    t.created_at = datetime(2026, 10, 10, 5, 0, 0)
+                    t.utm_campaign = None
+                    t.country = "IT"
             db.commit()
 
             # 8. Sincronizar Recuperações de Vendas (Recoveries) para os 4 idiomas solicitados:

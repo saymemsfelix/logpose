@@ -42,8 +42,8 @@ def _extract_tokens(s: str) -> set[str]:
 
 NICHES = [
     {"keys": ["cartongesso", "carto", "gesso", "drywall"]},
-    {"keys": ["diagnosi", "hardware", "software", "multimetro", "pinout", "scheda madre"]},
-    {"keys": ["idraulic", "idrosanitari", "scarico", "ventilazione", "tubi", "collaudi"]},
+    {"keys": ["hardware", "software", "scheda madre", "pc", "computador", "notebook", "multimetro", "elettronica"]},
+    {"keys": ["idraulic", "idrosanitari", "scarico", "ventilazione", "tubi", "collaudi", "pressio", "anomalie", "diametri", "portate", "perdite"]},
     {"keys": ["saldatura", "saldare", "saldatrice"]},
     {"keys": ["tornitura", "fresatura", "meccanica"]},
     {"keys": ["haccp", "alimentar"]},
@@ -188,6 +188,7 @@ def _match_transactions_advanced(
     grouped: dict,
     id_key: str,
     name_key: str,
+    campaign_name: Optional[str] = None,
 ) -> tuple[list[Transaction], int]:
     """
     Tenta match por:
@@ -195,13 +196,18 @@ def _match_transactions_advanced(
     2. Nome normalizado exato
     3. Substring (se o nome da UTM está contido no nome da campanha ou vice-versa)
     4. Sobreposição de tokens significativos
+    Blindagem Absoluta: descarta transações se o produto não for compatível com a campanha.
     """
     matched_ids = set()
     matched_txs = []
     matched_by_id = set()
+    check_camp_name = campaign_name or entity_name
 
     # 1. Match por ID
     for tx in grouped[id_key].get(str(entity_id), []):
+        p_name = getattr(tx, "product_name", "") or ""
+        if check_camp_name and not are_products_compatible(check_camp_name, p_name):
+            continue
         if tx.id not in matched_ids:
             matched_ids.add(tx.id)
             matched_txs.append(tx)
@@ -230,6 +236,9 @@ def _match_transactions_advanced(
 
         if is_match:
             for tx in tx_list:
+                p_name = getattr(tx, "product_name", "") or ""
+                if check_camp_name and not are_products_compatible(check_camp_name, p_name):
+                    continue
                 if tx.id not in matched_ids:
                     matched_ids.add(tx.id)
                     matched_txs.append(tx)
@@ -260,11 +269,11 @@ def merge_campaigns(
 
     for camp in meta_campaigns:
         txs, no_id_count = _match_transactions_advanced(
-            camp.id, camp.name, grouped, "campaign_id", "campaign_name",
+            camp.id, camp.name, grouped, "campaign_id", "campaign_name", campaign_name=camp.name,
         )
         camp_adsets = [a for a in meta_adsets if a.campaign_id == camp.id]
         adsets_merged = _merge_adsets_for_campaign(
-            camp_adsets, meta_ads, grouped,
+            camp_adsets, meta_ads, grouped, campaign_name=camp.name,
         )
 
         # UNIR as transações dos adsets e anúncios filhos à campanha (Roll-up garantido)
@@ -385,15 +394,16 @@ def _merge_adsets_for_campaign(
     meta_adsets: list[AdSetInsights],
     meta_ads: list[AdInsights],
     grouped: dict,
+    campaign_name: Optional[str] = None,
 ) -> list[dict[str, Any]]:
     """Merge adsets level com roll-up de anúncios filhos."""
     results = []
     for adset in meta_adsets:
         txs, no_id_count = _match_transactions_advanced(
-            adset.id, adset.name, grouped, "adset_id", "adset_name",
+            adset.id, adset.name, grouped, "adset_id", "adset_name", campaign_name=campaign_name,
         )
         adset_ads = [a for a in meta_ads if a.ad_set_id == adset.id]
-        ads_merged = merge_ads(adset_ads, grouped)
+        ads_merged = merge_ads(adset_ads, grouped, campaign_name=campaign_name)
 
         # UNIR as transações dos anúncios filhos ao adset
         adset_tx_ids = {t.id for t in txs}
@@ -465,12 +475,13 @@ def _merge_adsets_for_campaign(
 def merge_ads(
     meta_ads: list[AdInsights],
     grouped: dict,
+    campaign_name: Optional[str] = None,
 ) -> list[dict[str, Any]]:
     """Merge ads level."""
     results = []
     for ad in meta_ads:
         txs, no_id_count = _match_transactions_advanced(
-            ad.id, ad.name, grouped, "ad_id", "ad_name",
+            ad.id, ad.name, grouped, "ad_id", "ad_name", campaign_name=campaign_name,
         )
         sales_data = _calc_sales_metrics(txs)
 

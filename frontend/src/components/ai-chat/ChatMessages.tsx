@@ -58,9 +58,10 @@ export function ChatMessages({ messages, isLoading, messagesEndRef, onExecuteAct
         <div className="w-full space-y-1.5 mt-2">
           {QUICK_ACTIONS.map((q) => (
             <button
+              type="button"
               key={q.text}
               onClick={() => onSend?.(q.text)}
-              className="w-full text-left text-[11px] text-muted-foreground bg-muted/50 rounded-lg px-3 py-2.5 cursor-pointer hover:bg-primary/10 hover:text-foreground transition-all duration-150 border border-transparent hover:border-primary/20"
+              className="w-full text-left text-[11px] text-muted-foreground bg-muted/50 rounded-lg px-3 py-2.5 cursor-pointer hover:bg-primary/10 active:bg-primary/15 active:scale-[0.98] hover:text-foreground transition-all duration-150 border border-transparent hover:border-primary/20 select-none"
             >
               {q.emoji} {q.text}
             </button>
