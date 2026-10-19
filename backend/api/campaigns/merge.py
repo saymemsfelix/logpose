@@ -22,8 +22,9 @@ def _normalize_key(s: str) -> str:
     # Remove acentos
     nfkd = unicodedata.normalize("NFKD", s)
     no_accents = "".join([c for c in nfkd if not unicodedata.combining(c)])
-    # Remove qualquer caracter não alfanumérico
-    return re.sub(r"[^a-zA-Z0-9]", "", no_accents.lower())
+    clean = re.sub(r"[^a-zA-Z0-9]", "", no_accents.lower())
+    # Normaliza ad01 -> ad1, ad02 -> ad2, etc.
+    return re.sub(r"^(ad)0+(\d+)$", r"\1\2", clean)
 
 
 def _extract_tokens(s: str) -> set[str]:
@@ -151,6 +152,9 @@ def _group_transactions_by_level(
                 ad_id = clean_src
                 if clean_src in valid_camp_ids:
                     by_campaign_id[clean_src].append(tx)
+            else:
+                if not ad_name:
+                    ad_name = clean_src
 
         if ad_id:
             by_ad_id[ad_id].append(tx)
@@ -393,6 +397,40 @@ def merge_campaigns(
                     active_adset["profit"] = round(active_adset["revenue"] - active_adset["spend"], 2)
                     active_adset["roas"] = safe_division(active_adset["revenue"], active_adset["spend"])
                     active_adset["cpa"] = safe_division(active_adset["spend"], active_adset["sales"]) if active_adset["sales"] > 0 else 0.0
+
+                    # Atribuição correspondente ao nível de Anúncio (AD)
+                    if active_adset.get("ads"):
+                        chosen_ad = None
+                        if getattr(tx, "utm_content", None):
+                            c_name, c_id = parse_utm_content(tx.utm_content)
+                            for ad_item in active_adset["ads"]:
+                                if (c_id and str(ad_item.get("id")) == str(c_id)) or \
+                                   (c_name and _normalize_key(ad_item.get("name") or "") == _normalize_key(c_name)):
+                                    chosen_ad = ad_item
+                                    break
+                        if not chosen_ad and getattr(tx, "src", None):
+                            s_clean = str(tx.src).strip()
+                            for ad_item in active_adset["ads"]:
+                                if str(ad_item.get("id")) == s_clean or \
+                                   _normalize_key(ad_item.get("name") or "") == _normalize_key(s_clean):
+                                    chosen_ad = ad_item
+                                    break
+                        if not chosen_ad:
+                            # Prioriza o anúncio com maior gasto e tráfego ativo
+                            chosen_ad = max(
+                                active_adset["ads"],
+                                key=lambda a: (float(a.get("spend") or 0.0), int(a.get("landing_page_views") or 0), int(a.get("clicks") or 0)),
+                                default=active_adset["ads"][0]
+                            )
+
+                        chosen_ad["sales"] += 1
+                        chosen_ad["revenue"] = round(chosen_ad["revenue"] + float(tx.amount or 0.0), 2)
+                        chosen_ad["profit"] = round(chosen_ad["revenue"] - chosen_ad["spend"], 2)
+                        chosen_ad["roas"] = safe_division(chosen_ad["revenue"], chosen_ad["spend"])
+                        chosen_ad["cpa"] = safe_division(chosen_ad["spend"], chosen_ad["sales"]) if chosen_ad["sales"] > 0 else 0.0
+                        chosen_ad["no_id_sales"] = chosen_ad.get("no_id_sales", 0) + 1
+                        if "_txs" in chosen_ad:
+                            chosen_ad["_txs"].append(tx)
 
     return results
 
