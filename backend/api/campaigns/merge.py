@@ -53,25 +53,26 @@ NICHES = [
 
 
 def are_products_compatible(campaign_name: str, product_name: str) -> bool:
-    """Verifica se a campanha e o produto são do mesmo nicho para evitar contaminação cruzada."""
+    """
+    Verifica se a campanha e o produto são do mesmo nicho para evitar contaminação cruzada.
+    Só bloqueia se AMBOS tiverem nichos declarados e conflitantes (ex: campanha de drywall recebendo produto de mecânica).
+    Se a campanha tiver nome genérico (ex: 'CBO - ABERTO', 'ADV+ - TESTE', 'Escala'), NÃO bloqueia.
+    """
     if not campaign_name or not product_name:
-        return False
+        return True
     c_low = campaign_name.lower()
     p_low = product_name.lower()
 
-    for niche in NICHES:
-        in_camp = any(k in c_low for k in niche["keys"])
-        in_prod = any(k in p_low for k in niche["keys"])
-        if in_camp and in_prod:
-            return True
-        if in_camp and not in_prod:
-            return False
-        if in_prod and not in_camp:
-            return False
+    camp_niches = [i for i, n in enumerate(NICHES) if any(k in c_low for k in n["keys"])]
+    prod_niches = [i for i, n in enumerate(NICHES) if any(k in p_low for k in n["keys"])]
 
-    c_tokens = _extract_tokens(campaign_name)
-    p_tokens = _extract_tokens(product_name)
-    return bool(c_tokens.intersection(p_tokens))
+    # Se ambos têm nichos identificados e não compartilham nenhum nicho
+    if camp_niches and prod_niches:
+        if not any(cn in prod_niches for cn in camp_niches):
+            return False
+        return True
+
+    return True
 
 
 def _group_transactions_by_level(
@@ -204,11 +205,8 @@ def _match_transactions_advanced(
     matched_by_id = set()
     check_camp_name = campaign_name or entity_name
 
-    # 1. Match por ID
+    # 1. Match por ID (100% preciso via Meta Ads ID)
     for tx in grouped[id_key].get(str(entity_id), []):
-        p_name = getattr(tx, "product_name", "") or ""
-        if check_camp_name and not are_products_compatible(check_camp_name, p_name):
-            continue
         if tx.id not in matched_ids:
             matched_ids.add(tx.id)
             matched_txs.append(tx)
@@ -297,14 +295,21 @@ def merge_campaigns(
         is_cbo = camp.budget > 0
         budget_type = "CBO" if is_cbo else "ABO"
 
+        # Roll-up de métricas dos adsets/anúncios filhos para a campanha
+        sum_child_ic = sum(int(as_.get("initiate_checkout") or 0) for as_ in adsets_merged)
+        effective_camp_ic = max(camp.initiate_checkout, sum_child_ic)
+
+        sum_child_lpv = sum(int(as_.get("landing_page_views") or 0) for as_ in adsets_merged)
+        effective_camp_lpv = max(camp.landing_page_views, sum_child_lpv)
+
         # CPC e CTR com fallbacks seguros
         cpc = camp.cpc or (round(camp.spend / camp.clicks, 2) if camp.clicks > 0 and camp.spend > 0 else 0.0)
         ctr = camp.ctr or (round(camp.clicks / camp.impressions * 100, 2) if camp.impressions > 0 and camp.clicks > 0 else 0.0)
         cpm = getattr(camp, "cpm", 0.0) or (round((camp.spend / camp.impressions) * 1000, 2) if camp.impressions > 0 and camp.spend > 0 else 0.0)
-        cpv = getattr(camp, "cpv", 0.0) or (round(camp.spend / camp.landing_page_views, 2) if camp.landing_page_views > 0 and camp.spend > 0 else 0.0)
-        cost_per_ic = getattr(camp, "cost_per_ic", 0.0) or (round(camp.spend / camp.initiate_checkout, 2) if camp.initiate_checkout > 0 and camp.spend > 0 else 0.0)
-        checkout_rate = getattr(camp, "checkout_rate", 0.0) or (round((camp.initiate_checkout / camp.landing_page_views) * 100, 2) if camp.landing_page_views > 0 else 0.0)
-        checkout_to_sale_rate = round((sales_data["sales"] / camp.initiate_checkout) * 100, 2) if camp.initiate_checkout > 0 else 0.0
+        cpv = getattr(camp, "cpv", 0.0) or (round(camp.spend / effective_camp_lpv, 2) if effective_camp_lpv > 0 and camp.spend > 0 else 0.0)
+        cost_per_ic = getattr(camp, "cost_per_ic", 0.0) or (round(camp.spend / effective_camp_ic, 2) if effective_camp_ic > 0 and camp.spend > 0 else 0.0)
+        checkout_rate = getattr(camp, "checkout_rate", 0.0) or (round((effective_camp_ic / effective_camp_lpv) * 100, 2) if effective_camp_lpv > 0 else 0.0)
+        checkout_to_sale_rate = round((sales_data["sales"] / effective_camp_ic) * 100, 2) if effective_camp_ic > 0 else 0.0
         conversion_rate = round((sales_data["sales"] / camp.clicks) * 100, 2) if camp.clicks > 0 else 0.0
 
         results.append({
@@ -321,9 +326,9 @@ def merge_campaigns(
             "cpc": cpc,
             "cpm": cpm,
             "ctr": ctr,
-            "landing_page_views": camp.landing_page_views,
+            "landing_page_views": effective_camp_lpv,
             "cpv": cpv,
-            "initiate_checkout": camp.initiate_checkout,
+            "initiate_checkout": effective_camp_ic,
             "cost_per_ic": cost_per_ic,
             "connect_rate": camp.connect_rate,
             "checkout_rate": checkout_rate,
@@ -420,13 +425,20 @@ def _merge_adsets_for_campaign(
         roas = safe_division(sales_data["revenue"], adset.spend)
         cpa = safe_division(adset.spend, sales_data["sales"]) if sales_data["sales"] > 0 else 0.0
 
+        # Roll-up de IC e LPV dos anúncios para o adset
+        sum_child_ic = sum(int(a.get("initiate_checkout") or 0) for a in ads_merged)
+        effective_adset_ic = max(adset.initiate_checkout, sum_child_ic)
+
+        sum_child_lpv = sum(int(a.get("landing_page_views") or 0) for a in ads_merged)
+        effective_adset_lpv = max(adset.landing_page_views, sum_child_lpv)
+
         cpc = adset.cpc or (round(adset.spend / adset.clicks, 2) if adset.clicks > 0 and adset.spend > 0 else 0.0)
         ctr = adset.ctr or (round(adset.clicks / adset.impressions * 100, 2) if adset.impressions > 0 and adset.clicks > 0 else 0.0)
         cpm = getattr(adset, "cpm", 0.0) or (round((adset.spend / adset.impressions) * 1000, 2) if adset.impressions > 0 and adset.spend > 0 else 0.0)
-        cpv = getattr(adset, "cpv", 0.0) or (round(adset.spend / adset.landing_page_views, 2) if adset.landing_page_views > 0 and adset.spend > 0 else 0.0)
-        cost_per_ic = getattr(adset, "cost_per_ic", 0.0) or (round(adset.spend / adset.initiate_checkout, 2) if adset.initiate_checkout > 0 and adset.spend > 0 else 0.0)
-        checkout_rate = getattr(adset, "checkout_rate", 0.0) or (round((adset.initiate_checkout / adset.landing_page_views) * 100, 2) if adset.landing_page_views > 0 else 0.0)
-        checkout_to_sale_rate = round((sales_data["sales"] / adset.initiate_checkout) * 100, 2) if adset.initiate_checkout > 0 else 0.0
+        cpv = getattr(adset, "cpv", 0.0) or (round(adset.spend / effective_adset_lpv, 2) if effective_adset_lpv > 0 and adset.spend > 0 else 0.0)
+        cost_per_ic = getattr(adset, "cost_per_ic", 0.0) or (round(adset.spend / effective_adset_ic, 2) if effective_adset_ic > 0 and adset.spend > 0 else 0.0)
+        checkout_rate = getattr(adset, "checkout_rate", 0.0) or (round((effective_adset_ic / effective_adset_lpv) * 100, 2) if effective_adset_lpv > 0 else 0.0)
+        checkout_to_sale_rate = round((sales_data["sales"] / effective_adset_ic) * 100, 2) if effective_adset_ic > 0 else 0.0
         conversion_rate = round((sales_data["sales"] / adset.clicks) * 100, 2) if adset.clicks > 0 else 0.0
 
         results.append({
@@ -443,9 +455,9 @@ def _merge_adsets_for_campaign(
             "cpc": cpc,
             "cpm": cpm,
             "ctr": ctr,
-            "landing_page_views": adset.landing_page_views,
+            "landing_page_views": effective_adset_lpv,
             "cpv": cpv,
-            "initiate_checkout": adset.initiate_checkout,
+            "initiate_checkout": effective_adset_ic,
             "cost_per_ic": cost_per_ic,
             "connect_rate": adset.connect_rate,
             "checkout_rate": checkout_rate,

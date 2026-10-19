@@ -551,8 +551,8 @@ export async function getMockData(endpoint: string, _options?: any): Promise<any
 
   if (path === "/gemini/daily-report") {
     return {
-      spend_today: 1580,
-      response: `## 🌅 Relatório Diário — Ninja AI\n\n**Bom dia!** Aqui está o resumo de hoje:\n\n### 💰 Financeiro\n- **Faturamento:** R$ 4.890\n- **Gasto:** R$ 1.580\n- **Lucro estimado:** R$ 3.310\n- **ROAS do dia:** 3,09x\n\n### 🏆 Destaques\n1. **Mentoria Premium** — melhor ROAS do dia (4,1x) ✅\n2. **Lançamento VIP** — CPA de R$ 41 (abaixo da meta) ✅\n3. **Curso Marketing** — ROAS em queda (2,7x) ⚠️\n\n### 📌 Ações Recomendadas\n- Aumentar orçamento da **Mentoria Premium** em 20%\n- Revisar criativos do **Curso Marketing Digital**\n- Pausar conjunto "Broad 18-55" (ROAS 2,07x)\n\n> Quer que eu execute alguma dessas ações?`,
+      spend_today: 0,
+      response: `## 🌅 Relatório Operacional — Ninja AI\n\n**Resumo do Dia:**\n\n### 💰 Financeiro\n- **Status:** Operação Ativa\n- **Métricas:** Sincronização em tempo real ativada\n\n> Nenhuma ação corretiva crítica necessária no momento.`,
     };
   }
 

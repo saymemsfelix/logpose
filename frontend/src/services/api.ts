@@ -68,15 +68,6 @@ export async function apiRequest<T>(
         if (fallbackMock) return fallbackMock as T;
       }
 
-      // Se deu erro de servidor (>= 500) ou 404, tenta dados simulados de fallback
-      if (response.status >= 500 || response.status === 404) {
-        const fallbackMock = await getMockData(endpoint, options);
-        if (fallbackMock !== undefined) {
-          console.warn(`[Fallback Mock] Servindo dados simulados para ${endpoint} devido a HTTP ${response.status}`);
-          return fallbackMock as T;
-        }
-      }
-
       if (response.status === 401) {
         if (endpoint === "/login") {
           const error = await response.json().catch(() => ({ detail: "E-mail ou senha incorretos." }));
@@ -113,11 +104,11 @@ export async function apiRequest<T>(
 
     return response.json();
   } catch (err: any) {
-    // Se a requisição falhar na rede (offline, servidor desligado, etc.), usa mock de fallback!
-    const fallbackMock = await getMockData(endpoint, options);
-    if (fallbackMock !== undefined) {
-      console.warn(`[Network Fallback Mock] Servindo dados simulados para ${endpoint} após falha de conexão:`, err?.message);
-      return fallbackMock as T;
+    if (isMock) {
+      const fallbackMock = await getMockData(endpoint, options);
+      if (fallbackMock !== undefined) {
+        return fallbackMock as T;
+      }
     }
     throw err;
   }

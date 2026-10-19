@@ -4,6 +4,7 @@ import {
   getCache,
   setCache,
   invalidateCache,
+  isCacheStale,
 } from "@/lib/queryCache";
 
 interface UseCachedQueryOptions<T> {
@@ -83,7 +84,12 @@ export function useCachedQuery<T>(
           setData(hit);
           setIsLoading(false);
           setError(null);
-          return;
+          // Stale-While-Revalidate: Se o cache tem menos de 15 segundos, retorna direto.
+          // Se tiver mais de 15 segundos, serve instantâneo e revalida silenciosamente em segundo plano!
+          if (!isCacheStale(key, 15000)) {
+            return;
+          }
+          silentRef.current = true;
         }
       }
 

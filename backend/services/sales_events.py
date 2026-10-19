@@ -149,16 +149,67 @@ def format_smart_sale(t, db: Optional[Session] = None) -> dict:
         display_amount = formatted_original
         voice_amount = f"{amount_brl:,.2f} reais".replace(".", ",").replace(",00", "")
 
-    # 3. Posição no Funil
-    if any(k in p_name for k in ["upsell", "vip", "avanzat", "plus", "completo"]):
+    # 3. Posição no Funil (Identificação Precisa com Banco de Dados)
+    offer_type = "front_end"
+    offer_badge = "🛒 Oferta Principal"
+
+    is_matched_bump = False
+    is_matched_upsell = False
+    is_matched_product = False
+
+    if db:
+        try:
+            from database.models.product_items import OrderBump, Upsell
+            from database.models.product import Product
+            from database.models.product_alias import ProductAlias
+
+            raw_prod = (t.product_name or "").strip()
+            # 1. Verificar se é Order Bump cadastrado no banco
+            matched_ob = db.query(OrderBump).filter(OrderBump.name.ilike(f"%{raw_prod}%")).first()
+            if not matched_ob and "|" in raw_prod:
+                matched_ob = db.query(OrderBump).filter(OrderBump.name.ilike(f"%{raw_prod.split('|')[0].strip()}%")).first()
+
+            if matched_ob:
+                is_matched_bump = True
+
+            # 2. Verificar se é Upsell cadastrado no banco
+            if not is_matched_bump:
+                matched_up = db.query(Upsell).filter(Upsell.name.ilike(f"%{raw_prod}%")).first()
+                if not matched_up and "|" in raw_prod:
+                    matched_up = db.query(Upsell).filter(Upsell.name.ilike(f"%{raw_prod.split('|')[0].strip()}%")).first()
+                if matched_up:
+                    is_matched_upsell = True
+
+            # 3. Verificar se é Produto Principal cadastrado no banco
+            if not is_matched_bump and not is_matched_upsell:
+                matched_p = db.query(Product).filter(Product.name.ilike(f"%{raw_prod}%")).first()
+                if not matched_p:
+                    matched_alias = db.query(ProductAlias).filter(ProductAlias.alias.ilike(f"%{raw_prod}%")).first()
+                    if matched_alias:
+                        matched_p = db.query(Product).filter(Product.id == matched_alias.product_id).first()
+                if matched_p:
+                    is_matched_product = True
+        except Exception as check_err:
+            logger.warning(f"Aviso ao consultar funil no banco para SSE: {check_err}")
+
+    if is_matched_bump:
+        offer_type = "order_bump"
+        offer_badge = "⚡ Order Bump"
+    elif is_matched_upsell:
         offer_type = "upsell"
         offer_badge = "🚀 Upsell VIP"
-    elif any(k in p_name for k in ["downsell", "base", "essenziale", "starter"]):
-        offer_type = "downsell"
-        offer_badge = "💎 Downsell"
+    elif is_matched_product:
+        offer_type = "front_end"
+        offer_badge = "🛒 Oferta Principal"
+    elif any(k in p_name for k in ["upsell", "vip", "avanzat", "plus", "completo"]):
+        offer_type = "upsell"
+        offer_badge = "🚀 Upsell VIP"
     elif any(k in p_name for k in ["order bump", "bump", "multimetro", "guasti & anomalie", "diametri & portate", "sistemi di scarico", "protocollo operativo"]):
         offer_type = "order_bump"
         offer_badge = "⚡ Order Bump"
+    elif any(k in p_name for k in ["downsell", "base", "essenziale", "starter"]):
+        offer_type = "downsell"
+        offer_badge = "💎 Downsell"
     else:
         offer_type = "front_end"
         offer_badge = "🛒 Oferta Principal"

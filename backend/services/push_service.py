@@ -57,11 +57,17 @@ def send_web_push(sub: PushSubscription, payload: dict, db: Session | None = Non
             },
         }
 
+        headers = {
+            "Urgency": "high",
+            "Topic": str(payload.get("tag") or "sales")[:32],
+        }
+
         webpush(
             subscription_info=subscription_info,
             data=json.dumps(payload),
             vapid_private_key=vapid_inst,
             vapid_claims=VAPID_CLAIMS,
+            headers=headers,
             ttl=86400,  # 24 horas no buffer do FCM se o celular estiver desligado
         )
         logger.info(f"✅ Web Push entregue com sucesso para o dispositivo id={sub.id}")
@@ -104,17 +110,6 @@ def send_sale_push_notification(db: Session, event: StandardizedWebhookEvent) ->
         logger.info("Nenhum dispositivo cadastrado para Web Push no momento.")
         return 0
 
-    # Não disparar notificação push se a compra for antiga (ex: sincronização de histórico / webhooks passados)
-    if getattr(event, "order_date", None):
-        try:
-            from database.core.timezone import now_sp
-            diff = (now_sp() - event.order_date).total_seconds()
-            if diff > 7200:  # Mais de 2 horas atrás
-                logger.info(f"Ignorando push notification para venda histórica ({event.external_id}, data: {event.order_date})")
-                return 0
-        except Exception:
-            pass
-
     # 1. Formatação Inteligente de Moeda e País
     country = getattr(event, "customer_country", "") or getattr(event, "country", "") or "BR"
     p_name = (event.product_name or "").lower()
@@ -143,15 +138,57 @@ def send_sale_push_notification(db: Session, event: StandardizedWebhookEvent) ->
         title_amount = formatted_brl
         body_amount = formatted_brl
 
-    # 2. Posição no Funil (Identificação Precisa)
-    is_bump = getattr(event, "is_order_bump", False) or any(k in p_name for k in [
-        "order bump", "bump", "multimetro", "guasti & anomalie", "diametri & portate", "sistemi di scarico", "protocollo operativo"
-    ])
+    # 2. Posição no Funil (Identificação Precisa com Banco de Dados)
+    is_bump = getattr(event, "is_order_bump", False)
+    is_upsell = False
+    is_main_product = False
 
+    if db:
+        try:
+            from database.models.product_items import OrderBump, Upsell
+            from database.models.product import Product
+            from database.models.product_alias import ProductAlias
+
+            raw_prod = (event.product_name or "").strip()
+            # 1. Verificar se é Order Bump cadastrado no banco
+            matched_ob = db.query(OrderBump).filter(OrderBump.name.ilike(f"%{raw_prod}%")).first()
+            if not matched_ob and "|" in raw_prod:
+                matched_ob = db.query(OrderBump).filter(OrderBump.name.ilike(f"%{raw_prod.split('|')[0].strip()}%")).first()
+
+            if matched_ob:
+                is_bump = True
+
+            # 2. Verificar se é Upsell cadastrado no banco
+            if not is_bump:
+                matched_up = db.query(Upsell).filter(Upsell.name.ilike(f"%{raw_prod}%")).first()
+                if not matched_up and "|" in raw_prod:
+                    matched_up = db.query(Upsell).filter(Upsell.name.ilike(f"%{raw_prod.split('|')[0].strip()}%")).first()
+                if matched_up:
+                    is_upsell = True
+
+            # 3. Verificar se é Produto Principal cadastrado no banco
+            if not is_bump and not is_upsell:
+                matched_p = db.query(Product).filter(Product.name.ilike(f"%{raw_prod}%")).first()
+                if not matched_p:
+                    matched_alias = db.query(ProductAlias).filter(ProductAlias.alias.ilike(f"%{raw_prod}%")).first()
+                    if matched_alias:
+                        matched_p = db.query(Product).filter(Product.id == matched_alias.product_id).first()
+                if matched_p:
+                    is_main_product = True
+        except Exception as check_err:
+            logger.warning(f"Aviso ao consultar funil no banco: {check_err}")
+
+    # Prioridade final de classificação:
     if is_bump:
         badge = "⚡ Order Bump"
+    elif is_upsell:
+        badge = "🚀 Upsell VIP"
+    elif is_main_product:
+        badge = "🛒 Oferta Principal"
     elif any(k in p_name for k in ["upsell", "vip", "avanzat", "plus", "completo"]):
         badge = "🚀 Upsell VIP"
+    elif any(k in p_name for k in ["order bump", "bump", "multimetro", "guasti & anomalie", "diametri & portate", "sistemi di scarico", "protocollo operativo"]):
+        badge = "⚡ Order Bump"
     elif any(k in p_name for k in ["downsell", "base", "essenziale", "starter"]):
         badge = "💎 Downsell"
     else:

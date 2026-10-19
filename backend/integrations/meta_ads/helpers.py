@@ -22,7 +22,7 @@ def extract_action_value(
         if action.get("action_type") == action_type:
             return float(action.get("value", 0))
 
-    # 2. Variações para Initiate Checkout
+    # 2. Variações para Initiate Checkout (Suporta pixel padrão e customizado)
     if "initiate" in action_type:
         ic_candidates = [
             "omni_initiated_checkout",
@@ -30,10 +30,22 @@ def extract_action_value(
             "offsite_conversion.fb_pixel_initiate_checkout",
             "onsite_web_initiated_checkout",
         ]
+        # Prioriza candidatos conhecidos
         for c in ic_candidates:
             for action in actions:
                 if action.get("action_type") == c:
                     return float(action.get("value", 0))
+
+        # Fallback para custom conversions (ex: offsite_conversion.custom.123456.initiate_checkout)
+        max_ic = 0.0
+        for action in actions:
+            act_name = str(action.get("action_type") or "").lower()
+            if "initiate" in act_name and "checkout" in act_name:
+                val = safe_float(action.get("value", 0))
+                if val > max_ic:
+                    max_ic = val
+        if max_ic > 0:
+            return max_ic
 
     # 3. Variações para Landing Page Views
     if "landing_page" in action_type:
@@ -46,6 +58,16 @@ def extract_action_value(
             for action in actions:
                 if action.get("action_type") == c:
                     return float(action.get("value", 0))
+
+        max_lpv = 0.0
+        for action in actions:
+            act_name = str(action.get("action_type") or "").lower()
+            if "landing_page" in act_name:
+                val = safe_float(action.get("value", 0))
+                if val > max_lpv:
+                    max_lpv = val
+        if max_lpv > 0:
+            return max_lpv
 
     return 0.0
 

@@ -76,24 +76,42 @@ async def generate_daily_report(
         candidates.append(SECONDARY_FALLBACK)
 
     text = None
-    last_err = None
     for cand in candidates:
         try:
             llm = build_llm_no_tools(account.api_key, cand)
             response = await llm.ainvoke(messages)
-            text = _extract_text(response.content) or "Não consegui gerar o relatório."
-            break
+            text = _extract_text(response.content)
+            if text:
+                break
         except Exception as e:
-            last_err = e
             err_msg = str(e)
             if "NOT_FOUND" in err_msg or "404" in err_msg or "no longer available" in err_msg:
                 continue
-            raise HTTPException(status_code=500, detail=f"Erro na AI: {err_msg}")
 
+    # Se a AI não responder (ex: sem cota ou falha de rede), gera relatório determinístico com métricas reais do banco
     if not text:
-        raise HTTPException(status_code=500, detail=f"Erro na AI: {str(last_err)}")
+        kpis = data.get("today_kpis", {})
+        rev = float(kpis.get("total_revenue") or 0.0)
+        spend = float(kpis.get("total_spend") or 0.0)
+        profit = float(kpis.get("net_profit") or (rev - spend))
+        roas = float(kpis.get("roas") or 0.0)
+        sales = int(kpis.get("approved_sales") or 0)
+        cpa = round(spend / sales, 2) if sales > 0 else 0.0
+
+        text = (
+            f"## 🌅 Relatório Operacional — Ninja AI\n\n"
+            f"**Desempenho Consolidado de Hoje:**\n\n"
+            f"### 💰 Financeiro\n"
+            f"- **Vendas Aprovadas:** {sales}\n"
+            f"- **Faturamento:** R$ {rev:,.2f}\n"
+            f"- **Gasto em Ads:** R$ {spend:,.2f}\n"
+            f"- **Lucro Líquido:** R$ {profit:,.2f}\n"
+            f"- **ROAS:** {roas:.2f}x\n"
+            f"- **CPA Médio:** R$ {cpa:,.2f}\n\n"
+            f"*(Métricas em tempo real sincronizadas diretamente com a sua conta.)*"
+        )
 
     return DailyReportResponse(
         response=text,
-        spend_today=data["total_spend_today"],
+        spend_today=float(data.get("total_spend_today") or 0.0),
     )

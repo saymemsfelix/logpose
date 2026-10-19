@@ -90,6 +90,10 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
         if not isinstance(tracking, dict):
             tracking = {}
 
+        origin = purchase.get("origin") or data.get("origin") or payload.get("origin")
+        if not isinstance(origin, dict):
+            origin = {}
+
         # 1. Status
         purchase_status = (
             purchase.get("status")
@@ -232,7 +236,10 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
 
         # 6. Rastreamento e UTMs (Extremamente abrangente para Hotmart 1.0 e 2.0)
         src = (
-            tracking.get("source")
+            origin.get("src")
+            or origin.get("source")
+            or origin.get("xcod")
+            or tracking.get("source")
             or tracking.get("src")
             or purchase.get("source")
             or purchase.get("src")
@@ -243,7 +250,9 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
             or None
         )
         sck = (
-            tracking.get("source_sck")
+            origin.get("sck")
+            or origin.get("source_sck")
+            or tracking.get("source_sck")
             or tracking.get("sck")
             or purchase.get("source_sck")
             or purchase.get("sck")
@@ -254,11 +263,42 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
             or None
         )
 
-        utm_source = tracking.get("utm_source") or data.get("utm_source") or payload.get("utm_source") or purchase.get("utm_source") or src
-        utm_medium = tracking.get("utm_medium") or data.get("utm_medium") or payload.get("utm_medium") or purchase.get("utm_medium")
-        utm_campaign = tracking.get("utm_campaign") or data.get("utm_campaign") or payload.get("utm_campaign") or purchase.get("utm_campaign")
-        utm_content = tracking.get("utm_content") or data.get("utm_content") or payload.get("utm_content") or purchase.get("utm_content")
-        utm_term = tracking.get("utm_term") or data.get("utm_term") or payload.get("utm_term") or purchase.get("utm_term")
+        utm_source = (
+            origin.get("utm_source")
+            or tracking.get("utm_source")
+            or data.get("utm_source")
+            or payload.get("utm_source")
+            or purchase.get("utm_source")
+            or src
+        )
+        utm_medium = (
+            origin.get("utm_medium")
+            or tracking.get("utm_medium")
+            or data.get("utm_medium")
+            or payload.get("utm_medium")
+            or purchase.get("utm_medium")
+        )
+        utm_campaign = (
+            origin.get("utm_campaign")
+            or tracking.get("utm_campaign")
+            or data.get("utm_campaign")
+            or payload.get("utm_campaign")
+            or purchase.get("utm_campaign")
+        )
+        utm_content = (
+            origin.get("utm_content")
+            or tracking.get("utm_content")
+            or data.get("utm_content")
+            or payload.get("utm_content")
+            or purchase.get("utm_content")
+        )
+        utm_term = (
+            origin.get("utm_term")
+            or tracking.get("utm_term")
+            or data.get("utm_term")
+            or payload.get("utm_term")
+            or purchase.get("utm_term")
+        )
 
         # Parser Inteligente de SCK (Hotmart):
         # O NINJA'S TRACKER envia no SCK: utm_campaign|utm_content
@@ -307,9 +347,20 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
             elif not utm_campaign:
                 utm_campaign = sck_str
 
-        # Se src tiver apenas o ID do anúncio numérico, sincroniza com utm_content
-        if src and str(src).strip().isdigit() and not utm_content:
-            utm_content = str(src).strip()
+        # Parser Inteligente de SRC:
+        if src:
+            src_str = str(src).strip()
+            if src_str.isdigit() and not utm_content:
+                utm_content = src_str
+            elif "|" in src_str:
+                src_parts = [p.strip() for p in src_str.split("|") if p.strip()]
+                if len(src_parts) >= 2:
+                    if not utm_campaign:
+                        utm_campaign = src_parts[0]
+                    if not utm_content:
+                        utm_content = src_parts[1]
+                elif len(src_parts) == 1 and not utm_content:
+                    utm_content = src_parts[0]
 
         # Método de pagamento
         payment_info = purchase.get("payment") or data.get("payment") or {}
@@ -549,17 +600,34 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
         # Detecção de item que é Order Bump (e não produto principal)
         ob_obj_purchase = purchase.get("order_bump")
         ob_obj_data = data.get("order_bump")
-        is_order_bump = bool(
-            purchase.get("is_order_bump") is True
-            or (isinstance(ob_obj_purchase, dict) and ob_obj_purchase.get("is_order_bump") is True)
-            or ob_obj_purchase is True
-            or (isinstance(ob_obj_data, dict) and ob_obj_data.get("is_order_bump") is True)
-            or ob_obj_data is True
-            or payload.get("is_order_bump") is True
-            or str(purchase.get("item_type") or "").upper() == "ORDER_BUMP"
-            or str(data.get("item_type") or "").upper() == "ORDER_BUMP"
-            or any(k in prod_name.lower() for k in ["order bump", "bump", "multimetro", "guasti & anomalie", "diametri & portate", "sistemi di scarico", "protocollo operativo"])
+        parent_tx = (
+            purchase.get("parent_purchase_transaction")
+            or data.get("parent_purchase_transaction")
+            or payload.get("parent_purchase_transaction")
+            or (ob_obj_purchase.get("parent_purchase_transaction") if isinstance(ob_obj_purchase, dict) else None)
+            or (ob_obj_data.get("parent_purchase_transaction") if isinstance(ob_obj_data, dict) else None)
         )
+
+        explicit_false = (
+            purchase.get("is_order_bump") is False
+            or (isinstance(ob_obj_purchase, dict) and ob_obj_purchase.get("is_order_bump") is False)
+            or (isinstance(ob_obj_data, dict) and ob_obj_data.get("is_order_bump") is False)
+        )
+
+        if explicit_false and not parent_tx:
+            is_order_bump = False
+        elif parent_tx:
+            is_order_bump = True
+        elif isinstance(ob_obj_purchase, dict) and ob_obj_purchase.get("is_order_bump") is True:
+            is_order_bump = True
+        elif isinstance(ob_obj_data, dict) and ob_obj_data.get("is_order_bump") is True:
+            is_order_bump = True
+        elif str(purchase.get("item_type") or "").upper() == "ORDER_BUMP" or str(data.get("item_type") or "").upper() == "ORDER_BUMP":
+            is_order_bump = True
+        elif any(k in prod_name.lower() for k in ["order bump", "bump", "multimetro", "guasti & anomalie", "diametri & portate", "sistemi di scarico", "protocollo operativo"]):
+            is_order_bump = True
+        else:
+            is_order_bump = False
 
         return StandardizedWebhookEvent(
             external_id=str(external_id),
