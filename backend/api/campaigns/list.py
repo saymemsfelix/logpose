@@ -103,7 +103,13 @@ async def get_campaigns_data(
 
     # 6. Filtrar por status se necessário
     if status_filter and status_filter != "all":
-        campaigns = [c for c in campaigns if c["status"] == status_filter]
+        if status_filter == "active_or_spend":
+            campaigns = [
+                c for c in campaigns
+                if c.get("status") == "active" or (c.get("spend") or 0) > 0 or (c.get("sales") or 0) > 0
+            ]
+        else:
+            campaigns = [c for c in campaigns if c.get("status") == status_filter]
 
     # 7. Vendas sem UTM (não identificadas)
     unidentified = _build_unidentified(db, date_start, date_end, campaigns)

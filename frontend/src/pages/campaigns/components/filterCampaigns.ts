@@ -20,7 +20,12 @@ export function filterCampaigns(
     if (!c.name.toLowerCase().includes(searchLower)) return false;
 
     if (!isUnidentified) {
-      if (filters.status !== "all" && c.status !== filters.status) return false;
+      if (filters.status === "active_or_spend") {
+        const hasActivity = (c.spend ?? 0) > 0 || (c.sales ?? 0) > 0;
+        if (c.status !== "active" && !hasActivity) return false;
+      } else if (filters.status !== "all" && c.status !== filters.status) {
+        return false;
+      }
       if (filters.objective !== "all" && c.objective !== filters.objective) return false;
       if (filters.bidStrategy !== "all" && (c.bid_strategy || "volume") !== filters.bidStrategy) return false;
       if (filters.budgetType !== "all" && c.budget_type !== filters.budgetType) return false;

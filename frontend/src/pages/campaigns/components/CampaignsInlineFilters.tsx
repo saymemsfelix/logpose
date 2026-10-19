@@ -51,7 +51,7 @@ export function CampaignsInlineFilters({
   availableTags = [], availableProducts = [],
 }: CampaignsInlineFiltersProps) {
   const activeCount = [
-    filters.status !== "all",
+    filters.status !== "active_or_spend" && filters.status !== "all",
     filters.objective !== "all",
     filters.product !== "all",
     filters.tag !== "all",
@@ -106,9 +106,10 @@ export function CampaignsInlineFilters({
           <Select value={filters.status} onValueChange={(v) => onFiltersChange({ ...filters, status: v })}>
             <SelectTrigger className="h-9 w-full"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="active">Ativa</SelectItem>
-              <SelectItem value="paused">Pausada</SelectItem>
+              <SelectItem value="active_or_spend">Ativas & c/ Gasto</SelectItem>
+              <SelectItem value="all">Todas</SelectItem>
+              <SelectItem value="active">Somente Ativas</SelectItem>
+              <SelectItem value="paused">Pausadas</SelectItem>
               <SelectItem value="completed">Finalizada</SelectItem>
             </SelectContent>
           </Select>
@@ -167,7 +168,7 @@ export function CampaignsInlineFilters({
 }
 
 export const defaultCampaignFilters: CampaignFilterState = {
-  status: "active",
+  status: "active_or_spend",
   objective: "sales",
   bidStrategy: "all",
   budgetType: "all",
