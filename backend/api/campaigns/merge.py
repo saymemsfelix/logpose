@@ -309,6 +309,7 @@ def merge_campaigns(
         cpv = getattr(camp, "cpv", 0.0) or (round(camp.spend / effective_camp_lpv, 2) if effective_camp_lpv > 0 and camp.spend > 0 else 0.0)
         cost_per_ic = getattr(camp, "cost_per_ic", 0.0) or (round(camp.spend / effective_camp_ic, 2) if effective_camp_ic > 0 and camp.spend > 0 else 0.0)
         checkout_rate = getattr(camp, "checkout_rate", 0.0) or (round((effective_camp_ic / effective_camp_lpv) * 100, 2) if effective_camp_lpv > 0 else 0.0)
+        effective_connect_rate = getattr(camp, "connect_rate", 0.0) or (round((effective_camp_lpv / camp.clicks) * 100, 2) if camp.clicks > 0 and effective_camp_lpv > 0 else 0.0)
         checkout_to_sale_rate = round((sales_data["sales"] / effective_camp_ic) * 100, 2) if effective_camp_ic > 0 else 0.0
         conversion_rate = round((sales_data["sales"] / camp.clicks) * 100, 2) if camp.clicks > 0 else 0.0
 
@@ -330,7 +331,7 @@ def merge_campaigns(
             "cpv": cpv,
             "initiate_checkout": effective_camp_ic,
             "cost_per_ic": cost_per_ic,
-            "connect_rate": camp.connect_rate,
+            "connect_rate": effective_connect_rate,
             "checkout_rate": checkout_rate,
             "checkout_conversion": checkout_to_sale_rate,
             "conversion_rate": conversion_rate,

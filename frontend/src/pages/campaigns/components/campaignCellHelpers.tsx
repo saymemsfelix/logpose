@@ -168,6 +168,7 @@ export function getCellValue(
     lpv: c.landingPageViews.toLocaleString("pt-BR"),
     ic: c.initiateCheckout,
     connectRate: `${c.connectRate.toFixed(1)}%`,
+    checkoutRate: `${(c.checkoutRate ?? (c.landingPageViews > 0 ? (c.initiateCheckout / c.landingPageViews) * 100 : 0)).toFixed(1)}%`,
     playsVsl: c.playsVsl > 0 ? c.playsVsl.toLocaleString("pt-BR") : "—",
     playRate: c.playRate > 0 ? `${c.playRate.toFixed(1)}%` : "—",
     checkoutConversion: `${checkoutConv.toFixed(1)}%`,
@@ -241,6 +242,11 @@ export function getFooterValue(
       const clicks = data.reduce((s, c) => s + c.clicks, 0);
       const lpv = data.reduce((s, c) => s + c.landingPageViews, 0);
       return clicks > 0 ? `${((lpv / clicks) * 100).toFixed(1)}%` : "—";
+    },
+    checkoutRate: () => {
+      const lpv = data.reduce((s, c) => s + c.landingPageViews, 0);
+      const ic = data.reduce((s, c) => s + c.initiateCheckout, 0);
+      return lpv > 0 ? `${((ic / lpv) * 100).toFixed(1)}%` : "—";
     },
     clicks: () =>
       data.reduce((s, c) => s + c.clicks, 0).toLocaleString("pt-BR"),

@@ -7,9 +7,17 @@ export interface ColumnPreset {
 export const defaultPresets: ColumnPreset[] = [
   {
     id: "vendas",
-    name: "Vendas",
+    name: "Vendas (Padrão UTMify)",
     columns: [
-      "name", "spend", "sales", "revenue", "profit", "roas", "cpa", "cpm", "hookRate", "bodyRate", "cpc", "ctr", "lpv", "ic",
+      "name", "spend", "revenue", "profit", "roas", "sales", "lpv", "ic", "connectRate", "checkoutRate", "cpc", "cpm", "ctr", "cpa",
+    ],
+  },
+  {
+    id: "gargalos",
+    name: "Funil & Gargalos",
+    columns: [
+      "name", "clicks", "lpv", "cpv", "connectRate",
+      "ic", "costPerIc", "checkoutConversion", "sales", "checkoutToSaleRate",
     ],
   },
   {
@@ -19,34 +27,27 @@ export const defaultPresets: ColumnPreset[] = [
       "name", "spend", "impressions", "cpm", "clicks", "hookRate", "bodyRate", "connectRate", "sales", "roas",
     ],
   },
-  {
-    id: "gargalos",
-    name: "Gargalos",
-    columns: [
-      "name", "clicks", "lpv", "cpv", "connectRate",
-      "ic", "costPerIc", "checkoutConversion", "sales", "checkoutToSaleRate",
-    ],
-  },
 ];
 
 export const allColumns: Record<string, string> = {
   name: "Campanha",
   spend: "Gastos",
-  sales: "Vendas",
   revenue: "Faturamento",
   profit: "Lucro",
   roas: "ROAS",
+  sales: "Vendas",
+  lpv: "PageView (LPV)",
+  ic: "Initiate Checkout (IC)",
+  connectRate: "Taxa de Conexão",
+  checkoutRate: "Taxa de Checkout",
   cpa: "CPA",
   cpm: "CPM",
   cpc: "CPC",
   ctr: "CTR",
   clicks: "Cliques",
   impressions: "Impressões",
-  lpv: "LPV",
   cpv: "CPV",
-  ic: "IC",
   costPerIc: "Custo por IC",
-  connectRate: "Connect Rate",
   hookRate: "Hook Rate (3s)",
   bodyRate: "Body Rate (50%)",
   videoViews: "Views de Vídeo",

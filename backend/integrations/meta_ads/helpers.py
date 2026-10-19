@@ -47,8 +47,8 @@ def extract_action_value(
         if max_ic > 0:
             return max_ic
 
-    # 3. Variações para Landing Page Views
-    if "landing_page" in action_type:
+    # 3. Variações para Landing Page Views e PageViews (Suporta LPV nativo e Pixel ViewContent)
+    if "landing_page" in action_type or "page" in action_type:
         lpv_candidates = [
             "landing_page_view",
             "omni_landing_page_view",
@@ -57,12 +57,29 @@ def extract_action_value(
         for c in lpv_candidates:
             for action in actions:
                 if action.get("action_type") == c:
-                    return float(action.get("value", 0))
+                    val = safe_float(action.get("value", 0))
+                    if val > 0:
+                        return val
+
+        # Fallback para view_content / PageView padrão do pixel
+        pv_candidates = [
+            "view_content",
+            "omni_view_content",
+            "offsite_conversion.fb_pixel_view_content",
+            "page_view",
+            "pageview",
+        ]
+        for c in pv_candidates:
+            for action in actions:
+                if action.get("action_type") == c:
+                    val = safe_float(action.get("value", 0))
+                    if val > 0:
+                        return val
 
         max_lpv = 0.0
         for action in actions:
             act_name = str(action.get("action_type") or "").lower()
-            if "landing_page" in act_name:
+            if "landing_page" in act_name or "view_content" in act_name:
                 val = safe_float(action.get("value", 0))
                 if val > max_lpv:
                     max_lpv = val
