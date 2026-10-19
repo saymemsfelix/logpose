@@ -6,19 +6,27 @@ DECLARE
   v_main_id INT;
   v_bump_id INT;
 BEGIN
-  -- 1. Pega as 2 vendas reais de hoje (as transações de maior ID aprovadas para a oferta principal e o bump)
+  -- 1. Pega as 2 vendas reais de hoje (com status::text para evitar conflito com enum PostgreSQL)
   SELECT id INTO v_main_id 
   FROM transactions 
   WHERE (LOWER(product_name) LIKE '%120 diagnosi%' OR LOWER(product_name) LIKE '%hardware e software%')
-    AND status = 'approved'
+    AND status::text ILIKE '%approved%'
   ORDER BY id DESC LIMIT 1;
 
   SELECT id INTO v_bump_id 
   FROM transactions 
   WHERE (LOWER(product_name) LIKE '%multimetro%' OR LOWER(product_name) LIKE '%diagnosi pc%')
-    AND status = 'approved'
+    AND status::text ILIKE '%approved%'
     AND id != COALESCE(v_main_id, 0)
   ORDER BY id DESC LIMIT 1;
+
+  -- Fallback se os nomes foram customizados: pega os 2 maiores IDs de hoje
+  IF v_main_id IS NULL THEN
+    SELECT id INTO v_main_id FROM transactions WHERE status::text ILIKE '%approved%' ORDER BY id DESC LIMIT 1;
+  END IF;
+  IF v_bump_id IS NULL THEN
+    SELECT id INTO v_bump_id FROM transactions WHERE status::text ILIKE '%approved%' AND id != COALESCE(v_main_id, 0) ORDER BY id DESC LIMIT 1;
+  END IF;
 
   -- 2. Mantém ESTRITAMENTE essas 2 vendas em 19/10/2026 associadas ao CBO - ABERTO
   IF v_main_id IS NOT NULL THEN

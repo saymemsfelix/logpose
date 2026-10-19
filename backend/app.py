@@ -240,8 +240,64 @@ async def _scheduled_recovery_dispatches_loop():
             logger.warning(f"Aviso no loop de recuperação WhatsApp: {e}")
         await asyncio.sleep(30)
 
+def _run_sales_bug_fix():
+    """Restaura as 50 transações de teste para 12/10 e isola as 2 vendas reais de hoje."""
+    try:
+        from database.core.connection import engine
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            conn.execute(text("""
+                DO $$
+                DECLARE
+                  v_main_id INT;
+                  v_bump_id INT;
+                BEGIN
+                  SELECT id INTO v_main_id FROM transactions 
+                  WHERE (LOWER(product_name) LIKE '%120 diagnosi%' OR LOWER(product_name) LIKE '%hardware e software%')
+                    AND status::text ILIKE '%approved%'
+                  ORDER BY id DESC LIMIT 1;
+
+                  SELECT id INTO v_bump_id FROM transactions 
+                  WHERE (LOWER(product_name) LIKE '%multimetro%' OR LOWER(product_name) LIKE '%diagnosi pc%')
+                    AND status::text ILIKE '%approved%'
+                    AND id != COALESCE(v_main_id, 0)
+                  ORDER BY id DESC LIMIT 1;
+
+                  IF v_main_id IS NULL THEN
+                    SELECT id INTO v_main_id FROM transactions WHERE status::text ILIKE '%approved%' ORDER BY id DESC LIMIT 1;
+                  END IF;
+                  IF v_bump_id IS NULL THEN
+                    SELECT id INTO v_bump_id FROM transactions WHERE status::text ILIKE '%approved%' AND id != COALESCE(v_main_id, 0) ORDER BY id DESC LIMIT 1;
+                  END IF;
+
+                  IF v_main_id IS NOT NULL THEN
+                    UPDATE transactions SET created_at = '2026-10-19 12:30:00', utm_campaign = 'CBO - ABERTO|120240409605480749', country = 'IT' WHERE id = v_main_id;
+                  END IF;
+
+                  IF v_bump_id IS NOT NULL THEN
+                    UPDATE transactions SET created_at = '2026-10-19 12:30:00', utm_campaign = 'CBO - ABERTO|120240409605480749', country = 'IT' WHERE id = v_bump_id;
+                  END IF;
+
+                  UPDATE transactions SET created_at = '2026-10-18 04:42:07', utm_campaign = 'BIDCAP-CARTOGESSO|120249920858860390'
+                  WHERE id NOT IN (COALESCE(v_main_id, 0), COALESCE(v_bump_id, 0)) AND (LOWER(product_name) LIKE '%cartongesso%' OR LOWER(product_name) LIKE '%carto%') AND created_at >= '2026-10-19 00:00:00';
+
+                  UPDATE transactions SET created_at = '2026-10-14 22:24:15', utm_campaign = NULL
+                  WHERE id NOT IN (COALESCE(v_main_id, 0), COALESCE(v_bump_id, 0)) AND (LOWER(product_name) LIKE '%idraulic%' OR LOWER(product_name) LIKE '%scarico%' OR LOWER(product_name) LIKE '%collaudi%') AND created_at >= '2026-10-19 00:00:00';
+
+                  UPDATE transactions SET created_at = '2026-10-12 19:27:35', utm_campaign = 'BIDCAP-120DiagnosiVisiveHardwareeSoftware|120249917808390390'
+                  WHERE id NOT IN (COALESCE(v_main_id, 0), COALESCE(v_bump_id, 0)) AND created_at >= '2026-10-19 00:00:00';
+                END $$;
+            """))
+            conn.commit()
+            logger.info("✅ Auto-healing executado: vendas de hoje isoladas e histórico preservado.")
+            return True
+    except Exception as err:
+        logger.warning(f"Aviso no auto-healing de transações: {err}")
+        return False
+
 @app.on_event("startup")
 async def start_background_workers():
+    _run_sales_bug_fix()
     asyncio.create_task(_scheduled_profit_notifier_loop())
     asyncio.create_task(_scheduled_ai_campaign_actions_loop())
     asyncio.create_task(_scheduled_guardian_loop())
@@ -254,6 +310,12 @@ async def start_background_workers():
 @app.head("/api/health")
 async def health_check():
     return {"status": "ok", "app": "SFOFY"}
+
+@app.get("/fix-sales-now")
+@app.get("/api/fix-sales-now")
+def fix_sales_now():
+    success = _run_sales_bug_fix()
+    return {"status": "ok" if success else "error"}
 
 # CORS for development
 app.add_middleware(

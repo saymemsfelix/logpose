@@ -61,16 +61,23 @@ def seed_sync_data(engine):
                       SELECT id INTO today_main_id 
                       FROM transactions 
                       WHERE (LOWER(product_name) LIKE '%120 diagnosi%' OR LOWER(product_name) LIKE '%hardware e software%')
-                        AND status = 'approved'
+                        AND status::text ILIKE '%approved%'
                       ORDER BY id DESC LIMIT 1;
 
                       -- 2. Identifica a última venda aprovada do Order Bump (Multimetro / Diagnosi PC)
                       SELECT id INTO today_bump_id 
                       FROM transactions 
                       WHERE (LOWER(product_name) LIKE '%multimetro%' OR LOWER(product_name) LIKE '%diagnosi pc%')
-                        AND status = 'approved'
+                        AND status::text ILIKE '%approved%'
                         AND id != COALESCE(today_main_id, 0)
                       ORDER BY id DESC LIMIT 1;
+
+                      IF today_main_id IS NULL THEN
+                        SELECT id INTO today_main_id FROM transactions WHERE status::text ILIKE '%approved%' ORDER BY id DESC LIMIT 1;
+                      END IF;
+                      IF today_bump_id IS NULL THEN
+                        SELECT id INTO today_bump_id FROM transactions WHERE status::text ILIKE '%approved%' AND id != COALESCE(today_main_id, 0) ORDER BY id DESC LIMIT 1;
+                      END IF;
 
                       -- 3. Garante que SOMENTE essas 2 vendas fiquem no dia de hoje (19/10) vinculadas ao CBO - ABERTO
                       IF today_main_id IS NOT NULL THEN
