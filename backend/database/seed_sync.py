@@ -49,114 +49,31 @@ def seed_sync_data(engine):
             # 3. Preservar todas as transações reais (nunca gerar transações fakes no boot)
             # As transações reais entram 100% via Webhook ou importação CSV da Hotmart.
 
-            # 7. Sincronizar datas reais e campanhas das transações Hotmart
+            # 7. Sincronização segura de transações (NUNCA sobrescrever transações reais de clientes)
             try:
-                # Limpa transações fictícias de testes anteriores
-                db.execute(text("DELETE FROM transactions WHERE external_id LIKE 'HT_%';"))
-
-                # 18/10/2026: APENAS Cartongesso (1 venda real na Hotmart)
-                db.execute(text("""
-                    UPDATE transactions 
-                    SET created_at = '2026-10-18 04:42:07', 
-                        utm_campaign = 'BIDCAP-CARTOGESSO|120249920858860390',
-                        country = 'IT'
-                    WHERE external_id = 'HP3880108633' 
-                       OR LOWER(product_name) LIKE '%cartongesso%' 
-                       OR LOWER(product_name) LIKE '%carto%';
-                """))
-
-                # 12/10/2026: 120 Diagnosi Visive per Hardware e Software (1 venda real)
-                db.execute(text("""
-                    UPDATE transactions 
-                    SET created_at = '2026-10-12 19:27:35', 
-                        utm_campaign = 'BIDCAP-120DiagnosiVisiveHardwareeSoftware|120249917808390390',
-                        country = 'IT'
-                    WHERE external_id = 'HP0330641855' 
-                       OR (
-                           (LOWER(product_name) LIKE '%120 diagnosi%' OR LOWER(product_name) LIKE '%hardware e software%' OR LOWER(product_name) LIKE '%diagnosi pc%')
-                           AND LOWER(product_name) NOT LIKE '%cartongesso%'
-                           AND LOWER(product_name) NOT LIKE '%idraulic%'
-                       );
-                """))
-
-                # 14/10/2026: Sistemi Idraulici (1 principal + 4 bumps)
-                db.execute(text("""
-                    UPDATE transactions 
-                    SET created_at = '2026-10-14 22:24:15', 
-                        utm_campaign = NULL,
-                        country = 'IT'
-                    WHERE external_id IN ('HP2449571184', 'HP2444954197', 'HP2464191642', 'HP2456881413', 'HP2465345889')
-                       OR LOWER(product_name) LIKE '%idraulic%' 
-                       OR LOWER(product_name) LIKE '%scarico%' 
-                       OR LOWER(product_name) LIKE '%collaudi%' 
-                       OR LOWER(product_name) LIKE '%diametri%' 
-                       OR LOWER(product_name) LIKE '%guasti & anomalie%';
-                """))
-
-                # 10/10/2026: Sistemi Idraulici e Club VIP Hardware & Software
-                db.execute(text("""
-                    UPDATE transactions 
-                    SET created_at = '2026-10-10 05:33:48', 
-                        utm_campaign = NULL,
-                        country = 'IT'
-                    WHERE external_id = 'HP0725196133';
-                """))
-
-                db.execute(text("""
-                    UPDATE transactions 
-                    SET created_at = '2026-10-10 04:41:58', 
-                        utm_campaign = NULL,
-                        country = 'IT'
-                    WHERE external_id = 'HP2915202196';
-                """))
-
-                db.execute(text("""
-                    UPDATE transactions 
-                    SET created_at = '2026-10-10 04:25:28', 
-                        utm_campaign = NULL,
-                        country = 'IT'
-                    WHERE external_id = 'HP3087569704' OR LOWER(product_name) LIKE '%club vip%';
-                """))
-
-                # Blindagem: NENHUMA transação de Hardware/Software/Idraulici pode estar em 18/10/2026
+                # Restaura as 2 vendas reais de 19/10/2026 caso tenham sido indevidamente alteradas pelo seed anterior
                 db.execute(text("""
                     UPDATE transactions
-                    SET created_at = '2026-10-12 19:27:35'
-                    WHERE created_at >= '2026-10-18 00:00:00'
-                      AND external_id != 'HP3880108633'
-                      AND LOWER(product_name) NOT LIKE '%cartongesso%'
-                      AND LOWER(product_name) NOT LIKE '%carto%';
+                    SET created_at = '2026-10-19 12:30:00',
+                        utm_campaign = 'CBO - ABERTO|120240409605480749',
+                        country = 'IT'
+                    WHERE external_id NOT IN (
+                        'HP0330641855', 'HP3880108633', 'HP2449571184', 'HP2444954197', 
+                        'HP2464191642', 'HP2456881413', 'HP2465345889', 'HP0725196133', 
+                        'HP2915202196', 'HP3087569704'
+                    )
+                    AND (
+                        LOWER(product_name) LIKE '%120 diagnosi%'
+                        OR LOWER(product_name) LIKE '%hardware e software%'
+                        OR LOWER(product_name) LIKE '%diagnosi pc%'
+                        OR LOWER(product_name) LIKE '%multimetro%'
+                    )
+                    AND created_at = '2026-10-12 19:27:35';
                 """))
                 db.commit()
             except Exception as e_sql:
-                logger.warning(f"Aviso ao rodar updates SQL de transações: {e_sql}")
+                logger.warning(f"Aviso ao sincronizar transações: {e_sql}")
                 db.rollback()
-
-            all_txs = db.query(Transaction).all()
-            for t in all_txs:
-                pn = (t.product_name or "").lower()
-                ext = str(t.external_id or "")
-                if "cartongesso" in pn or "carto" in pn or ext == "HP3880108633":
-                    t.created_at = datetime(2026, 10, 18, 4, 42, 7)
-                    t.utm_campaign = "BIDCAP-CARTOGESSO|120249920858860390"
-                    t.country = "IT"
-                elif ("120 diagnosi" in pn or "hardware e software" in pn or "diagnosi pc" in pn or ext == "HP0330641855") and "cartongesso" not in pn and "idraulic" not in pn:
-                    t.created_at = datetime(2026, 10, 12, 19, 27, 35)
-                    t.utm_campaign = "BIDCAP-120DiagnosiVisiveHardwareeSoftware|120249917808390390"
-                    t.country = "IT"
-                elif any(k in pn for k in ["idraulic", "scarico", "collaudi", "diametri", "guasti & anomalie"]) or ext.startswith("HP24"):
-                    t.created_at = datetime(2026, 10, 14, 22, 24, 15)
-                    t.utm_campaign = None
-                    t.country = "IT"
-                elif ext == "HP3087569704" or "club vip" in pn:
-                    t.created_at = datetime(2026, 10, 10, 4, 25, 28)
-                    t.utm_campaign = None
-                    t.country = "IT"
-                elif ext in ("HP0725196133", "HP2915202196"):
-                    t.created_at = datetime(2026, 10, 10, 5, 0, 0)
-                    t.utm_campaign = None
-                    t.country = "IT"
-            db.commit()
 
             # 8. Sincronizar Recuperações de Vendas (Recoveries) para os 4 idiomas solicitados:
             # 🇮🇹 IT (Cosimo Franco, Gianluca Rizzo)

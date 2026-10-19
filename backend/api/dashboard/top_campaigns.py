@@ -61,6 +61,30 @@ def _top_campaigns_merged(
         for c in merged
     ]
 
+    attributed_count = sum(c["sales"] for c in merged)
+    if len(approved) > attributed_count:
+        unattributed_sales = len(approved) - attributed_count
+        unattributed_rev = sum(t.amount for t in approved) - sum(c["revenue"] for c in merged)
+        results.append({
+            "name": "Não identificado (Sem UTM)",
+            "spend": 0.0,
+            "revenue": round(max(0.0, unattributed_rev), 2),
+            "sales": unattributed_sales,
+            "profit": round(max(0.0, unattributed_rev), 2),
+            "roas": 0.0,
+            "cpa": 0.0,
+            "cpm": 0.0,
+            "cpc": 0.0,
+            "ctr": 0.0,
+            "clicks": 0,
+            "impressions": 0,
+            "landing_page_views": 0,
+            "initiate_checkout": 0,
+            "connect_rate": 0.0,
+            "cpv": 0.0,
+            "cost_per_ic": 0.0,
+        })
+
     # Ordenar por faturamento desc e depois por gasto desc
     results.sort(key=lambda x: (x["revenue"], x["spend"]), reverse=True)
     return results[:limit]
