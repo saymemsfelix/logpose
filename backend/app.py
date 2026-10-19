@@ -315,7 +315,12 @@ async def health_check():
 @app.get("/api/fix-sales-now")
 def fix_sales_now():
     success = _run_sales_bug_fix()
-    return {"status": "ok" if success else "error"}
+    from database.core.connection import engine
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        rows = conn.execute(text("SELECT id, external_id, product_name, utm_source, utm_medium, utm_campaign, utm_content, utm_term, src FROM transactions WHERE created_at >= '2026-10-19 00:00:00'")).fetchall()
+        txs = [dict(r._mapping) for r in rows]
+    return {"status": "ok" if success else "error", "transactions": txs}
 
 # CORS for development
 app.add_middleware(
