@@ -121,7 +121,7 @@ async def dashboard_overview(
                 Transaction.created_at >= '2026-10-19 00:00:00',
                 Transaction.status == TransactionStatus.APPROVED,
             ).count()
-            if today_count > 5:
+            if today_count >= 50:
                 from app import _run_sales_bug_fix
                 _run_sales_bug_fix()
         except Exception:

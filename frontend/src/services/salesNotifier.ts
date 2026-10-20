@@ -184,7 +184,8 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 /**
- * Registra o navegador / celular no backend para Web Push contínuo em segundo plano
+ * Registra o navegador / celular no backend para Web Push contínuo em segundo plano.
+ * Valida a chave VAPID e renova automaticamente caso tenha expirado ou mudado.
  */
 export async function subscribeToPushNotifications(): Promise<boolean> {
   if (
@@ -201,23 +202,54 @@ export async function subscribeToPushNotifications(): Promise<boolean> {
       reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
     }
     const readyReg = await navigator.serviceWorker.ready;
+
+    // 1. Busca a chave pública VAPID oficial do servidor
+    const keyData = await apiRequest<{ public_key: string }>("/notifications/vapid-key");
+    if (!keyData?.public_key) {
+      throw new Error("Chave VAPID não retornada pelo servidor");
+    }
+
+    const expectedServerKeyBytes = urlBase64ToUint8Array(keyData.public_key);
     let sub = await readyReg.pushManager.getSubscription();
 
-    if (!sub) {
-      // 1. Busca a chave pública VAPID do servidor
-      const keyData = await apiRequest<{ public_key: string }>("/notifications/vapid-key");
-      if (!keyData?.public_key) {
-        throw new Error("Chave VAPID não retornada pelo servidor");
+    // 2. Se já existe uma inscrição, valida se a chave pública bate com a atual do servidor
+    if (sub) {
+      let isMismatch = false;
+      try {
+        const rawKey = sub.options?.applicationServerKey;
+        if (rawKey) {
+          const currentKeyBytes = new Uint8Array(rawKey);
+          if (currentKeyBytes.length !== expectedServerKeyBytes.length) {
+            isMismatch = true;
+          } else {
+            for (let i = 0; i < currentKeyBytes.length; i++) {
+              if (currentKeyBytes[i] !== expectedServerKeyBytes[i]) {
+                isMismatch = true;
+                break;
+              }
+            }
+          }
+        }
+      } catch {
+        isMismatch = true;
       }
 
-      // 2. Inscreve o Service Worker
+      if (isMismatch) {
+        console.log("🔄 Chave VAPID antiga ou desatualizada detectada. Renovando inscrição Web Push...");
+        await sub.unsubscribe().catch(() => {});
+        sub = null;
+      }
+    }
+
+    // 3. Se não tem inscrição ou foi renovada, inscreve com a chave oficial
+    if (!sub) {
       sub = await readyReg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(keyData.public_key),
+        applicationServerKey: expectedServerKeyBytes,
       });
     }
 
-    // 3. Envia os dados da inscrição para o backend salvar no banco
+    // 4. Garante o envio dos dados atualizados da inscrição para o backend salvar no banco
     if (sub) {
       const subJson = sub.toJSON();
       await apiRequest("/notifications/subscribe", {
@@ -228,7 +260,7 @@ export async function subscribeToPushNotifications(): Promise<boolean> {
           user_agent: navigator.userAgent,
         },
       });
-      console.log("✅ Web Push celular inscrito com sucesso no Ninja Tracker!");
+      console.log("✅ Web Push celular inscrito e sincronizado com sucesso no Ninja Tracker!");
       return true;
     }
   } catch (err) {
@@ -367,31 +399,70 @@ export function notifyNewSale(sale: RecentSaleItem) {
   );
 
   const creative = sale.creative_name || sale.ad_name || sale.utm_content || "Criativo Direto";
-  const badge = sale.offer_badge || "🛒 Oferta Principal";
-  const badgeVoice = badge.replace(/[^\p{L}\p{N}\s-]/gu, "").trim() || "Oferta Principal";
+
+  // Identificação Inteligente do Funil: Front, Order Bump e Upsell
+  const rawType = (sale.offer_type || "").toLowerCase();
+  const rawProd = (sale.product_name || "").toLowerCase();
+  const rawBadge = (sale.offer_badge || "").toLowerCase();
+
+  let offerKind: "front" | "bump" | "upsell" | "downsell" = "front";
+  if (rawType === "order_bump" || rawBadge.includes("bump") || rawProd.includes("bump") || rawProd.includes("multimetro")) {
+    offerKind = "bump";
+  } else if (rawType === "upsell" || rawBadge.includes("upsell") || rawProd.includes("upsell") || rawProd.includes("vip") || rawProd.includes("avanzat")) {
+    offerKind = "upsell";
+  } else if (rawType === "downsell" || rawBadge.includes("downsell") || rawProd.includes("downsell")) {
+    offerKind = "downsell";
+  } else {
+    offerKind = "front";
+  }
+
+  let badge = "🛒 Front";
+  let offerSpoken = "Front";
+  let toastTitle = `🛒 FRONT APROVADO: ${displayVal}!`;
+
+  if (offerKind === "bump") {
+    badge = "⚡ Order Bump";
+    offerSpoken = "Order Bump";
+    toastTitle = `⚡ ORDER BUMP: ${displayVal}!`;
+  } else if (offerKind === "upsell") {
+    badge = "🚀 Upsell";
+    offerSpoken = "Upsell";
+    toastTitle = `🚀 UPSELL APROVADO: ${displayVal}!`;
+  } else if (offerKind === "downsell") {
+    badge = "💎 Downsell";
+    offerSpoken = "Downsell";
+    toastTitle = `💎 DOWNSELL: ${displayVal}!`;
+  } else {
+    badge = sale.offer_badge && !sale.offer_badge.includes("Principal") ? sale.offer_badge : "🛒 Front";
+    offerSpoken = "Front";
+    toastTitle = `🛒 FRONT APROVADO: ${displayVal}!`;
+  }
+
   const insight = sale.smart_insight || "Nova Venda Aprovada";
   const todayCount = sale.today_sales_count ? ` • Venda #${sale.today_sales_count} de hoje` : "";
   const todayRev = sale.today_revenue_formatted ? ` (Hoje: ${sale.today_revenue_formatted})` : "";
   const statsLine = `${insight}${todayCount}${todayRev}`;
 
-  // 2. Voz sintetizada inteligente falando valor na moeda nativa, país, oferta e criativo
+  // 2. Voz sintetizada inteligente falando claramente Front, Order Bump ou Upsell
   if (prefs.voice_enabled && prefs.channels.new_sale.sound) {
     try {
+      let locationText = `em ${countryName}`;
+      if (countryCode === "IT") locationText = "na Itália";
+      else if (countryCode === "ES") locationText = "na Espanha";
+      else if (countryCode === "PT") locationText = "em Portugal";
+      else if (countryCode === "US") locationText = "nos Estados Unidos";
+      else if (countryCode === "CH") locationText = "na Suíça";
+      else if (countryCode === "BR") locationText = "no Brasil";
+
       let voiceText = "";
-      if (countryCode === "IT") {
-        voiceText = `Nova venda aprovada na Itália! ${voiceVal}! ${badgeVoice}: ${creative}. ${insight}.`;
-      } else if (countryCode === "ES") {
-        voiceText = `Nova venda aprovada na Espanha! ${voiceVal}! ${badgeVoice}: ${creative}. ${insight}.`;
-      } else if (countryCode === "PT") {
-        voiceText = `Nova venda aprovada em Portugal! ${voiceVal}! ${badgeVoice}: ${creative}. ${insight}.`;
-      } else if (countryCode === "US") {
-        voiceText = `Nova venda aprovada nos Estados Unidos! ${voiceVal}! ${badgeVoice}: ${creative}. ${insight}.`;
-      } else if (countryCode === "CH") {
-        voiceText = `Nova venda aprovada na Suíça! ${voiceVal}! ${badgeVoice}: ${creative}. ${insight}.`;
-      } else if (countryCode === "BR") {
-        voiceText = `Venda aprovada! ${voiceVal}! ${badgeVoice}: ${creative}. ${insight}.`;
+      if (offerKind === "bump") {
+        voiceText = `Order Bump aprovado ${locationText}! ${voiceVal}! Criativo: ${creative}. ${insight}.`;
+      } else if (offerKind === "upsell") {
+        voiceText = `Upsell aprovado ${locationText}! ${voiceVal}! Criativo: ${creative}. ${insight}.`;
+      } else if (offerKind === "downsell") {
+        voiceText = `Downsell aprovado ${locationText}! ${voiceVal}! Criativo: ${creative}. ${insight}.`;
       } else {
-        voiceText = `Nova venda aprovada em ${countryName}! ${voiceVal}! ${badgeVoice}: ${creative}. ${insight}.`;
+        voiceText = `Venda no Front aprovada ${locationText}! ${voiceVal}! Criativo: ${creative}. ${insight}.`;
       }
       speakVoice(voiceText);
     } catch (err) {
@@ -403,14 +474,14 @@ export function notifyNewSale(sale: RecentSaleItem) {
   if (prefs.channels.new_sale.push) {
     showNativeNotification(`💰 ${badge}: ${displayVal}!`, {
       body: `🎨 ${creative}\n📦 ${sale.product_name || "Produto"}\n🌍 ${countryDisplay}\n📊 ${statsLine}`,
-      tag: `sale-${sale.id}`,
+      tag: `sale-${sale.id}-${Date.now()}`,
       vibrate: [200, 100, 200, 100, 300],
       data: { url: "/dashboard" },
     } as unknown as NotificationOptions);
   }
 
   // 4. Pop-up enriquecido na tela do dashboard
-  toast.success(`🎉 VENDA: ${displayVal}!`, {
+  toast.success(toastTitle, {
     description: `${badge} • ${sale.product_name || "Produto"}\n🎨 Criativo: ${creative} • 🌍 ${countryDisplay}\n📊 ${statsLine}`,
     duration: 9000,
   });

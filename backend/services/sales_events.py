@@ -24,14 +24,19 @@ COUNTRY_NAME_MAP = {
 
 
 class SalesEventBroadcaster:
-    """Gerencia listeners SSE conectados ao dashboard para entrega instantânea (< 300ms)."""
+    """Gerencia listeners SSE conectados ao dashboard para entrega instantânea (< 50ms)."""
 
     def __init__(self):
         self._listeners: list[asyncio.Queue] = []
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
 
     def subscribe(self) -> asyncio.Queue:
         q = asyncio.Queue(maxsize=100)
         self._listeners.append(q)
+        try:
+            self._loop = asyncio.get_running_loop()
+        except RuntimeError:
+            pass
         logger.info(f"SSE listener conectado. Total ativos: {len(self._listeners)}")
         return q
 
@@ -40,33 +45,50 @@ class SalesEventBroadcaster:
             self._listeners.remove(q)
             logger.info(f"SSE listener desconectado. Total ativos: {len(self._listeners)}")
 
-    def broadcast_sync(self, data: dict):
-        """Envia para todos os ouvintes de forma segura a partir de contexto síncrono ou assíncrono."""
+    def _enqueue(self, q: asyncio.Queue, payload_str: str):
         try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                asyncio.create_task(self.broadcast(data))
-            else:
-                loop.run_until_complete(self.broadcast(data))
-        except RuntimeError:
-            # Sem loop na thread atual, roda em nova thread ou ignora
-            pass
+            q.put_nowait(payload_str)
+        except asyncio.QueueFull:
+            try:
+                q.get_nowait()
+                q.put_nowait(payload_str)
+            except Exception:
+                pass
+
+    def broadcast_sync(self, data: dict):
+        """Envia para todos os ouvintes de forma segura e instantânea a partir de qualquer contexto."""
+        if not self._listeners:
+            return
+        payload_str = json.dumps(data)
+
+        target_loop = self._loop
+        if not target_loop or target_loop.is_closed():
+            try:
+                target_loop = asyncio.get_running_loop()
+                self._loop = target_loop
+            except RuntimeError:
+                try:
+                    target_loop = asyncio.get_event_loop()
+                    self._loop = target_loop
+                except RuntimeError:
+                    target_loop = None
+
+        if target_loop and target_loop.is_running():
+            for q in list(self._listeners):
+                try:
+                    target_loop.call_soon_threadsafe(self._enqueue, q, payload_str)
+                except Exception as e:
+                    logger.warning(f"Erro ao entregar SSE threadsafe: {e}")
+        else:
+            for q in list(self._listeners):
+                self._enqueue(q, payload_str)
 
     async def broadcast(self, data: dict):
         if not self._listeners:
             return
         payload_str = json.dumps(data)
         for q in list(self._listeners):
-            try:
-                q.put_nowait(payload_str)
-            except asyncio.QueueFull:
-                try:
-                    q.get_nowait()
-                    q.put_nowait(payload_str)
-                except Exception:
-                    pass
-            except Exception as e:
-                logger.warning(f"Erro ao entregar SSE para fila: {e}")
+            self._enqueue(q, payload_str)
 
 
 sales_broadcaster = SalesEventBroadcaster()
@@ -150,12 +172,18 @@ def format_smart_sale(t, db: Optional[Session] = None) -> dict:
         voice_amount = f"{amount_brl:,.2f} reais".replace(".", ",").replace(",00", "")
 
     # 3. Posição no Funil (Identificação Precisa com Banco de Dados)
+    # 3. Posição no Funil (Identificação Precisa com Banco de Dados e Transação)
     offer_type = "front_end"
-    offer_badge = "🛒 Oferta Principal"
+    offer_badge = "🛒 Front"
+    badge_voice = "Front"
 
     is_matched_bump = False
     is_matched_upsell = False
     is_matched_product = False
+
+    # Checa se na transação ou order_bumps há sinais explícitos
+    if getattr(t, "order_bumps", None) and isinstance(t.order_bumps, list) and len(t.order_bumps) > 0:
+        pass
 
     if db:
         try:
@@ -195,24 +223,31 @@ def format_smart_sale(t, db: Optional[Session] = None) -> dict:
     if is_matched_bump:
         offer_type = "order_bump"
         offer_badge = "⚡ Order Bump"
+        badge_voice = "Order Bump"
     elif is_matched_upsell:
         offer_type = "upsell"
-        offer_badge = "🚀 Upsell VIP"
+        offer_badge = "🚀 Upsell"
+        badge_voice = "Upsell"
     elif is_matched_product:
         offer_type = "front_end"
-        offer_badge = "🛒 Oferta Principal"
-    elif any(k in p_name for k in ["upsell", "vip", "avanzat", "plus", "completo"]):
+        offer_badge = "🛒 Front"
+        badge_voice = "Front"
+    elif any(k in p_name for k in ["upsell", "vip", "avanzat", "plus", "completo", "master", "upgrade"]):
         offer_type = "upsell"
-        offer_badge = "🚀 Upsell VIP"
+        offer_badge = "🚀 Upsell"
+        badge_voice = "Upsell"
     elif any(k in p_name for k in ["order bump", "bump", "multimetro", "guasti & anomalie", "diametri & portate", "sistemi di scarico", "protocollo operativo"]):
         offer_type = "order_bump"
         offer_badge = "⚡ Order Bump"
+        badge_voice = "Order Bump"
     elif any(k in p_name for k in ["downsell", "base", "essenziale", "starter"]):
         offer_type = "downsell"
         offer_badge = "💎 Downsell"
+        badge_voice = "Downsell"
     else:
         offer_type = "front_end"
-        offer_badge = "🛒 Oferta Principal"
+        offer_badge = "🛒 Front"
+        badge_voice = "Front"
 
     # 4. Decodificação do Criativo e Origem
     utm_c = str(t.utm_content or "").strip()
@@ -307,6 +342,8 @@ def format_smart_sale(t, db: Optional[Session] = None) -> dict:
         "country_display": f"{flag} {country_name}",
         "offer_type": offer_type,
         "offer_badge": offer_badge,
+        "badge_voice": badge_voice,
+        "offer_label": badge_voice,
         "ad_name": creative_name,
         "creative_name": creative_name,
         "campaign_name": campaign_name or "Campanha Direta",

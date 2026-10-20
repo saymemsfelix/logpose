@@ -145,10 +145,20 @@ export function useSalesListener(onNewSale?: () => void) {
       console.warn("Falha ao inicializar SSE, utilizando polling fallback:", e);
     }
 
-    // 3. Fallback polling ágil (a cada 4 segundos) para cobrir eventuais falhas de SSE/proxy
-    const interval = setInterval(checkNewSales, 4000);
+    // 3. Fallback polling ágil (a cada 3 segundos) para garantir atualização contínua
+    const interval = setInterval(checkNewSales, 3000);
 
-    // 4. Gatilhos instantâneos quando o usuário volta para a aba ou foca a janela
+    // 4. Gatilho via Service Worker (quando chega Web Push mesmo com a aba em segundo plano)
+    const handleServiceWorkerMessage = (event: MessageEvent) => {
+      if (event.data?.type === "PUSH_SALE_RECEIVED") {
+        checkNewSales();
+      }
+    };
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      navigator.serviceWorker.addEventListener("message", handleServiceWorkerMessage);
+    }
+
+    // 5. Gatilhos instantâneos quando o usuário volta para a aba ou foca a janela
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         checkNewSales();
@@ -167,6 +177,9 @@ export function useSalesListener(onNewSale?: () => void) {
       }
       sseRef.current = null;
       clearInterval(interval);
+      if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+        navigator.serviceWorker.removeEventListener("message", handleServiceWorkerMessage);
+      }
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("focus", handleFocus);
     };

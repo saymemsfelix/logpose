@@ -597,7 +597,7 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
         )
         parsed_order_date = _parse_hotmart_date(order_date_raw)
 
-        # Detecção de item que é Order Bump (e não produto principal)
+        # Detecção Inteligente e Precisa de Funil: Front-End, Order Bump e Upsell
         ob_obj_purchase = purchase.get("order_bump")
         ob_obj_data = data.get("order_bump")
         parent_tx = (
@@ -608,26 +608,50 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
             or (ob_obj_data.get("parent_purchase_transaction") if isinstance(ob_obj_data, dict) else None)
         )
 
-        explicit_false = (
+        explicit_false_bump = (
             purchase.get("is_order_bump") is False
             or (isinstance(ob_obj_purchase, dict) and ob_obj_purchase.get("is_order_bump") is False)
             or (isinstance(ob_obj_data, dict) and ob_obj_data.get("is_order_bump") is False)
         )
 
-        if explicit_false and not parent_tx:
-            is_order_bump = False
-        elif parent_tx:
-            is_order_bump = True
-        elif isinstance(ob_obj_purchase, dict) and ob_obj_purchase.get("is_order_bump") is True:
+        is_order_bump = False
+        is_upsell = False
+
+        # 1. Identificação de Order Bump
+        if isinstance(ob_obj_purchase, dict) and ob_obj_purchase.get("is_order_bump") is True:
             is_order_bump = True
         elif isinstance(ob_obj_data, dict) and ob_obj_data.get("is_order_bump") is True:
+            is_order_bump = True
+        elif purchase.get("is_order_bump") is True or data.get("is_order_bump") is True or payload.get("is_order_bump") is True:
             is_order_bump = True
         elif str(purchase.get("item_type") or "").upper() == "ORDER_BUMP" or str(data.get("item_type") or "").upper() == "ORDER_BUMP":
             is_order_bump = True
         elif any(k in prod_name.lower() for k in ["order bump", "bump", "multimetro", "guasti & anomalie", "diametri & portate", "sistemi di scarico", "protocollo operativo"]):
             is_order_bump = True
+
+        # 2. Identificação de Upsell (Hotmart 1-Click Upsell / Funil de Pós-Venda)
+        if not is_order_bump:
+            if purchase.get("is_upsell") is True or data.get("is_upsell") is True or payload.get("is_upsell") is True:
+                is_upsell = True
+            elif str(purchase.get("item_type") or "").upper() in ["UPSELL", "ONE_CLICK_UPSELL"] or str(data.get("item_type") or "").upper() in ["UPSELL", "ONE_CLICK_UPSELL"]:
+                is_upsell = True
+            elif purchase.get("funnel") or data.get("funnel") or purchase.get("funnel_step") or data.get("funnel_step"):
+                is_upsell = True
+            elif str(event_name).upper() in ["PURCHASE_UPSELL", "UPSELL", "ORDER_UPSELL"]:
+                is_upsell = True
+            elif any(k in prod_name.lower() for k in ["upsell", "vip", "avanzat", "plus", "completo", "master", "pro", "upgrade"]):
+                is_upsell = True
+            elif parent_tx:
+                # Na Hotmart, quando parent_purchase_transaction está preenchido e não é order bump, trata-se de um Upsell 1-clique
+                is_upsell = True
+
+        # 3. Classificação final da Oferta
+        if is_order_bump:
+            offer_type = "order_bump"
+        elif is_upsell:
+            offer_type = "upsell"
         else:
-            is_order_bump = False
+            offer_type = "front_end"
 
         return StandardizedWebhookEvent(
             external_id=str(external_id),
@@ -641,6 +665,8 @@ def parse_hotmart_webhook(payload: Dict[str, Any]) -> Optional[StandardizedWebho
             product_name=prod_name,
             product_price=price_val if price_val > 0 else amount,
             is_order_bump=is_order_bump,
+            is_upsell=is_upsell,
+            offer_type=offer_type,
             customer_email=email,
             customer_name=name,
             customer_cpf=cpf,

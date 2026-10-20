@@ -59,7 +59,6 @@ def send_web_push(sub: PushSubscription, payload: dict, db: Session | None = Non
 
         headers = {
             "Urgency": "high",
-            "Topic": str(payload.get("tag") or "sales")[:32],
         }
 
         webpush(
@@ -68,17 +67,18 @@ def send_web_push(sub: PushSubscription, payload: dict, db: Session | None = Non
             vapid_private_key=vapid_inst,
             vapid_claims=VAPID_CLAIMS,
             headers=headers,
-            ttl=86400,  # 24 horas no buffer do FCM se o celular estiver desligado
+            ttl=86400,  # 24 horas no buffer do push service
         )
         logger.info(f"✅ Web Push entregue com sucesso para o dispositivo id={sub.id}")
         return True
     except WebPushException as ex:
-        logger.warning(f"Aviso Web Push para o dispositivo {sub.id}: {ex}")
-        # Código 410 (Gone) ou 404 (Not Found) = usuário desinstalou ou limpou dados do navegador
-        if ex.response is not None and ex.response.status_code in (404, 410):
+        status_code = ex.response.status_code if ex.response is not None else None
+        logger.warning(f"Aviso Web Push para o dispositivo {sub.id} (HTTP {status_code}): {ex}")
+        # Código 410 (Gone), 404 (Not Found), 401 (Unauthorized - VAPID antiga), 403 (Forbidden)
+        if status_code in (401, 403, 404, 410):
             if db:
                 try:
-                    logger.info(f"Removendo inscrição expirada id={sub.id}")
+                    logger.info(f"Removendo inscrição inválida/expirada id={sub.id} (HTTP {status_code})")
                     db.delete(sub)
                     db.commit()
                 except Exception as del_err:
@@ -138,10 +138,18 @@ def send_sale_push_notification(db: Session, event: StandardizedWebhookEvent) ->
         title_amount = formatted_brl
         body_amount = formatted_brl
 
-    # 2. Posição no Funil (Identificação Precisa com Banco de Dados)
+    # 2. Posição no Funil (Identificação Precisa com Banco de Dados e Webhook)
     is_bump = getattr(event, "is_order_bump", False)
-    is_upsell = False
+    is_upsell = getattr(event, "is_upsell", False)
     is_main_product = False
+    explicit_offer_type = getattr(event, "offer_type", None)
+
+    if explicit_offer_type == "order_bump":
+        is_bump = True
+    elif explicit_offer_type == "upsell":
+        is_upsell = True
+    elif explicit_offer_type == "front_end":
+        is_main_product = True
 
     if db:
         try:
@@ -157,6 +165,7 @@ def send_sale_push_notification(db: Session, event: StandardizedWebhookEvent) ->
 
             if matched_ob:
                 is_bump = True
+                is_upsell = False
 
             # 2. Verificar se é Upsell cadastrado no banco
             if not is_bump:
@@ -178,25 +187,39 @@ def send_sale_push_notification(db: Session, event: StandardizedWebhookEvent) ->
         except Exception as check_err:
             logger.warning(f"Aviso ao consultar funil no banco: {check_err}")
 
-    # Prioridade final de classificação:
+    # Prioridade final de classificação: Front, Order Bump ou Upsell
     if is_bump:
+        offer_type = "order_bump"
         badge = "⚡ Order Bump"
+        title_prefix = "⚡ Order Bump"
     elif is_upsell:
-        badge = "🚀 Upsell VIP"
+        offer_type = "upsell"
+        badge = "🚀 Upsell"
+        title_prefix = "🚀 Upsell Aprovado"
     elif is_main_product:
-        badge = "🛒 Oferta Principal"
-    elif any(k in p_name for k in ["upsell", "vip", "avanzat", "plus", "completo"]):
-        badge = "🚀 Upsell VIP"
+        offer_type = "front_end"
+        badge = "🛒 Front"
+        title_prefix = "🛒 Front Aprovado"
+    elif any(k in p_name for k in ["upsell", "vip", "avanzat", "plus", "completo", "master", "upgrade"]):
+        offer_type = "upsell"
+        badge = "🚀 Upsell"
+        title_prefix = "🚀 Upsell Aprovado"
     elif any(k in p_name for k in ["order bump", "bump", "multimetro", "guasti & anomalie", "diametri & portate", "sistemi di scarico", "protocollo operativo"]):
+        offer_type = "order_bump"
         badge = "⚡ Order Bump"
+        title_prefix = "⚡ Order Bump"
     elif any(k in p_name for k in ["downsell", "base", "essenziale", "starter"]):
+        offer_type = "downsell"
         badge = "💎 Downsell"
+        title_prefix = "💎 Downsell"
     else:
-        badge = "🛒 Oferta Principal"
+        offer_type = "front_end"
+        badge = "🛒 Front"
+        title_prefix = "🛒 Front Aprovado"
 
     # Se o produto principal teve order bumps reais inclusos na compra
     bump_tag = ""
-    if not is_bump and getattr(event, "order_bumps", None) and isinstance(event.order_bumps, list):
+    if offer_type == "front_end" and getattr(event, "order_bumps", None) and isinstance(event.order_bumps, list):
         valid_bumps = [
             b for b in event.order_bumps
             if isinstance(b, dict)
@@ -206,6 +229,7 @@ def send_sale_push_notification(db: Session, event: StandardizedWebhookEvent) ->
         ]
         if len(valid_bumps) > 0:
             bump_tag = f" (+ {len(valid_bumps)} Bump)" if len(valid_bumps) == 1 else f" (+ {len(valid_bumps)} Bumps)"
+            title_prefix = f"🛒 Front{bump_tag}"
 
     # 3. Criativo e Produto
     raw_creative = event.utm_content or event.utm_campaign or event.src or "Anúncio Direto"
@@ -244,12 +268,15 @@ def send_sale_push_notification(db: Session, event: StandardizedWebhookEvent) ->
         pass
 
     # 5. Monta o Payload do Pop-up Nativo do Celular
+    import time
+    unique_tag = f"ninja-sale-{event.external_id}-{int(time.time() * 1000)}"
+
     payload = {
-        "title": f"💰 Venda Aprovada: {title_amount}",
+        "title": f"{title_prefix}: {title_amount}",
         "body": f"{flag} {badge}{bump_tag} • {product_name} • {body_amount}{today_stats_suffix}\n🎨 Criativo: {creative}",
         "icon": "/icons/pwa-192.png",
         "badge": "/icons/pwa-192.png",
-        "tag": f"ninja-sale-{event.external_id}",
+        "tag": unique_tag,
         "renotify": True,
         "requireInteraction": True,
         "vibrate": [300, 100, 300, 100, 400],
@@ -257,6 +284,9 @@ def send_sale_push_notification(db: Session, event: StandardizedWebhookEvent) ->
             "url": "/dashboard",
             "sale_id": event.external_id,
             "amount": amount_brl,
+            "offer_type": offer_type,
+            "badge": badge,
+            "product_name": product_name,
         },
     }
 

@@ -54,9 +54,16 @@ def seed_sync_data(engine):
                 db.execute(text("""
                     DO $$
                     DECLARE
+                      v_count INT;
                       today_main_id INT;
                       today_bump_id INT;
                     BEGIN
+                      -- Só executa se houver a anomalia das 50+ transações de teste
+                      SELECT COUNT(*) INTO v_count FROM transactions WHERE created_at >= '2026-10-19 00:00:00';
+                      IF v_count < 50 THEN
+                        RETURN;
+                      END IF;
+
                       -- 1. Identifica a última venda aprovada da oferta principal (120 Diagnosi)
                       SELECT id INTO today_main_id 
                       FROM transactions 

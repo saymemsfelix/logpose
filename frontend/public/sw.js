@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ninjastracker-v8';
+const CACHE_NAME = 'ninjastracker-v9';
 
 const STATIC_ASSETS = [
   '/',
@@ -107,9 +107,11 @@ self.addEventListener('push', (event) => {
     data: { url: '/dashboard' },
   };
 
+  let rawData = null;
   if (event.data) {
     try {
       const data = event.data.json();
+      rawData = data;
       title = data.title || title;
       options = {
         ...options,
@@ -128,5 +130,20 @@ self.addEventListener('push', (event) => {
     }
   }
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  // Notifica abas/janelas abertas em tempo real imediato
+  const notifyWindows = clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+    for (const client of clientList) {
+      try {
+        client.postMessage({
+          type: 'PUSH_SALE_RECEIVED',
+          payload: rawData,
+        });
+      } catch (err) {}
+    }
+  });
+
+  event.waitUntil(Promise.all([
+    self.registration.showNotification(title, options),
+    notifyWindows,
+  ]));
 });

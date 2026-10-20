@@ -241,17 +241,29 @@ async def _scheduled_recovery_dispatches_loop():
         await asyncio.sleep(30)
 
 def _run_sales_bug_fix():
-    """Restaura as 50 transações de teste para 12/10 e isola as 2 vendas reais de hoje."""
+    """Restaura as transações de teste para 12/10 APENAS se a anomalia de 50+ transações de teste for detectada."""
     try:
         from database.core.connection import engine
         from sqlalchemy import text
         with engine.connect() as conn:
+            # Verifica se há a anomalia das 50+ transações de teste de hoje
+            check_res = conn.execute(text("SELECT COUNT(*) FROM transactions WHERE created_at >= '2026-10-19 00:00:00'")).scalar()
+            if not check_res or check_res < 50:
+                logger.info(f"Auto-healing ignorado: contagem de hoje ({check_res}) é normal e não contém o dump de 50+ testes.")
+                return True
+
             conn.execute(text("""
                 DO $$
                 DECLARE
+                  v_count INT;
                   v_main_id INT;
                   v_bump_id INT;
                 BEGIN
+                  SELECT COUNT(*) INTO v_count FROM transactions WHERE created_at >= '2026-10-19 00:00:00';
+                  IF v_count < 50 THEN
+                    RETURN;
+                  END IF;
+
                   SELECT id INTO v_main_id FROM transactions 
                   WHERE (LOWER(product_name) LIKE '%120 diagnosi%' OR LOWER(product_name) LIKE '%hardware e software%')
                     AND status::text ILIKE '%approved%'

@@ -22,6 +22,8 @@ class StandardizedWebhookEvent(BaseModel):
     product_name: str
     product_price: float = 0.0  # Preço do produto (diferente de amount/comissão)
     is_order_bump: bool = False
+    is_upsell: bool = False
+    offer_type: Optional[str] = None  # "front_end" | "order_bump" | "upsell" | "downsell"
     
     # Dados do cliente
     customer_external_id: Optional[str] = None
