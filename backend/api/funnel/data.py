@@ -14,6 +14,7 @@ from api.auth.deps import get_current_user
 from api.funnel.date_helpers import resolve_date_range, date_to_meta_format
 from api.funnel.facebook_data import fetch_facebook_aggregated
 from api.products.alias_helper import get_product_names_for_filter
+from services.supabase_tracker import get_supabase_funnel_counts
 
 router = APIRouter(prefix="/funnel", tags=["funnel"])
 
@@ -33,6 +34,11 @@ async def get_funnel_data(
     meta_end = date_to_meta_format(dt_end) if dt_end else date_to_meta_format(now_sp())
     accounts = db.query(FacebookAccount).all()
 
+    # Busca eventos reais do Supabase (views e checkouts reais)
+    supa_events = await get_supabase_funnel_counts(from_dt=dt_start, to_dt=dt_end)
+    supa_views = supa_events.get("views", 0)
+    supa_checkouts = supa_events.get("checkouts", 0)
+
     result = []
     for product in products:
         campaign_ids = _get_product_campaign_ids(db, str(product.id))
@@ -42,14 +48,17 @@ async def get_funnel_data(
         ob_count, ob_revenue = _count_order_bumps(db, product, dt_start, dt_end)
         upsell_stages = _get_upsell_stages(db, product.id, dt_start, dt_end)
 
+        real_lpv = supa_views if supa_views > 0 else fb.get("lpv", 0)
+        real_checkout = supa_checkouts if supa_checkouts > 0 else fb.get("checkout", 0)
+
         stages = [
             _make_stage("Cliques", fb.get("clicks", 0), meta={
                 "ctr": fb.get("ctr", 0),
                 "cpc": fb.get("cpc", 0),
                 "spend": fb.get("spend", 0),
             }),
-            _make_stage("Landing Page Views", fb.get("lpv", 0)),
-            _make_stage("Iniciação de Compra", fb.get("checkout", 0)),
+            _make_stage("Landing Page Views", real_lpv, meta={"source": "supabase" if supa_views > 0 else "meta"}),
+            _make_stage("Iniciação de Compra", real_checkout, meta={"source": "supabase" if supa_checkouts > 0 else "meta"}),
             _make_stage("Vendas", sales_count, revenue=sales_revenue),
         ]
 

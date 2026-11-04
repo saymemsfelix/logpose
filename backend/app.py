@@ -72,6 +72,7 @@ from api.notifications.router import router as notifications_router
 from api.guardian.router import router as guardian_router
 from api.creative_fatigue.router import router as creative_fatigue_router
 from api.simulator.router import router as simulator_router
+from api.events.capture import router as capture_events_router
 
 import database.models.daily_ad_spend
 from database.core.migrate_sql import run_sql_migrations
@@ -404,6 +405,7 @@ app.include_router(notifications_router, prefix="/api")
 app.include_router(guardian_router, prefix="/api")
 app.include_router(creative_fatigue_router, prefix="/api")
 app.include_router(simulator_router, prefix="/api")
+app.include_router(capture_events_router)
 
 # SPA Middleware (serves frontend in production)
 _frontend_dir = os.path.join(os.path.dirname(__file__), "frontend_dist")
