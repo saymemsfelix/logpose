@@ -9,6 +9,9 @@ services:
       - DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@db:5432/logpose
       - SECRET_KEY=${SECRET_KEY}
       - META_GRAPH_API_VERSION=v25.0
+      - SUPABASE_URL=${SUPABASE_URL:-https://sxwgicatatmvivgizxwg.supabase.co}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
+      - SUPABASE_AREA_ID=${SUPABASE_AREA_ID:-e46b9dc1-6ddb-4046-b66e-ff33bbce06fb}
     networks:
       - traefik
       - internal
