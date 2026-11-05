@@ -100,7 +100,9 @@ class TokenOverviewRequest(BaseModel):
 def get_oauth_url():
     """Retorna URL para autorização oficial de 1 clique no Facebook."""
     app_id = os.getenv("META_APP_ID")
-    redirect_uri = os.getenv("META_REDIRECT_URI", "https://logpose-1zuu.onrender.com/integrations")
+    base_domain = os.getenv("BASE_DOMAIN")
+    default_redirect = f"https://{base_domain}/integrations" if base_domain else "http://localhost:5173/integrations"
+    redirect_uri = os.getenv("META_REDIRECT_URI", default_redirect)
     if not app_id:
         return OAuthUrlResponse(oauth_url="", configured=False, app_id=None)
 
