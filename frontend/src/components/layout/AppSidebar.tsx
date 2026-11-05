@@ -16,6 +16,7 @@ import {
   RiPuzzleLine,
   RiShieldCheckLine,
   RiFireLine,
+  RiTrophyLine,
   RiCalculatorLine,
   RiLinkM,
   RiSparklingFill,
@@ -65,7 +66,7 @@ const navGroups: NavGroup[] = [
     items: [
       { title: "Central Pro", icon: RiSparklingFill, url: "/tools" },
       { title: "O Guardião", icon: RiShieldCheckLine, url: "/guardian" },
-      { title: "Fadiga de Criativos", icon: RiFireLine, url: "/creative-fatigue" },
+      { title: "Creative Hub & Levas", icon: RiTrophyLine, url: "/creative-fatigue" },
       { title: "Simulador de Escala", icon: RiCalculatorLine, url: "/simulator" },
       { title: "Gerador de UTMs", icon: RiLinkM, url: "/utm-builder" },
     ],

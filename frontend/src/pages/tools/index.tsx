@@ -78,7 +78,7 @@ export default function ToolsHubPage() {
           }`}
         >
           <RiFireLine className="w-4 h-4 text-amber-400" />
-          <span>🔥 Radar de Fadiga</span>
+          <span>🎯 Creative Hub & Levas</span>
         </button>
 
         <button

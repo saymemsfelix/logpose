@@ -23,6 +23,7 @@ from database.models.push_subscription import PushSubscription
 from database.models.guardian_rule import GuardianRule
 from database.models.guardian_log import GuardianLog
 from database.models.whatsapp_integration import WhatsAppConfig, RecoveryDispatch
+from database.models.tiktok_account import TikTokAccount
 
 __all__ = [
     "Admin",
@@ -41,6 +42,7 @@ __all__ = [
     "RecoveryType",
     "RecoveryChannel",
     "FacebookAccount",
+    "TikTokAccount",
     "VturbAccount",
     "WebhookEndpoint",
     "WebhookPlatform",

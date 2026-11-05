@@ -16,6 +16,10 @@ from database.models.transaction import Transaction, TransactionStatus
 from api.auth.deps import get_current_user
 from integrations.meta_ads.service import MetaAdsService
 from integrations.meta_ads.manage import toggle_entity_status
+from api.creative_fatigue.batch_service import (
+    process_batch_groups,
+    get_demo_creative_batches,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -217,3 +221,53 @@ async def toggle_ad(
         "new_status": payload.status,
         "message": f"Anúncio {'pausado' if payload.status == 'PAUSED' else 'ativado'} com sucesso no Meta Ads!",
     }
+
+
+@router.get("/batches")
+async def get_creative_batches(
+    champion_min_roas: float = Query(2.0, description="ROAS mínimo para criativo campeão"),
+    champion_min_sales: int = Query(3, description="Mínimo de vendas para criativo campeão"),
+    validated_max_cpa: float = Query(45.0, description="CPA máximo para criativo validado"),
+    validated_min_roas: float = Query(1.2, description="ROAS mínimo para criativo validado"),
+    test_spend_threshold: float = Query(80.0, description="Limite de gasto de teste antes de reprovar"),
+    date_start: Optional[str] = Query(None),
+    date_end: Optional[str] = Query(None),
+    account_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    """
+    Creative Hub: Retorna a análise de Assertividade por Leva de Criativos (Batch Testing).
+    Agrupa os criativos pelas levas de teste e avalia a taxa de assertividade da esteira de tráfego.
+    """
+    # 1. Tenta buscar anúncios reais analisados via endpoint de fadiga
+    try:
+        fatigue_data = await get_creative_fatigue_analysis(
+            date_start=date_start,
+            date_end=date_end,
+            account_id=account_id,
+            db=db,
+            _=_,
+        )
+        real_ads = fatigue_data.get("ads", [])
+        if real_ads and len(real_ads) >= 2:
+            return process_batch_groups(
+                real_ads,
+                champion_min_roas=champion_min_roas,
+                champion_min_sales=champion_min_sales,
+                validated_max_cpa=validated_max_cpa,
+                validated_min_roas=validated_min_roas,
+                test_spend_threshold=test_spend_threshold,
+            )
+    except Exception as e:
+        logger.warning(f"Erro ao buscar anúncios reais para o Creative Hub: {e}")
+
+    # 2. Se não houver dados ao vivo suficientes, retorna a demonstração completa realista
+    return get_demo_creative_batches(
+        champion_min_roas=champion_min_roas,
+        champion_min_sales=champion_min_sales,
+        validated_max_cpa=validated_max_cpa,
+        validated_min_roas=validated_min_roas,
+        test_spend_threshold=test_spend_threshold,
+    )
+

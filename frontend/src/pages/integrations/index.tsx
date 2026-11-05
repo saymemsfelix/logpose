@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { OfferBanner } from "./components/OfferBanner";
 import { FacebookCard } from "./components/FacebookCard";
+import { TikTokCard } from "./components/TikTokCard";
+import { ConnectTikTokModal } from "./components/ConnectTikTokModal";
 import { BusinessManagersList } from "./components/BusinessManagersList";
 import { ConnectFacebookModal } from "./components/ConnectFacebookModal";
 import { TutorialModal } from "./components/TutorialModal";
@@ -16,10 +18,16 @@ import {
   type FacebookOverviewResponse,
   type OverviewAccount,
 } from "@/services/integrations";
+import {
+  fetchTikTokOverview,
+  disconnectTikTokAccount,
+  syncTikTokSpend,
+  type TikTokOverviewResponse,
+} from "@/services/tiktok";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
-type TabKey = "ads" | "webhooks" | "utms" | "pixels";
+type TabKey = "ads" | "tiktok" | "webhooks" | "utms" | "pixels";
 
 interface IntegrationsPageProps {
   initialTab?: TabKey;
@@ -28,6 +36,8 @@ interface IntegrationsPageProps {
 export default function IntegrationsPage({ initialTab = "ads" }: IntegrationsPageProps) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
+
+  // Estados Facebook
   const [overview, setOverview] = useState<FacebookOverviewResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -36,7 +46,17 @@ export default function IntegrationsPage({ initialTab = "ads" }: IntegrationsPag
     configured: false,
   });
 
-  // Modais
+  // Estados TikTok Ads
+  const [tiktokOverview, setTiktokOverview] = useState<TikTokOverviewResponse>({
+    connected: false,
+    accounts: [],
+    total_accounts: 0,
+    last_synced: null,
+  });
+  const [isTikTokSyncing, setIsTikTokSyncing] = useState(false);
+  const [connectTikTokModalOpen, setConnectTikTokModalOpen] = useState(false);
+
+  // Modais Facebook
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [connectModalOpen, setConnectModalOpen] = useState(false);
   const [generateLinkModalOpen, setGenerateLinkModalOpen] = useState(false);
@@ -48,7 +68,6 @@ export default function IntegrationsPage({ initialTab = "ads" }: IntegrationsPag
       const data = await fetchFacebookOverview(token);
       setOverview(data);
     } catch {
-      // Se ainda não tiver contas salvas
       setOverview({
         connected: false,
         businesses: [],
@@ -60,15 +79,26 @@ export default function IntegrationsPage({ initialTab = "ads" }: IntegrationsPag
     }
   }, []);
 
+  // Carrega visão geral do TikTok
+  const loadTikTokOverview = useCallback(async () => {
+    try {
+      const data = await fetchTikTokOverview();
+      setTiktokOverview(data);
+    } catch {
+      // Fallback
+    }
+  }, []);
+
   useEffect(() => {
     loadOverview();
+    loadTikTokOverview();
 
     fetchOAuthUrl()
       .then((res) => setOauthData(res))
       .catch(() => {});
-  }, [loadOverview]);
+  }, [loadOverview, loadTikTokOverview]);
 
-  // Sincronizar contas
+  // Sincronizar contas Facebook
   const handleSync = async () => {
     try {
       setIsSyncing(true);
@@ -81,12 +111,37 @@ export default function IntegrationsPage({ initialTab = "ads" }: IntegrationsPag
     }
   };
 
-  // Conectar com novo token
+  // Sincronizar contas TikTok
+  const handleTikTokSync = async () => {
+    try {
+      setIsTikTokSyncing(true);
+      const res = await syncTikTokSpend();
+      toast.success(res.message || "TikTok Ads sincronizado!");
+      await loadTikTokOverview();
+    } catch {
+      toast.error("Erro ao sincronizar contas do TikTok Ads");
+    } finally {
+      setIsTikTokSyncing(false);
+    }
+  };
+
+  // Desconectar TikTok
+  const handleTikTokDisconnect = async (accountId: number) => {
+    try {
+      await disconnectTikTokAccount(accountId);
+      toast.success("Conta do TikTok Ads desconectada.");
+      await loadTikTokOverview();
+    } catch {
+      toast.error("Erro ao desconectar conta do TikTok");
+    }
+  };
+
+  // Conectar com novo token Facebook
   const handleConnectToken = async (token: string) => {
     await loadOverview(token);
   };
 
-  // Toggle de conta ativa/inativa
+  // Toggle de conta ativa/inativa Facebook
   const handleToggleAccount = async (acc: OverviewAccount, active: boolean) => {
     const token = overview?.access_token || "";
     await toggleFacebookAccount({
@@ -97,7 +152,6 @@ export default function IntegrationsPage({ initialTab = "ads" }: IntegrationsPag
       active,
     });
 
-    // Atualiza estado local imediatamente
     setOverview((prev) => {
       if (!prev) return prev;
       const updatedBusinesses = prev.businesses.map((bm) => ({
@@ -144,15 +198,15 @@ export default function IntegrationsPage({ initialTab = "ads" }: IntegrationsPag
       {/* Título da Página */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground">Integrações</h1>
-          <p className="text-[13px] text-muted-foreground mt-0.5">Workspace Principal</p>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">Integrações de Tráfego & APIs</h1>
+          <p className="text-[13px] text-muted-foreground mt-0.5">Workspace Principal Ninja</p>
         </div>
       </div>
 
       {/* Card: Configure sua nova oferta */}
       <OfferBanner onConfigureOffer={() => navigate("/products")} />
 
-      {/* Abas Superiores no estilo NexoFy */}
+      {/* Abas Superiores no estilo Ninja */}
       <div>
         <div className="mb-4 grid grid-cols-2 gap-1 rounded-xl border border-border/40 bg-card/60 p-1 sm:flex sm:flex-wrap backdrop-blur-xs">
           <button
@@ -164,7 +218,20 @@ export default function IntegrationsPage({ initialTab = "ads" }: IntegrationsPag
                 : "text-muted-foreground hover:text-foreground hover:bg-accent/40"
             }`}
           >
-            Anúncios
+            Meta Ads (Facebook)
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("tiktok")}
+            className={`rounded-lg px-3.5 py-2 text-[13px] sm:py-1.5 font-medium transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              activeTab === "tiktok"
+                ? "bg-black text-white border border-border/60 shadow-xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent/40"
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+            TikTok Ads
           </button>
 
           <button
@@ -230,6 +297,20 @@ export default function IntegrationsPage({ initialTab = "ads" }: IntegrationsPag
             </div>
           )}
 
+          {activeTab === "tiktok" && (
+            <div className="flex flex-col gap-4">
+              <TikTokCard
+                connected={tiktokOverview.connected}
+                accounts={tiktokOverview.accounts}
+                lastSynced={tiktokOverview.last_synced}
+                onConnect={() => setConnectTikTokModalOpen(true)}
+                onSync={handleTikTokSync}
+                onDisconnect={handleTikTokDisconnect}
+                isSyncing={isTikTokSyncing}
+              />
+            </div>
+          )}
+
           {activeTab === "webhooks" && <WebhooksTab />}
 
           {activeTab === "utms" && <UtmsTab />}
@@ -238,7 +319,7 @@ export default function IntegrationsPage({ initialTab = "ads" }: IntegrationsPag
         </div>
       </div>
 
-      {/* Modais de Suporte */}
+      {/* Modais Facebook */}
       <TutorialModal
         open={tutorialOpen}
         onOpenChange={setTutorialOpen}
@@ -257,6 +338,13 @@ export default function IntegrationsPage({ initialTab = "ads" }: IntegrationsPag
         open={generateLinkModalOpen}
         onOpenChange={setGenerateLinkModalOpen}
         oauthUrl={oauthData.oauth_url}
+      />
+
+      {/* Modal TikTok */}
+      <ConnectTikTokModal
+        isOpen={connectTikTokModalOpen}
+        onClose={() => setConnectTikTokModalOpen(false)}
+        onSuccess={loadTikTokOverview}
       />
     </div>
   );
